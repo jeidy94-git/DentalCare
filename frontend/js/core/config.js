@@ -3,12 +3,13 @@
  *
  * USE_MOCK es el "interruptor" de la capa de servicios:
  *   true  → los servicios responden con la base de datos simulada (localStorage) de js/services/mock/db.js.
- *   false → los mismos servicios llaman a la API REST de Node.js/Express (fase D) con js/services/http.js.
+ *   false → los mismos servicios llaman a la API REST de Node.js/Express (backend/) con js/services/http.js.
+ *           Fase C: ya responden /api/auth y /api/pacientes (GET y POST); el resto de módulos llega en la fase D.
  * Las páginas nunca se enteran del cambio: siempre llaman a `pacientesService.list()`, etc.
  */
 export const USE_MOCK = true;
 
-/** URL base de la API (fase C/D). */
+/** URL base de la API (backend/: npm start → puerto 3000). */
 export const API_BASE_URL = 'http://localhost:3000/api';
 
 /** Tiempo máximo de espera de una petición HTTP antes de abortarla. */

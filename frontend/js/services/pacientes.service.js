@@ -22,7 +22,7 @@ const optional = (rule) => (value) => (value === undefined || value === null || 
 
 // Las MISMAS reglas que usa el formulario: el "servidor" no confía en lo que validó el navegador.
 const REGLAS = {
-  tipo_documento: compose(validators.required(), (v) => (['CC', 'TI', 'CE', 'PA', 'RC'].includes(v) ? null : 'Tipo de documento no válido.')),
+  tipo_documento: compose(validators.required(), (v) => (['CC', 'TI', 'CE', 'PA'].includes(v) ? null : 'Tipo de documento no válido.')),
   numero_documento: compose(validators.required(), validators.documento()),
   nombres: compose(validators.required(), validators.maxLength(100)),
   apellidos: compose(validators.required(), validators.maxLength(100)),

@@ -1,4 +1,4 @@
-# Documento de sustentación — DentalCare (Frontend A0 a A6, APIs externas y Fase B: base de datos)
+# Documento de sustentación — DentalCare (Frontend A0 a A6, APIs externas, Fase B: base de datos y Fase C: backend)
 
 > Guía de estudio para la sustentación individual. Explica **qué** se construyó, **por qué** se
 > tomó cada decisión y **cómo** defenderla ante el docente. Cada concepto apunta al archivo real del
@@ -6,6 +6,7 @@
 >
 > Para ver todo funcionando: abrir `frontend/index.html` con **Live Server** (VS Code) e ingresar con
 > una cuenta de demostración (§12.10). El catálogo de componentes sigue en `frontend/styleguide.html`.
+> Para usar el backend real (fase C): §16.8.
 
 ---
 
@@ -26,9 +27,10 @@
 13. [Fase A6: pantallas definitivas por rol](#13-fase-a6-pantallas-definitivas-por-rol)
 14. [Integración de APIs externas (servicios web de terceros)](#14-integración-de-apis-externas-servicios-web-de-terceros)
 15. [Fase B: base de datos v2](#15-fase-b-base-de-datos-v2)
-16. [Cómo se verificó la calidad](#16-cómo-se-verificó-la-calidad)
-17. [Simulacro de preguntas del docente](#17-simulacro-de-preguntas-del-docente)
-18. [Glosario](#18-glosario)
+16. [Fase C: backend (Node.js + Express + MySQL)](#16-fase-c-backend-nodejs--express--mysql)
+17. [Cómo se verificó la calidad](#17-cómo-se-verificó-la-calidad)
+18. [Simulacro de preguntas del docente](#18-simulacro-de-preguntas-del-docente)
+19. [Glosario](#19-glosario)
 
 ---
 
@@ -45,12 +47,13 @@
 | **A6** Pantallas | 25 pantallas HTML: entrada (`index`, `login`, `403`) y las de cada rol, con 14 controladores compartidos que solo consumen la capa de servicios | `frontend/*.html`, `frontend/pages/<rol>/`, `frontend/js/pages/` |
 | **APIs externas** | Dos servicios web públicos y reales consumidos con `fetch()`: departamentos y municipios de Colombia (Datos Abiertos, DIVIPOLA) en el registro de pacientes y la TRM del dólar en pagos, con tiempo límite, caché y respaldo sin internet | `frontend/js/services/colombia.service.js`, `trm.service.js`, `externo.js` |
 | **B** Base de datos v2 | Corrección de la base antes del backend: contraseñas con bcrypt, matriz de permisos según RN-01, `rol.estado`, ubicación DIVIPOLA, estado de venta calculado, tratamiento en la cita, tokens de recuperación y 14 restricciones `CHECK`. Incluye migración, instalación completa y 38 pruebas SQL | `database/` (`CAMBIOS.md`, `dentalcare_bd_v2.sql`, `migrations.sql`), `tests/db/` |
+| **C** Backend | API REST en Node.js + Express 5 + `mysql2/promise` (sin ORM): configuración con `.env`, pool de conexiones, errores centralizados, login con bcrypt y JWT, `verifyToken`/`requirePermission`, listado y registro de pacientes con validación DIVIPOLA. El frontend la usa con `USE_MOCK = false` sin cambiar ninguna página. 79 pruebas de la API y 19 E2E | `backend/`, `tests/backend/`, `tests/e2e/backend.test.mjs` |
 
 **Stack del proyecto:** HTML5 + CSS3 + JavaScript puro (ES Modules) en el frontend; Node.js + Express +
-MySQL (mysql2/promise, sin ORM) en el backend (fases C y D). Mientras no existe el backend, las
-pantallas usan **datos mock** copiados del seed de `dentalcare_bd.sql`, servidos por la capa de
-servicios de la fase A5. La base real que usará el backend es la **v2** (§15), que ya tiene las
-mismas correcciones que el mock.
+MySQL (mysql2/promise, sin ORM) en el backend. Con `USE_MOCK = true` (valor por defecto) las pantallas
+usan **datos mock** copiados del seed, servidos por la capa de servicios de la fase A5. Con
+`USE_MOCK = false` usan la API real de la fase C (§16) sobre la base **v2** (§15). Por ahora responden
+autenticación y pacientes; los demás módulos llegan en la fase D.
 
 ---
 
@@ -757,7 +760,7 @@ try {
   (`GET /citas`, `PATCH /citas/:id/estado`…). El mock **es** la especificación del backend.
 - **Errores uniformes:** mock y API lanzan el mismo `ApiError` (`status`, `message`, `fields`, `code`),
   así la página maneja los errores de una sola forma.
-- **Comprobable:** los servicios se prueban en Node sin navegador (67 pruebas, §16).
+- **Comprobable:** los servicios se prueban en Node sin navegador (67 pruebas, §17).
 
 | `status` de `ApiError` | Significado | Ejemplo |
 |---|---|---|
@@ -1694,7 +1697,7 @@ motores del proyecto: **MariaDB 10.4.32** (XAMPP) y **MySQL 8.0.36**.
 5. **Se probó la prueba.** Se agregaron cuatro casos saboteados a propósito: una columna que no
    existe, un error de sintaxis, un dato válido marcado como "debe fallar" y un dato inválido
    marcado como "debe funcionar". Los cuatro salieron como FALLA. Así se sabe que un 38/38 significa
-   algo (§16, hallazgos 21 y 22).
+   algo (§17, hallazgos 21 y 22).
 
 ```bash
 mysql -u root < database/dentalcare_bd_v2.sql
@@ -1718,7 +1721,295 @@ sirviendo para entrar.
 
 ---
 
-## 16. Cómo se verificó la calidad
+## 16. Fase C: backend (Node.js + Express + MySQL)
+
+Hasta la fase B, las pantallas trabajaban con el mock: una base simulada en `localStorage`. En la
+fase C nace el **servidor real**. Es una API REST en Node.js que se conecta a la base v2 (§15) y
+responde lo mismo que respondía el mock, con el mismo formato. Por eso el frontend no cambia: basta
+poner `USE_MOCK = false` en `frontend/js/core/config.js`.
+
+En esta fase se construyeron los dos primeros módulos. Los demás (citas, historias, ventas…) son la
+fase D.
+
+| Método y ruta | Qué hace | Quién puede |
+|---|---|---|
+| `POST /api/auth/login` | Verifica correo y contraseña (bcrypt) y entrega un **JWT** de 8 horas | Cualquiera |
+| `GET /api/auth/me` | Devuelve el usuario de la sesión | Con sesión |
+| `POST /api/auth/logout` | Deja el cierre de sesión en la auditoría | Con sesión |
+| `GET /api/pacientes?q=` | Lista y busca pacientes | Con sesión; el paciente solo se ve a sí mismo |
+| `POST /api/pacientes` | Registra un paciente (con su historia clínica vacía) | `GESTIONAR_PACIENTES` |
+| `GET /api/health` | ¿El servidor y la base responden? | Cualquiera |
+
+### 16.1 La estructura: cada capa con una sola responsabilidad
+
+```
+backend/
+├── package.json        dependencias con versión EXACTA + package-lock.json
+├── .env.example        plantilla de configuración (sí va a git)
+├── .env                configuración real de este equipo (NO va a git)
+└── src/
+    ├── server.js       arranca el servidor (listen) y lo apaga ordenadamente
+    ├── app.js          arma Express: CORS → JSON → rutas → 404 → errores
+    ├── config/
+    │   ├── env.js      lee y valida el .env (si falta algo, no arranca)
+    │   └── db.js       pool de conexiones mysql2/promise + withTransaction()
+    ├── routes/         QUÉ URL atiende qué función y con qué protección
+    ├── controllers/    la lógica: valida, decide permisos, orquesta
+    ├── models/         SOLO SQL: hablan con la base, nada más
+    ├── middlewares/    auth.js (verifyToken, requirePermission), error-handler.js
+    ├── utils/          ApiError, validadores, permisos, ubicación DIVIPOLA
+    └── data/           divipola.js (copia de la del frontend)
+```
+
+Es el patrón **MVC sin la V**: la vista es el frontend. Cada carpeta responde una sola pregunta.
+Si una consulta está mal, el error está en `models/`. Si un rol entra donde no debe, en `routes/`
+o en el controlador. Así se encuentra rápido dónde tocar.
+
+**¿Por qué sin ORM (Sequelize, Prisma…)?** Porque el SQL se escribe a mano con `mysql2/promise`.
+En la sustentación se puede mostrar la consulta exacta que corre, y se aprovecha lo construido en
+la fase B: las restricciones `CHECK`, la columna generada y la intercalación que ignora tildes.
+
+### 16.2 El recorrido de una petición
+
+```
+ navegador (http.js)                                     backend
+ ───────────────────                                     ───────
+ POST /api/pacientes   ──►  cors()            ¿el origen es el frontend?
+ Authorization: Bearer      express.json()    texto → objeto (o 400 BAD_JSON)
+ { nombres: … }             verifyToken       firma, vencimiento, ¿cuenta activa?   → 401
+                            requirePermission ¿GESTIONAR_PACIENTES?                 → 403
+                            controlador       validar → 400 · duplicado → 409
+                            modelo            INSERT … VALUES (?, ?, …)
+                       ◄──  201 { id_paciente: 51, … }
+                            (si algo lanzó un error en cualquier punto ↓)
+                            errorHandler      { status, message, fields, code }
+```
+
+Cada paso solo deja pasar lo que le corresponde. El controlador nunca pregunta "¿hay sesión?":
+si llegó hasta él, `verifyToken` ya lo comprobó.
+
+**Express 5 y las funciones `async`.** En Express 4, si un controlador `async` lanzaba un error, la
+promesa rechazada se perdía y la petición quedaba colgada. Había que envolver cada función en
+`try/catch` o en un `asyncHandler`. **Express 5** atrapa esas promesas y las manda al manejador de
+errores. Por eso los controladores simplemente hacen `throw new ApiError(409, …)`.
+
+### 16.3 Configuración: `.env` y el pool de conexiones
+
+**Variables de entorno.** La contraseña de la base y el secreto del JWT no van en el código. Cambian
+en cada equipo, y quien lea el repositorio no debe conocerlos. Por eso viven en `backend/.env`, que
+está en `.gitignore`. Lo que sí se sube es `.env.example`, la plantilla sin secretos.
+
+`config/env.js` valida al arrancar. Si falta `JWT_SECRET` o tiene menos de 32 caracteres, el
+servidor **no arranca** y dice cómo generar uno. Es mejor un error claro en el primer segundo que
+un login que falla después.
+
+**Pool de conexiones.** Abrir una conexión a MySQL cuesta (TCP y autenticación). El pool mantiene
+hasta 10 abiertas y las presta: `pool.query()` toma una libre, ejecuta y la devuelve. Si llegan 50
+peticiones a la vez, esperan en cola en vez de abrir 50 conexiones.
+
+Tres opciones del pool que importan:
+
+| Opción | Por qué |
+|---|---|
+| `dateStrings: true` | Sin ella, `fecha_nacimiento` llega como objeto `Date` en UTC y, en Colombia (UTC−5), `1990-02-14` se puede mostrar como 13 de febrero. Con ella llega el texto `'1990-02-14'`, igual que en el mock |
+| `decimalNumbers: true` | Los `DECIMAL` (precios, montos) llegan como número y no como texto |
+| `charset: 'UTF8MB4_GENERAL_CI'` | Tildes y ñ, con la misma intercalación de las tablas |
+
+**Consultas parametrizadas, siempre.** `pool.query('… WHERE email = ?', [correo])`: el valor viaja
+**aparte** del SQL. Si alguien escribe `' OR '1'='1` como correo, eso es solo un texto que no coincide
+con nadie. Nunca cambia la consulta. Hay una prueba que lo intenta.
+
+**Transacciones.** `withTransaction(async (conn) => …)` hace `BEGIN`, ejecuta y hace `COMMIT`. Si
+algo falla, hace `ROLLBACK`. Registrar un paciente son **tres** `INSERT`: el paciente, su historia
+clínica y la auditoría. O se guardan los tres o ninguno. Un paciente sin historia sería un dato a
+medias.
+
+### 16.4 Errores: un solo lugar y un solo formato
+
+Todas las respuestas de error tienen la misma forma, la del `ApiError` del frontend:
+
+```json
+{ "status": 409, "message": "Hay datos que ya están registrados.",
+  "fields": { "numero_documento": "Ya existe un paciente con ese número de documento." },
+  "code": "DUPLICATE" }
+```
+
+`http.js` toma `fields` y lo pasa a `ApiError`. El formulario muestra el mensaje **junto al campo**,
+igual que con el mock. La prueba E2E lo comprueba con un documento repetido.
+
+`middlewares/error-handler.js` traduce los errores de las librerías:
+
+| Error original | Respuesta |
+|---|---|
+| `ApiError` lanzado por un controlador | Su propio status (400, 401, 403, 404, 409…) |
+| JSON mal formado (`entity.parse.failed`) | 400 `BAD_JSON` |
+| `ER_DUP_ENTRY` (llave `UNIQUE`) | 409 `DUPLICATE` |
+| `CHECK` incumplido: 3819 en MySQL 8, 4025 en MariaDB | 400 `CONSTRAINT` |
+| Base apagada (`ECONNREFUSED`, credenciales malas…) | 503 `DB_UNAVAILABLE` |
+| Cualquier otro error | 500 `INTERNAL` con un mensaje genérico |
+
+**Regla de oro:** al usuario se le dice **qué pasó** con palabras útiles. Nunca el detalle técnico:
+ni el SQL, ni el *stack*, ni rutas del servidor, porque son pistas gratis para un atacante (OWASP
+A05). Ese detalle se escribe en la consola del servidor, para quien lo mantiene. Por la misma razón
+`app.js` apaga el encabezado `X-Powered-By: Express`.
+
+### 16.5 Autenticación: bcrypt + JWT
+
+**Login (`POST /api/auth/login`).**
+
+1. Valida que `email` y `password` sean texto (400 si no). Así se bloquea un truco conocido: enviar
+   `{"password": {"$ne": ""}}` en vez de una cadena.
+2. Busca la cuenta por correo, sin distinguir mayúsculas ni espacios.
+3. **Siempre** ejecuta `bcrypt.compare()`. Si el correo no existe, compara contra un *hash de
+   relleno*. ¿Por qué? Sin él, "correo inexistente" respondería en 2 ms y "contraseña mala" en 80
+   ms (lo que tarda bcrypt). Midiendo el tiempo se sabría qué correos están registrados
+   (**enumeración**). La prueba mide los dos casos: 84 ms y 78 ms.
+4. El mensaje es el mismo en los dos casos (RF-ACC-02), y el intento queda en `log_auditoria` como
+   `LOGIN_FALLIDO`.
+5. Si la contraseña es correcta pero la cuenta o el rol están inactivos: 403. Solo se le dice a
+   quien demostró conocer la contraseña.
+6. Firma el JWT, registra `LOGIN` y responde `{ token, user }`. El `user` es **idéntico** al que
+   armaba el mock. Hay una prueba de contrato que los compara rol por rol.
+
+**¿Qué es un JWT?** Tres partes en base64 separadas por puntos: `encabezado.contenido.firma`.
+
+```
+{"alg":"HS256","typ":"JWT"} . {"rol":"ADMINISTRADOR","sub":"1","iat":…,"exp":…} . firma
+```
+
+- El contenido se puede **leer** (base64 no es cifrado). Por eso no lleva nada secreto, solo quién
+  es (`sub`) y su rol.
+- Lo que no se puede es **modificarlo**. La firma es un HMAC-SHA256 del encabezado y el contenido
+  con `JWT_SECRET`, que solo conoce el servidor. Si alguien cambia `"sub":"1"` por `"sub":"2"`, la
+  firma deja de coincidir y la API responde 401. Hay una prueba que lo hace.
+- `exp` hace que venza a las 8 horas, la misma duración de la sesión del frontend.
+- `verifyToken` solo acepta `HS256`. Así cierra el ataque clásico de enviar un token con
+  `"alg": "none"` (sin firma).
+
+**`verifyToken` consulta la base en cada petición.** Un JWT es válido hasta que vence, y el servidor
+no guarda una lista de tokens. Si el administrador inactiva una cuenta, ¿cómo se le quita el
+acceso? `verifyToken` busca al usuario en cada petición y comprueba que él y su rol sigan activos.
+Si no, responde 401 de inmediato. De esa misma consulta salen los **permisos del rol** leídos de
+`rol_permiso`, la matriz corregida en B-03. Cuesta una consulta por petición, que con índices por
+llave primaria es despreciable.
+
+**Cerrar sesión.** `POST /api/auth/logout` deja el registro en la auditoría y el frontend borra su
+copia del token. El token en sí sigue siendo válido hasta que vence: es la limitación conocida de
+los JWT. Para revocarlo de verdad se necesitaría una lista negra en la base, una mejora anotada
+para después.
+
+### 16.6 Pacientes
+
+**`GET /api/pacientes?q=`: qué ve cada rol.** La decisión sale del token y de los permisos en la base:
+
+| Rol | Ve |
+|---|---|
+| PACIENTE | Solo su propio registro (`WHERE id_paciente = ?` con el id **del token**, no de la URL) |
+| Con `GESTIONAR_PACIENTES` (administrador, recepción) o `VER_HISTORIA_CLINICA` (odontólogo) | Todos |
+| Cualquier otro | 403 |
+
+La búsqueda usa `LIKE` sobre nombres, apellidos, documento y correo. Detalles que se cuidaron:
+
+- **Sin tildes ni mayúsculas.** La intercalación `utf8mb4_general_ci` de la tabla hace que
+  `'londono'` encuentre "Londoño". Es el mismo comportamiento que tenía el mock con
+  `normalizeText`.
+- **`%` y `_` se escapan.** En `LIKE` son comodines: buscar "%" traería a todos. Se convierten en
+  texto literal.
+- **`?q=a&q=b`** llega como lista y no como texto. Se ignora en vez de romper el servidor.
+
+**`POST /api/pacientes`: el servidor no confía en el formulario.**
+
+1. **Lista blanca (`pick`)**: solo se copian las 12 columnas permitidas. Si el cliente envía
+   `id_paciente`, `id_usuario` o `fecha_registro`, se ignoran. Así se evita la **asignación
+   masiva** (OWASP A08).
+2. **Validación**: las mismas reglas y mensajes de `frontend/js/core/validators.js`. Celular de 10
+   dígitos que empiece en 3, documento de 6 a 12 dígitos, fecha real y no futura (rechaza el 30 de
+   febrero), y tipo de documento y género con la **misma lista** de los `CHECK` de la base. Se
+   devuelven **todos** los errores a la vez, uno por campo.
+3. **DIVIPOLA**: el departamento debe existir y el municipio debe pertenecer a **ese** departamento.
+   "Cali" en Antioquia se rechaza, y no hay municipio sin departamento. El backend tiene su copia
+   de la lista (`src/data/divipola.js`) porque se despliega por separado del frontend. Una prueba
+   comprueba que ambas copias son idénticas.
+4. **Duplicados → 409**: documento o correo ya registrados, con el campo exacto en `fields`.
+5. **Condición de carrera**: dos recepcionistas guardan el mismo documento en el mismo instante.
+   Los dos pasan la consulta del paso 4, pero la llave `UNIQUE` de la base solo deja entrar a uno.
+   El otro recibe `ER_DUP_ENTRY`, y el controlador lo convierte en el **mismo** 409. La prueba envía
+   las dos peticiones a la vez: una da 201, la otra 409, y en la base queda una sola fila. Es la
+   defensa en profundidad de §15.3 funcionando.
+6. **Transacción**: paciente, historia clínica y auditoría. Responde **201 Created** con el
+   encabezado `Location: /api/pacientes/51`.
+
+### 16.7 Frontend ↔ backend: el interruptor `USE_MOCK`
+
+```
+ páginas ─► pacientesService.list() ─┬─ USE_MOCK = true  ─► mock (localStorage)
+                                     └─ USE_MOCK = false ─► http.js ─► fetch ─► API ─► MySQL
+```
+
+Desde la fase A5 cada servicio tiene dos implementaciones con la **misma interfaz**: `mock` y
+`remote`. Por eso la integración no tocó ninguna página. Solo se ajustaron dos detalles en la capa
+de servicios:
+
+- `http.js` lee `fields` (antes esperaba `errors`), el nombre que usa la API.
+- El mock aceptaba `RC` como tipo de documento, y la base no. Ahora la lista es igual en las tres
+  capas.
+
+**CORS.** El frontend corre en un origen (`http://127.0.0.1:5500`, Live Server) y la API en otro
+(`http://localhost:3000`). El navegador bloquea las respuestas entre orígenes salvo que el servidor
+las permita. Como `http.js` envía `Authorization`, el navegador hace primero una petición
+**preflight** (`OPTIONS`). `app.js` permite solo los orígenes de `CORS_ORIGIN`. Nunca usa `*`,
+porque entonces cualquier página de internet podría llamar a la API desde el navegador de un
+usuario.
+
+**Cómo se probó la integración sin editar `config.js`.** `node tests/e2e/server.mjs --api` sirve el
+frontend y entrega `config.js` con `USE_MOCK = false`. Son exactamente los bytes que habría si se
+editara el archivo, pero el repositorio sigue en modo mock. La prueba `tests/e2e/backend.test.mjs`
+abre Edge y recorre:
+
+1. Login con contraseña mala: el mensaje del 401 de la API aparece en el formulario.
+2. Login correcto: la sesión guarda un JWT real y vuelve a la página pedida (`?next`).
+3. La tabla carga los 40 pacientes de MySQL, y la búsqueda funciona.
+4. Nuevo paciente con departamento y municipio:
+   - documento repetido: el 409 aparece **junto al campo**;
+   - documento nuevo: "Paciente registrado", y en MySQL quedan la ubicación y la historia clínica.
+5. Token alterado en `localStorage`: la API responde 401, `http.js` cierra la sesión y lleva al
+   login.
+6. Cerrar sesión: `LOGOUT` queda en la auditoría.
+
+### 16.8 Cómo ejecutarlo
+
+```bash
+# 1. Base de datos: XAMPP encendido y la v2 importada (una sola vez)
+mysql -u root < database/dentalcare_bd_v2.sql
+
+# 2. Backend (terminal 1)
+cd backend
+npm install                      # solo la primera vez
+cp .env.example .env             # y poner un JWT_SECRET (el comando para generarlo está en el archivo)
+npm start                        # → API DentalCare en http://localhost:3000/api
+
+# 3. Frontend con la API: en frontend/js/core/config.js poner USE_MOCK = false
+#    y abrir frontend/index.html con Live Server (puerto 5500, ya permitido en CORS_ORIGIN)
+```
+
+Al arrancar, el servidor dice a qué base se conectó o por qué no pudo ("¿Está encendido XAMPP?").
+Si la base se cae, sigue respondiendo con 503 `DB_UNAVAILABLE`, así que el frontend muestra un
+mensaje en vez de "sin conexión". `GET /api/health` lo confirma.
+
+### 16.9 Lo que queda para la fase D
+
+| Pendiente | Nota |
+|---|---|
+| Módulos citas, historias, odontograma, servicios, especialistas, ventas, novedades | Con `USE_MOCK = false`, esas pantallas responden 404 por ahora |
+| `PUT`/`DELETE` de pacientes, `GET /pacientes/:id` | El servicio del frontend ya los llama así |
+| Recuperación de contraseña (`/auth/forgot-password`, `/auth/reset-password`) | La tabla `password_reset` ya existe (B-08) |
+| Límite de intentos de login (*rate limiting*) | Hoy cada intento cuesta ~80 ms de bcrypt, pero no hay bloqueo |
+| Lista negra de tokens al cerrar sesión | Ver §16.5 |
+| HTTPS | En producción, el token viaja en cada petición y debe ir cifrado |
+
+---
+
+## 17. Cómo se verificó la calidad
 
 Se escribieron **pruebas automatizadas** que abren el styleguide en un navegador real (Edge sin
 interfaz), simulan clics, teclado y envío de formularios, y comprueban el resultado:
@@ -1740,6 +2031,9 @@ interfaz), simulan clics, teclado y envío de formularios, y comprueban el resul
 | **APIs externas E2E** en Edge real — `tests/e2e/apis.test.mjs`: departamento → municipio, guardar y editar, tarjeta TRM y conversor; luego con las APIs **bloqueadas** (respaldo local y aviso de TRM) | 22 | 22 ✅ a 1366 px y a 375 px |
 | **Base de datos v2 (fase B)** — `tests/db/pruebas_bd_v2.sql`: datos corregidos, 18 escrituras inválidas rechazadas por la base y 8 válidas aceptadas | 38 | 38 ✅ en MariaDB 10.4 y en MySQL 8.0 |
 | **Equivalencia v2 = v1 + migración**: estructura y `CHECKSUM … EXTENDED` de las 20 tablas | 20 tablas | idénticas ✅ (2 rondas, 2 motores) |
+| **API del backend (fase C)** — `tests/backend/api.test.mjs`: errores, CORS, login (tiempo constante, auditoría, JWT), ataques al token, cuenta y rol inactivos, contrato con el mock, búsqueda, permisos por rol, validación, DIVIPOLA, 409, carrera de duplicados, base caída → 503 | 79 | 79 ✅ en MariaDB 10.4 y en MySQL 8.0 |
+| **Integración frontend ↔ backend** en Edge real — `tests/e2e/backend.test.mjs` con `USE_MOCK = false`: login, listado, registro con 409 junto al campo, token alterado → login, cerrar sesión | 19 | 19 ✅ a 1366 px y a 375 px |
+| Regresión del modo mock después de la fase C (`services`, `guard`, `agenda`, `apis-externas`, `recorrido`, `flujos`) | 67 + 30 + 18 + 37 + 59 + 17 | todas ✅ |
 
 Al terminar A4 se **volvieron a correr** las suites de A2 y A3 (pruebas de regresión): siguen en
 74/74 y 73/73, así que lo nuevo no dañó nada de lo anterior.
@@ -1759,6 +2053,19 @@ node tests/apis-externas.test.mjs --live   # además consulta las APIs reales
 ```bash
 mysql -u root < database/dentalcare_bd_v2.sql
 mysql -u root dentalcare_bd < tests/db/pruebas_bd_v2.sql   # la última línea debe decir fallidas = 0
+```
+
+**Pruebas del backend** (base v2 importada, `cd backend && npm install` y `backend/.env` creado). La
+prueba deja la base como estaba: borra lo que crea y restaura lo que cambia.
+
+```bash
+node tests/backend/api.test.mjs                 # usa la base de backend/.env
+DB_PORT=3307 node tests/backend/api.test.mjs    # otra base: las variables del sistema ganan al .env
+
+# Integración en navegador (tres terminales):
+cd backend && npm start                         # 1. API en :3000
+node tests/e2e/server.mjs --api                 # 2. frontend con USE_MOCK = false en :5600
+node tests/e2e/backend.test.mjs 1366            # 3. la prueba (375 para móvil)
 ```
 
 **Cómo correr las pruebas en navegador (A6)** — necesitan Microsoft Edge (o Chrome con
@@ -1865,6 +2172,23 @@ JavaScript** que aparezca en la consola: una página que "se ve bien" pero lanza
     diferencia en `venta` que no se repitió: se compararon las 40 filas una a una (idénticas) y se
     pasó a `CHECKSUM … EXTENDED`, que lee los datos de verdad. Dos rondas seguidas dieron idéntico.
 
+**Hallazgos de la fase C (backend):**
+26. **El frontend y el backend no se llamaban igual.** `http.js` esperaba los errores por campo en
+    `errors` y la API los envía en `fields`, el nombre de `ApiError`. Sin el ajuste, un 409 de la API
+    habría salido como aviso general y no junto al campo. La prueba E2E del documento repetido lo
+    comprueba.
+27. **El mock era más permisivo que la base.** El mock aceptaba `RC` como tipo de documento, y el
+    `CHECK` de la base no (hallazgo 24). Con la API real, ese paciente habría dado error. Se quitó
+    del mock: la misma lista en las tres capas.
+28. **Una ruta con espacios.** La prueba de "base caída" arrancaba `server.js` en otro proceso con
+    `URL.pathname`, que deja la carpeta "CURSOS SENA" como `CURSOS%20SENA`. Node no encontraba el
+    archivo. Se cambió a `fileURLToPath()`, que decodifica la ruta. Lección: probar en una carpeta
+    con espacios, como la de muchos estudiantes.
+29. **Dos pruebas E2E mal planteadas.** Una buscaba "Galvis" en la tabla, pero la tabla muestra 10
+    por página y Galvis está en la segunda. La otra buscaba la petición de login en
+    `performance` de la página de pacientes, cuando el login ocurrió en la página anterior. El
+    código estaba bien. Ahora se comprueba "de 40 registros" y solo la petición de esta página.
+
 **Las pruebas también se equivocan:** la prueba del *skip link* falló la primera vez porque leía
 el estilo **durante** la transición de 120 ms (el enlace todavía se estaba moviendo). El código
 estaba bien; se corrigió la prueba para esperar a que la transición terminara. En A5 pasó algo
@@ -1883,7 +2207,7 @@ errores que un usuario habría encontrado primero."*
 
 ---
 
-## 17. Simulacro de preguntas del docente
+## 18. Simulacro de preguntas del docente
 
 **P1. ¿Qué es Atomic Design y por qué lo usaron?**
 R: Una metodología que divide la interfaz en átomos, moléculas, organismos, templates y páginas. La
@@ -1985,7 +2309,7 @@ hace reutilizable en cualquier página o modal.
 R: Con 468 pruebas automatizadas en un navegador real y en Node: interacciones, teclado, ARIA,
 validaciones, reglas de negocio, permisos, sesión, diseño responsive y, desde A6, recorridos
 completos de usuario por las 25 pantallas. Encontraron errores reales
-que se corrigieron (§16). Las de Node están en `tests/` y cualquiera las puede repetir con
+que se corrigieron (§17). Las de Node están en `tests/` y cualquiera las puede repetir con
 `node tests/<suite>.test.mjs`. Desde la fase B hay además 38 pruebas de la base de datos
 (`tests/db/pruebas_bd_v2.sql`), que verifican que la propia base rechace los datos inválidos.
 
@@ -2407,14 +2731,106 @@ le metimos casos saboteados, como una columna inexistente o un dato válido marc
 los detectó. Así un 38/38 significa algo.
 
 **P85. ¿Encontraron algo que no esperaban?**
-R: Sí, varias cosas (§16, hallazgos 20 a 25). La más útil fue que la primera versión de la prueba
+R: Sí, varias cosas (§17, hallazgos 20 a 25). La más útil fue que la primera versión de la prueba
 daba **falsos positivos**: un error de sintaxis en la prueba contaba como "la base lo rechazó". La
 otra fue que MySQL y MariaDB se comportan distinto con `GET DIAGNOSTICS`: la prueba pasaba en uno y
 fallaba en el otro. Por eso probamos en los dos.
 
+**P86. ¿Cómo está organizado el backend y por qué así?**
+R: En capas: `routes/` dice qué URL atiende qué función y con qué protección, `controllers/` valida
+y decide, `models/` solo ejecuta SQL y `middlewares/` hace lo que se repite en muchas rutas (sesión,
+permisos, errores). Es MVC sin la vista, porque la vista es el frontend. Cada carpeta tiene una sola
+razón para cambiar: si cambia una consulta, se toca un modelo; si cambia quién puede entrar, una ruta.
+
+**P87. ¿Qué es un pool de conexiones y por qué no abren una conexión por petición?**
+R: Abrir una conexión cuesta: TCP, autenticación, configuración. El pool mantiene unas pocas abiertas
+(10) y las presta a cada petición; al terminar vuelve al pool. Si llegan más peticiones que
+conexiones, esperan en cola en vez de saturar la base con cientos de conexiones.
+
+**P88. ¿Cómo evitan la inyección SQL?**
+R: Con consultas parametrizadas: `pool.query('… WHERE email = ?', [correo])`. El valor viaja aparte
+del texto SQL, así que `' OR '1'='1` es solo un correo que no existe. En el único lugar donde se arma
+SQL dinámico (el `WHERE` del listado), solo se concatenan fragmentos fijos escritos en el código.
+Los valores del usuario van siempre como `?`. Hay pruebas que lo intentan en el login y en la búsqueda.
+
+**P89. ¿Qué es un JWT y qué guardan en él?**
+R: Un token firmado con tres partes: encabezado, contenido y firma. Guardamos solo el id del usuario
+(`sub`), su rol y el vencimiento (`exp`, 8 horas). El contenido se puede leer, porque base64 no es
+cifrado, así que no lleva nada secreto. Lo que no se puede es cambiarlo, porque la firma HMAC-SHA256
+se calcula con `JWT_SECRET`, que solo conoce el servidor. Si alguien cambia el `sub`, la firma no
+coincide y la API responde 401.
+
+**P90. Si el JWT ya dice el rol, ¿por qué `verifyToken` consulta la base en cada petición?**
+R: Porque un JWT es válido hasta que vence y el servidor no lleva la cuenta de los tokens que
+entregó. Sin la consulta, una cuenta inactivada seguiría entrando hasta 8 horas. Con ella, el
+token deja de servir al instante. Además, los permisos se leen de `rol_permiso`: si el
+administrador cambia la matriz, aplica de inmediato. Cuesta una consulta por llave primaria, que es
+lo más rápido que hace MySQL.
+
+**P91. Entonces, ¿cerrar sesión invalida el token?**
+R: No del todo, y es honesto decirlo. El frontend borra su copia y queda el registro `LOGOUT`, pero
+si alguien copió el token antes, le sirve hasta que vence. Es la limitación de los JWT sin estado.
+La solución es una lista negra (tabla de tokens revocados) o tokens de vida corta con renovación.
+Está anotada para la fase D.
+
+**P92. ¿Por qué el login tarda lo mismo si el correo no existe?**
+R: Para que no se pueda averiguar qué correos están registrados. bcrypt tarda unos 80 ms a
+propósito. Si con un correo inexistente respondiéramos de inmediato, midiendo el tiempo se sabría
+cuál existe. Por eso siempre se ejecuta `bcrypt.compare`, contra un hash de relleno si hace falta.
+Además el mensaje es el mismo en los dos casos. La prueba mide ambos tiempos.
+
+**P93. ¿Qué pasa si dos recepcionistas registran el mismo documento al mismo tiempo?**
+R: Las dos peticiones pasan la consulta "¿ya existe?", porque ninguna ha guardado todavía. Pero la
+columna tiene una llave `UNIQUE`: la base deja entrar a la primera y rechaza la segunda con
+`ER_DUP_ENTRY`. El controlador convierte ese error en el mismo 409 con el campo marcado. La consulta
+previa da un buen mensaje y la llave `UNIQUE` da la garantía. Hay una prueba que envía las dos
+peticiones a la vez.
+
+**P94. ¿Qué es CORS y por qué no pusieron `*`?**
+R: Es la regla del navegador que impide que una página lea respuestas de otro origen (otro
+protocolo, dominio o puerto) salvo que el servidor lo autorice. El frontend en `:5500` y la API en
+`:3000` son orígenes distintos. Con `*`, cualquier página de internet podría llamar a nuestra API
+desde el navegador de un usuario. Por eso solo se permiten los orígenes de `CORS_ORIGIN`. CORS no
+reemplaza la autenticación: Postman lo ignora, y por eso cada ruta exige el token.
+
+**P95. ¿Para qué el manejador centralizado de errores?**
+R: Para que todos los errores salgan con la misma forma (`{ status, message, fields, code }`, la del
+`ApiError` del frontend) y para no filtrar detalles técnicos. Los controladores solo hacen `throw`.
+El manejador traduce los errores de MySQL (duplicado → 409, `CHECK` → 400, base caída → 503) y a lo
+desconocido le da un 500 con un mensaje genérico, mientras el detalle va a la consola del servidor.
+
+**P96. ¿Por qué las fechas llegan como texto y no como `Date`?**
+R: Por la zona horaria. Un `DATE` de MySQL convertido a `Date` de JavaScript queda a medianoche
+UTC. En Colombia (UTC−5) eso es el día anterior a las 7 p. m., así que una fecha de nacimiento se
+mostraría un día antes. Con `dateStrings: true` llega `'1990-02-14'`, tal como está en la base y
+como lo tenía el mock.
+
+**P97. ¿Cómo comprobaron que el frontend funciona con el backend sin cambiar las pantallas?**
+R: Con tres tipos de pruebas:
+- **De contrato** (`tests/backend/api.test.mjs`): el `user` del login es idéntico, rol por rol, al
+  que arma el mock, y el listado tiene las mismas columnas y el mismo orden.
+- **De la API**: 79 casos contra MariaDB 10.4 y MySQL 8.0.
+- **E2E en Edge** con `USE_MOCK = false`: login, listado, registro con el 409 junto al campo, token
+  alterado que manda al login y cierre de sesión.
+
+El servidor de pruebas entrega `config.js` con el interruptor apagado, sin editar el archivo.
+
+**P98. ¿Por qué el backend valida otra vez lo que ya valida el formulario?**
+R: Porque el formulario se puede saltar: Postman, `curl` o la consola del navegador envían lo que
+quieran. El formulario valida para **ayudar** al usuario y el servidor valida para **proteger** los
+datos. Usamos las mismas reglas y mensajes en los dos para que el usuario no note la diferencia. Y
+detrás queda la base con sus `CHECK` y llaves (§15.3).
+
+**P99. ¿Qué es la asignación masiva y cómo la evitan?**
+R: Es enviar campos que el cliente no debería poder escribir, por ejemplo `id_usuario` para
+vincular un paciente a otra cuenta, o `fecha_registro`. Si el controlador hiciera
+`INSERT … SET ?` con todo el `req.body`, entrarían. `pick()` copia solo las 12 columnas permitidas
+y el `INSERT` usa una lista fija de columnas. Hay una prueba que envía esos campos y comprueba que
+se ignoran.
+
 ---
 
-## 18. Glosario
+## 19. Glosario
 
 | Término | Definición breve |
 |---|---|
@@ -2425,7 +2841,7 @@ fallaba en el otro. Por eso probamos en los dos.
 | **Ataque de tiempo** | Deducir información midiendo cuánto tarda una operación |
 | **BEM** | Convención de nombres CSS: Bloque__Elemento--Modificador |
 | **Barrel** | Archivo `index.js` que reexporta los módulos de una carpeta |
-| **bcrypt** | Algoritmo de hash de contraseñas lento y con sal; lo usará el backend |
+| **bcrypt** | Algoritmo de hash de contraseñas lento y con sal; el backend lo usa con `bcryptjs` (costo 10) |
 | **bfcache** | Caché del navegador que guarda la página entera para el botón "Atrás" sin volver a ejecutar sus scripts |
 | **Bearer token** | Token que se envía en el encabezado `Authorization` para identificar la sesión ante la API |
 | **Breadcrumbs (migas de pan)** | Ruta jerárquica hasta la página actual: Inicio › Pacientes › Andrés |
@@ -2490,3 +2906,15 @@ fallaba en el otro. Por eso probamos en los dos.
 | **mysqldump** | Herramienta que exporta una base (estructura y datos) a un archivo `.sql`; sirve de copia de seguridad |
 | **Normalización / redundancia** | Diseñar las tablas para que cada hecho se guarde **una sola vez**; guardarlo dos veces (redundancia) permite que se contradiga |
 | **Transacción** | Grupo de operaciones que se aplican todas o ninguna (`START TRANSACTION` … `COMMIT` / `ROLLBACK`) |
+| **API REST propia** | Servidor que expone recursos (`/api/pacientes`) con métodos HTTP (`GET` lee, `POST` crea…) y responde JSON |
+| **Consulta parametrizada** | SQL con `?` cuyos valores viajan aparte; impide la inyección SQL |
+| **Controlador** | Función que atiende una ruta: valida, decide y llama al modelo |
+| **Express** | *Framework* mínimo de Node.js para servidores HTTP: rutas y *middlewares* |
+| **HMAC** | Firma con una clave secreta; la del JWT (`HS256`) prueba que el contenido no se alteró |
+| **JWT (JSON Web Token)** | Token firmado `encabezado.contenido.firma`; se puede leer pero no modificar sin el secreto |
+| **Middleware** | Función que corre antes del controlador y puede dejar pasar (`next()`) o cortar la petición |
+| **Modelo** | Módulo que solo ejecuta SQL contra una tabla |
+| **Pool de conexiones** | Conjunto de conexiones abiertas a la base que se prestan y devuelven entre peticiones |
+| **Prueba de contrato** | Comprueba que dos partes (mock y API) responden con la misma forma |
+| **Variable de entorno (`.env`)** | Configuración fuera del código (credenciales, secretos) que cambia por equipo y no va a git |
+| **201 / 401 / 403 / 409 / 503** | Creado · sin sesión válida · sin permiso · conflicto (duplicado) · servicio no disponible |

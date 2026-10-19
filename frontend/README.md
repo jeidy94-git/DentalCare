@@ -16,6 +16,9 @@ Desde la raíz del proyecto, sin instalar nada (Node 22+): `node tests/agenda.te
 En navegador real (Edge; otro navegador con `BROWSER_PATH`): `node tests/e2e/server.mjs` en una terminal y, en otra,
 `node tests/e2e/recorrido.test.mjs [ancho]`, `node tests/e2e/flujos.test.mjs [ancho]` y `node tests/e2e/apis.test.mjs [ancho]` (necesita internet).
 
+Con el backend real (`USE_MOCK = false`, ver `backend/README.md`): `node tests/e2e/server.mjs --api` sirve `config.js` con el
+interruptor apagado sin editar el archivo, y `node tests/e2e/backend.test.mjs [ancho]` prueba login, pacientes y errores contra la API.
+
 ## APIs externas (servicios web de terceros)
 | API | Servicio | Se usa en |
 |---|---|---|

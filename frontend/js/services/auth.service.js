@@ -141,7 +141,7 @@ const mock = {
 };
 
 /* ------------------------------------------------------------------ */
-/* API real (fase D)                                                   */
+/* API real (backend/src/controllers/auth.controller.js)               */
 /* ------------------------------------------------------------------ */
 const remote = {
   async login(email, password) {
