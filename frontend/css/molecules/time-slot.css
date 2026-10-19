@@ -1,0 +1,81 @@
+/* Molécula: TimeSlot  ·  .time-slot--available | --occupied | --blocked */
+
+.time-slot {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 2px;
+  min-width: 6.5rem;
+  min-height: var(--control-h-lg);
+  padding: var(--space-2) var(--space-3);
+  border: var(--border-width) solid var(--color-border-strong);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  color: var(--color-text);
+  text-align: left;
+  transition:
+    background-color var(--duration-fast) var(--ease-standard),
+    border-color var(--duration-fast) var(--ease-standard),
+    color var(--duration-fast) var(--ease-standard);
+}
+
+.time-slot:focus-visible {
+  outline: none;
+  box-shadow: var(--shadow-focus);
+}
+
+.time-slot__time {
+  font-size: var(--text-sm);
+  font-weight: var(--font-semibold);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.time-slot__detail {
+  max-width: 100%;
+  overflow: hidden;
+  font-size: var(--text-xs);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ---------- Disponible ---------- */
+.time-slot--available {
+  border-color: var(--color-primary-200);
+  color: var(--color-primary-800);
+}
+
+.time-slot--available:hover {
+  border-color: var(--color-primary-500);
+  background: var(--color-primary-50);
+}
+
+.time-slot--available[aria-pressed="true"] {
+  border-color: var(--color-brand);
+  background: var(--color-brand);
+  color: var(--color-text-inverse);
+}
+
+/* ---------- Ocupado / bloqueado (aria-disabled) ---------- */
+.time-slot[aria-disabled="true"] {
+  cursor: not-allowed;
+}
+
+.time-slot--occupied {
+  border-color: var(--color-secondary-200);
+  background: var(--color-secondary-50);
+  color: var(--color-secondary-800);
+}
+
+.time-slot--blocked {
+  border-style: dashed;
+  background: repeating-linear-gradient(
+    -45deg,
+    var(--color-neutral-50),
+    var(--color-neutral-50) 6px,
+    var(--color-neutral-100) 6px,
+    var(--color-neutral-100) 12px
+  );
+  color: var(--color-text-disabled);
+}

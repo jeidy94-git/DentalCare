@@ -1,0 +1,84 @@
+/* Átomos pequeños: Icon, Label, Spinner, Link */
+
+/* ---------- Icon ---------- */
+.icon {
+  flex-shrink: 0;
+  display: inline-block;
+  vertical-align: middle;
+}
+
+/* ---------- Label ---------- */
+.label {
+  display: inline-flex;
+  align-items: baseline;
+  gap: var(--space-1);
+  font-size: var(--text-sm);
+  font-weight: var(--font-medium);
+  color: var(--color-text);
+}
+
+.label__required {
+  color: var(--color-danger-600);
+}
+
+.label__optional {
+  font-weight: var(--font-regular);
+  color: var(--color-text-muted);
+}
+
+/* ---------- Spinner ---------- */
+.spinner {
+  --spinner-size: 1.25rem;
+
+  display: inline-block;
+  width: var(--spinner-size);
+  height: var(--spinner-size);
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  border-radius: var(--radius-full);
+  color: var(--color-brand);
+  animation: spinner-rotate 0.7s linear infinite;
+}
+
+.spinner--sm { --spinner-size: 1rem; }
+.spinner--lg { --spinner-size: 2rem; border-width: 3px; }
+
+/* Dentro de un botón hereda el color del texto */
+.spinner--inherit { color: inherit; }
+
+@keyframes spinner-rotate {
+  to { transform: rotate(360deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .spinner { animation-duration: 2s; }
+}
+
+/* ---------- Link ---------- */
+.link {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  color: var(--color-accent);
+  font-weight: var(--font-medium);
+  text-decoration: none;
+  border-radius: var(--radius-sm);
+}
+
+.link:hover {
+  color: var(--color-secondary-800);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.link--muted {
+  color: var(--color-text-secondary);
+}
+
+.link--muted:hover {
+  color: var(--color-text);
+}
+
+.link--sm {
+  font-size: var(--text-sm);
+}

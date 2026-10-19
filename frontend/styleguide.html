@@ -1,0 +1,244 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>DentalCare · Styleguide</title>
+    <meta name="description" content="Design system de DentalCare: tokens y componentes (Atomic Design)." />
+    <link rel="stylesheet" href="./css/main.css" />
+    <link rel="stylesheet" href="./css/pages/styleguide.css" />
+  </head>
+  <body class="sg">
+    <header class="sg-header">
+      <div class="sg-header__inner">
+        <div class="sg-brand">
+          <span class="sg-brand__logo" id="sg-logo"></span>
+          <div>
+            <p class="sg-brand__name">DentalCare</p>
+            <p class="sg-brand__sub">Design System · v0.2</p>
+          </div>
+        </div>
+        <nav class="sg-nav" aria-label="Secciones del styleguide">
+          <a href="#fundamentos">Fundamentos</a>
+          <a href="#atomos">Átomos</a>
+          <a href="#moleculas">Moléculas</a>
+          <a href="#m-formularios">Formularios</a>
+          <a href="#m-busqueda">Búsqueda</a>
+          <a href="#m-kpi">KPI</a>
+          <a href="#m-tabs">Pestañas</a>
+          <a href="#m-paginacion">Paginación</a>
+          <a href="#m-feedback">Notificaciones</a>
+          <a href="#m-tooth">Pieza dental</a>
+          <a href="#m-slots">Horarios</a>
+          <a href="#organismos">Organismos</a>
+          <a href="#o-shell">Topbar/Sidebar</a>
+          <a href="#o-table">DataTable</a>
+          <a href="#o-modal">ModalForm</a>
+          <a href="#o-odontogram">Odontograma</a>
+          <a href="#o-calendar">Agenda</a>
+          <a href="#o-charts">Gráficas</a>
+          <a href="#o-wizard">Agendamiento</a>
+        </nav>
+      </div>
+    </header>
+
+    <main class="sg-main">
+      <section class="sg-intro">
+        <h1>Design System</h1>
+        <p class="text-secondary">
+          Fundamentos (tokens), átomos y moléculas de la interfaz de DentalCare. Todo lo que ves aquí
+          se genera con los mismos componentes JS que usarán las pantallas reales.
+        </p>
+      </section>
+
+      <!-- ============================ FUNDAMENTOS ============================ -->
+      <h2 class="sg-part" id="fundamentos"><span>01</span> Fundamentos</h2>
+
+      <section class="sg-section" id="colores" aria-labelledby="h-colores">
+        <h3 id="h-colores" class="sg-section__title">Colores</h3>
+        <p class="sg-section__desc">Tokens definidos en <code>css/base/tokens.css</code>. Los componentes usan los alias semánticos.</p>
+        <div id="sg-colors"></div>
+      </section>
+
+      <section class="sg-section" id="tipografia" aria-labelledby="h-tipo">
+        <h3 id="h-tipo" class="sg-section__title">Tipografía</h3>
+        <p class="sg-section__desc">Fuente del sistema: <code>Inter, Roboto, Segoe UI, system-ui</code>.</p>
+        <div class="sg-card" id="sg-type"></div>
+      </section>
+
+      <section class="sg-section" id="espaciado" aria-labelledby="h-esp">
+        <h3 id="h-esp" class="sg-section__title">Espaciado, radios y sombras</h3>
+        <p class="sg-section__desc">Escala base de 4px.</p>
+        <div class="sg-grid-2">
+          <div class="sg-card" id="sg-spacing"></div>
+          <div class="sg-card">
+            <div id="sg-radius" class="sg-row"></div>
+            <div id="sg-shadows" class="sg-row sg-mt"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============================== ÁTOMOS =============================== -->
+      <h2 class="sg-part" id="atomos"><span>02</span> Átomos</h2>
+
+      <section class="sg-section" id="iconos" aria-labelledby="h-iconos">
+        <h3 id="h-iconos" class="sg-section__title">Íconos</h3>
+        <p class="sg-section__desc"><code>Icon({ name, size, label })</code> · SVG locales, sin dependencias.</p>
+        <div class="sg-card"><div class="sg-icons" id="sg-icons"></div></div>
+      </section>
+
+      <section class="sg-section" id="botones" aria-labelledby="h-botones">
+        <h3 id="h-botones" class="sg-section__title">Botones</h3>
+        <p class="sg-section__desc"><code>Button({ label, variant, size, icon, loading, disabled })</code></p>
+        <div class="sg-card" id="sg-buttons"></div>
+      </section>
+
+      <section class="sg-section" id="controles" aria-labelledby="h-controles">
+        <h3 id="h-controles" class="sg-section__title">Controles de formulario</h3>
+        <p class="sg-section__desc"><code>Input</code>, <code>Select</code>, <code>Textarea</code>, <code>Checkbox</code>, <code>Radio</code>, <code>Switch</code>, <code>Label</code></p>
+        <div class="sg-card" id="sg-controls"></div>
+      </section>
+
+      <section class="sg-section" id="badges" aria-labelledby="h-badges">
+        <h3 id="h-badges" class="sg-section__title">Badges</h3>
+        <p class="sg-section__desc"><code>Badge({ label, variant })</code> y <code>StatusBadge(estado)</code> con los estados reales de <code>dentalcare_bd</code>.</p>
+        <div class="sg-card" id="sg-badges"></div>
+      </section>
+
+      <section class="sg-section" id="avatares" aria-labelledby="h-avatares">
+        <h3 id="h-avatares" class="sg-section__title">Avatares</h3>
+        <p class="sg-section__desc"><code>Avatar({ name, size })</code> · iniciales y color estable por nombre.</p>
+        <div class="sg-card" id="sg-avatars"></div>
+      </section>
+
+      <section class="sg-section" id="otros" aria-labelledby="h-otros">
+        <h3 id="h-otros" class="sg-section__title">Spinner y enlaces</h3>
+        <div class="sg-card" id="sg-misc"></div>
+      </section>
+
+      <!-- ============================ MOLÉCULAS ============================== -->
+      <h2 class="sg-part" id="moleculas"><span>03</span> Moléculas</h2>
+
+      <section class="sg-section" id="m-formularios" aria-labelledby="h-m-form">
+        <h3 id="h-m-form" class="sg-section__title">FormField y PasswordField</h3>
+        <p class="sg-section__desc">
+          Label + control + ayuda + error accesible (<code>aria-live</code>, <code>aria-describedby</code>). Valida al salir del campo
+          y revalida mientras se corrige. Prueba enviar los formularios vacíos.
+        </p>
+        <div class="sg-grid-form" id="sg-forms"></div>
+      </section>
+
+      <section class="sg-section" id="m-busqueda" aria-labelledby="h-m-search">
+        <h3 id="h-m-search" class="sg-section__title">SearchBar</h3>
+        <p class="sg-section__desc">Debounce de 300 ms, botón limpiar y tecla <kbd>Esc</kbd>. Filtra pacientes reales del seed.</p>
+        <div class="sg-card" id="sg-search"></div>
+      </section>
+
+      <section class="sg-section" id="m-kpi" aria-labelledby="h-m-kpi">
+        <h3 id="h-m-kpi" class="sg-section__title">KpiCard</h3>
+        <p class="sg-section__desc">Indicadores del dashboard (RF-DAS-01) y del panel del Asistente.</p>
+        <div class="sg-kpis" id="sg-kpis"></div>
+      </section>
+
+      <section class="sg-section" id="m-tabs" aria-labelledby="h-m-tabs">
+        <h3 id="h-m-tabs" class="sg-section__title">Tabs</h3>
+        <p class="sg-section__desc">Patrón WAI-ARIA: navega con <kbd>←</kbd> <kbd>→</kbd> <kbd>Inicio</kbd> <kbd>Fin</kbd>.</p>
+        <div class="sg-grid-2" id="sg-tabs"></div>
+      </section>
+
+      <section class="sg-section" id="m-paginacion" aria-labelledby="h-m-pag">
+        <h3 id="h-m-pag" class="sg-section__title">Pagination</h3>
+        <p class="sg-section__desc">Rango con puntos suspensivos y texto "Mostrando X–Y de Z".</p>
+        <div class="sg-card" id="sg-pagination"></div>
+      </section>
+
+      <section class="sg-section" id="m-feedback" aria-labelledby="h-m-feedback">
+        <h3 id="h-m-feedback" class="sg-section__title">Toast y ConfirmDialog</h3>
+        <p class="sg-section__desc">
+          <code>toast.success(msg, title)</code> · <code>await confirmDialog({ … })</code> sobre <code>&lt;dialog&gt;</code> nativo
+          (foco atrapado, <kbd>Esc</kbd> cancela, clic fuera cancela).
+        </p>
+        <div class="sg-grid-2" id="sg-feedback"></div>
+      </section>
+
+      <section class="sg-section" id="m-tooth" aria-labelledby="h-m-tooth">
+        <h3 id="h-m-tooth" class="sg-section__title">Tooth (pieza dental)</h3>
+        <p class="sg-section__desc">
+          5 caras clicables con numeración FDI. Hallazgos tomados de la tabla <code>odontograma</code>.
+          Con teclado: <kbd>Tab</kbd> entra a la pieza, flechas cambian de cara, <kbd>Enter</kbd> selecciona.
+        </p>
+        <div class="sg-card" id="sg-tooth"></div>
+      </section>
+
+      <section class="sg-section" id="m-slots" aria-labelledby="h-m-slots">
+        <h3 id="h-m-slots" class="sg-section__title">TimeSlot</h3>
+        <p class="sg-section__desc">Franjas de agenda: disponible, ocupada y fuera de horario (RN-02). Horario real del Dr. Roberto (Lunes).</p>
+        <div class="sg-card" id="sg-slots"></div>
+      </section>
+
+      <!-- ============================ ORGANISMOS ============================= -->
+      <h2 class="sg-part" id="organismos"><span>04</span> Organismos</h2>
+
+      <section class="sg-section" id="o-shell" aria-labelledby="h-o-shell">
+        <h3 id="h-o-shell" class="sg-section__title">Topbar + Sidebar</h3>
+        <p class="sg-section__desc">
+          Navegación dinámica por rol (SRS 3.1). Fecha en es-CO, notificaciones y menú de perfil (patrón disclosure:
+          <kbd>Esc</kbd> cierra y devuelve el foco). En pantallas &lt; 1024px el sidebar es un panel deslizable.
+        </p>
+        <div class="sg-card" id="sg-shell"></div>
+      </section>
+
+      <section class="sg-section" id="o-table" aria-labelledby="h-o-table">
+        <h3 id="h-o-table" class="sg-section__title">DataTable</h3>
+        <p class="sg-section__desc">
+          Búsqueda sin tildes, filtros rápidos por estado con conteos, orden por columna (<code>aria-sort</code>), celdas renderizadas
+          como nodos (sin <code>innerHTML</code>), acciones accesibles y paginación. Datos: citas de ±30 días.
+        </p>
+        <div class="sg-card" id="sg-table"></div>
+      </section>
+
+      <section class="sg-section" id="o-modal" aria-labelledby="h-o-modal">
+        <h3 id="h-o-modal" class="sg-section__title">ModalForm</h3>
+        <p class="sg-section__desc">
+          <code>await openModalForm({ … })</code>: validación en línea, envío asíncrono y errores del "servidor" junto al campo.
+          Prueba registrar el documento <code>1036000101</code> (ya existe).
+        </p>
+        <div class="sg-card" id="sg-modal"></div>
+      </section>
+
+      <section class="sg-section" id="o-odontogram" aria-labelledby="h-o-odo">
+        <h3 id="h-o-odo" class="sg-section__title">Odontogram</h3>
+        <p class="sg-section__desc">
+          Numeración FDI completa: permanente (11–48), temporal (51–85) y mixta. Panel lateral de registro de hallazgo (HU-04)
+          y modo solo lectura (RN-01).
+        </p>
+        <div class="sg-card" id="sg-odontogram"></div>
+      </section>
+
+      <section class="sg-section" id="o-calendar" aria-labelledby="h-o-cal">
+        <h3 id="h-o-cal" class="sg-section__title">Calendar</h3>
+        <p class="sg-section__desc">Agenda Día / Semana / Mes / Lista con selector de odontólogo (RF-CIT-07). Clic en un día de la semana o del mes abre la vista Día.</p>
+        <div class="sg-card" id="sg-calendar"></div>
+      </section>
+
+      <section class="sg-section" id="o-charts" aria-labelledby="h-o-charts">
+        <h3 id="h-o-charts" class="sg-section__title">DashboardCharts</h3>
+        <p class="sg-section__desc">SVG puro. Pasa el mouse o navega con <kbd>Tab</kbd> por las barras; "Ver tabla" muestra los mismos datos en tabla.</p>
+        <div id="sg-charts"></div>
+      </section>
+
+      <section class="sg-section" id="o-wizard" aria-labelledby="h-o-wizard">
+        <h3 id="h-o-wizard" class="sg-section__title">BookingWizard</h3>
+        <p class="sg-section__desc">
+          Agendamiento en 4 pasos (HU-05). Prueba elegir a la <strong>Dra. Sofía López</strong> un <strong>domingo</strong> para ver las
+          alternativas (RF-CIT-03). La cita creada aparece en la agenda y la tabla de arriba.
+        </p>
+        <div class="sg-card" id="sg-wizard"></div>
+      </section>
+    </main>
+
+    <footer class="sg-footer">DentalCare · Centro Odontológico Rionegro · Proyecto SENA</footer>
+
+    <script type="module" src="./js/pages/styleguide.js"></script>
+  </body>
+</html>

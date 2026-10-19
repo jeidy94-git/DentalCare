@@ -1,0 +1,65 @@
+/**
+ * Mock de la tabla `paciente` — copia fiel del seed de dentalcare_bd.sql (40 registros).
+ * Columnas: id_paciente, id_usuario, tipo_documento, numero_documento, nombres, apellidos,
+ *           fecha_nacimiento, genero, telefono, email, direccion, eps_aseguradora, fecha_registro
+ */
+const ROWS = [
+  [11, 'CC', '1036000101', 'Andrés', 'Galvis', '1990-02-14', 'MASCULINO', 'andres.galvis@gmail.com', 'Calle 10 # 43-12', 'Sura'],
+  [12, 'CC', '1036000102', 'Carolina', 'Villa', '1993-05-20', 'FEMENINO', 'carolina.villa@hotmail.com', 'Carrera 70 # 32-45', 'Sura'],
+  [13, 'CC', '1036000103', 'Mateo', 'Londoño', '1988-11-03', 'MASCULINO', 'mateo.londono@outlook.com', 'Calle 50 # 65-10', 'Sanitas'],
+  [14, 'CC', '1036000104', 'Daniela', 'Cardona', '1999-08-15', 'FEMENINO', 'daniela.cardona@yahoo.com', 'Carrera 45 # 10-20', 'Sura'],
+  [15, 'CC', '1036000105', 'Sebastián', 'Marín', '1995-01-30', 'MASCULINO', 'sebastian.marin@gmail.com', 'Calle 30 # 80-15', 'Compensar'],
+  [16, 'CC', '1036000106', 'Camila', 'Restrepo', '1997-04-12', 'FEMENINO', 'camila.restrepo@hotmail.com', 'Carrera 80 # 45-11', 'Sura'],
+  [17, 'CC', '1036000107', 'Nicolás', 'Arango', '1992-09-08', 'MASCULINO', 'nicolas.arango@gmail.com', 'Calle 12 # 34-56', 'Coomeva'],
+  [18, 'CC', '1036000108', 'Mariana', 'Zapata', '2000-06-25', 'FEMENINO', 'mariana.zapata@outlook.com', 'Carrera 65 # 50-30', 'Sura'],
+  [19, 'CC', '1036000109', 'Alejandro', 'Henao', '1985-12-18', 'MASCULINO', 'alejandro.henao@yahoo.com', 'Calle 48 # 73-12', 'Sanitas'],
+  [20, 'CC', '1036000110', 'Valeria', 'Duque', '1998-03-05', 'FEMENINO', 'valeria.duque@gmail.com', 'Carrera 52 # 40-22', 'Sura'],
+  [21, 'CC', '1036000111', 'David', 'Buitrago', '1991-07-22', 'MASCULINO', 'david.buitrago@hotmail.com', 'Calle 55 # 68-04', 'Sura'],
+  [22, 'CC', '1036000112', 'Isabella', 'Gómez', '1996-10-14', 'FEMENINO', 'isabella.gomez@outlook.com', 'Carrera 43A # 12-05', 'Compensar'],
+  [23, 'TI', '1036000113', 'Samuel', 'Cano', '2011-05-19', 'MASCULINO', 'samuel.cano@gmail.com', 'Calle 33 # 75-40', 'Sura'],
+  [24, 'CC', '1036000114', 'Gabriela', 'Echeverri', '1994-08-31', 'FEMENINO', 'gabriela.echeverri@yahoo.com', 'Carrera 76 # 42-18', 'Sanitas'],
+  [25, 'CC', '1036000115', 'Tomás', 'Vélez', '1989-11-27', 'MASCULINO', 'tomas.velez@hotmail.com', 'Calle 10A # 30-12', 'Coomeva'],
+  [26, 'CC', '1036000116', 'Luciana', 'Mejía', '2002-01-16', 'FEMENINO', 'luciana.mejia@gmail.com', 'Carrera 81 # 35-50', 'Sura'],
+  [27, 'CC', '1036000117', 'Santiago', 'Bedoya', '1993-04-03', 'MASCULINO', 'santiago.bedoya@outlook.com', 'Calle 49 # 63-25', 'Sura'],
+  [28, 'CC', '1036000118', 'Sofía', 'Correa', '1990-09-12', 'FEMENINO', 'sofia.correa@yahoo.com', 'Carrera 50 # 80-10', 'Compensar'],
+  [29, 'CC', '1036000119', 'Juan Pablo', 'Ríos', '1997-02-28', 'MASCULINO', 'juan.pablo.rios@gmail.com', 'Calle 53 # 45-33', 'Sanitas'],
+  [30, 'TI', '1036000120', 'Salomé', 'Vargas', '2013-06-10', 'FEMENINO', 'salome.vargas@hotmail.com', 'Carrera 68 # 49-15', 'Sura'],
+  [31, 'CC', '1036000121', 'Emilio', 'Muñoz', '1992-12-01', 'MASCULINO', 'emilio.munoz@outlook.com', 'Calle 32 # 70-12', 'Sura'],
+  [32, 'CC', '1036000122', 'Renata', 'Flórez', '1995-07-17', 'FEMENINO', 'renata.florez@gmail.com', 'Carrera 42 # 54-20', 'Coomeva'],
+  [33, 'CC', '1036000123', 'Lucas', 'Agudelo', '1986-03-22', 'MASCULINO', 'lucas.agudelo@yahoo.com', 'Calle 11 # 43B-05', 'Sura'],
+  [34, 'CC', '1036000124', 'Antonia', 'Giraldo', '1988-10-09', 'FEMENINO', 'antonia.giraldo@hotmail.com', 'Carrera 75 # 25-14', 'Sanitas'],
+  [35, 'CC', '1036000125', 'Pablo', 'Saldarriaga', '1994-05-11', 'MASCULINO', 'pablo.saldarriaga@gmail.com', 'Calle 45 # 65-30', 'Sura'],
+  [36, 'CC', '1036000126', 'Manuela', 'Castrillón', '1998-11-23', 'FEMENINO', 'manuela.castrillon@outlook.com', 'Carrera 51 # 38-12', 'Compensar'],
+  [37, 'CC', '1036000127', 'Joaquín', 'Posada', '1991-08-04', 'MASCULINO', 'joaquin.posada@yahoo.com', 'Calle 30A # 82-10', 'Sura'],
+  [38, 'CC', '1036000128', 'Victoria', 'Hoyos', '2001-02-15', 'FEMENINO', 'victoria.hoyos@gmail.com', 'Carrera 63 # 48-55', 'Sanitas'],
+  [39, 'CC', '1036000129', 'Martín', 'Tobón', '1993-09-30', 'MASCULINO', 'martin.tobon@hotmail.com', 'Calle 52 # 70-14', 'Sura'],
+  [40, 'CC', '1036000130', 'Alicia', 'Quintero', '1987-04-18', 'FEMENINO', 'alicia.quintero@outlook.com', 'Carrera 48 # 10-05', 'Coomeva'],
+  [41, 'CC', '1036000131', 'Emmanuel', 'Valencia', '1996-01-25', 'MASCULINO', 'emmanuel.valencia@gmail.com', 'Calle 10 # 38-20', 'Sura'],
+  [42, 'TI', '1036000132', 'Guadalupe', 'Usme', '2012-10-12', 'FEMENINO', 'guadalupe.usme@yahoo.com', 'Carrera 72 # 35-40', 'Sura'],
+  [43, 'CC', '1036000133', 'Simón', 'Rendón', '1990-03-08', 'MASCULINO', 'simon.rendon@hotmail.com', 'Calle 49 # 78-15', 'Sanitas'],
+  [44, 'CC', '1036000134', 'Milena', 'Villegas', '1995-12-05', 'FEMENINO', 'milena.villegas@gmail.com', 'Carrera 80 # 50-22', 'Compensar'],
+  [45, 'CC', '1036000135', 'Rodrigo', 'Palacio', '1989-06-20', 'MASCULINO', 'rodrigo.palacio@outlook.com', 'Calle 33 # 65-12', 'Sura'],
+  [46, 'CC', '1036000136', 'Elena', 'Tamayo', '1997-08-14', 'FEMENINO', 'elena.tamayo@yahoo.com', 'Carrera 43A # 18-30', 'Sura'],
+  [47, 'CC', '1036000137', 'Gabriel', 'Monsalve', '1992-05-02', 'MASCULINO', 'gabriel.monsalve@gmail.com', 'Calle 50 # 75-10', 'Coomeva'],
+  [48, 'CC', '1036000138', 'Cecilia', 'Botero', '1984-11-19', 'FEMENINO', 'cecilia.botero@hotmail.com', 'Carrera 65 # 30-40', 'Sanitas'],
+  [49, 'CC', '1036000139', 'Felipe', 'Álvarez', '1993-07-07', 'MASCULINO', 'felipe.alvarez@outlook.com', 'Calle 12 # 43-25', 'Sura'],
+  [50, 'CC', '1036000140', 'Andrea', 'Osorio', '1998-02-11', 'FEMENINO', 'andrea.osorio@gmail.com', 'Carrera 70 # 45-18', 'Compensar'],
+];
+
+export const PACIENTES = ROWS.map(([id, tipo, doc, nombres, apellidos, nacimiento, genero, email, direccion, eps]) => ({
+  id_paciente: id,
+  id_usuario: id + 5, // seed: id_usuario 16…55 para pacientes 11…50
+  tipo_documento: tipo,
+  numero_documento: doc,
+  nombres,
+  apellidos,
+  fecha_nacimiento: nacimiento,
+  genero,
+  telefono: `30011100${String(id - 10).padStart(2, '0')}`,
+  email,
+  direccion,
+  eps_aseguradora: eps,
+  fecha_registro: '2026-09-11 17:40:46',
+}));
+
+export const nombrePaciente = (p) => (p ? `${p.nombres} ${p.apellidos}` : '—');
