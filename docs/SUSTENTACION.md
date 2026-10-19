@@ -1,4 +1,4 @@
-# Documento de sustentación — DentalCare (Frontend, fases A0 a A4)
+# Documento de sustentación — DentalCare (Frontend, fases A0 a A5)
 
 > Guía de estudio para la sustentación individual. Explica **qué** se construyó, **por qué** se
 > tomó cada decisión y **cómo** defenderla ante el docente. Cada concepto apunta al archivo real del
@@ -21,9 +21,10 @@
 9. [El odontograma y la numeración FDI](#9-el-odontograma-y-la-numeración-fdi)
 10. [Fase A3: organismos y reglas de negocio](#10-fase-a3-organismos-y-reglas-de-negocio)
 11. [Fase A4: templates](#11-fase-a4-templates)
-12. [Cómo se verificó la calidad](#12-cómo-se-verificó-la-calidad)
-13. [Simulacro de preguntas del docente](#13-simulacro-de-preguntas-del-docente)
-14. [Glosario](#14-glosario)
+12. [Fase A5: capa de servicios, sesión y guards](#12-fase-a5-capa-de-servicios-sesión-y-guards)
+13. [Cómo se verificó la calidad](#13-cómo-se-verificó-la-calidad)
+14. [Simulacro de preguntas del docente](#14-simulacro-de-preguntas-del-docente)
+15. [Glosario](#15-glosario)
 
 ---
 
@@ -36,10 +37,12 @@
 | **A2** Moléculas | 10 combinaciones de átomos: `FormField`, `PasswordField`, `SearchBar`, `KpiCard`, `Tabs`, `Pagination`, `Toast`, `ConfirmDialog`, `TimeSlot`, `Tooth` | `frontend/js/components/molecules/` |
 | **A3** Organismos | Secciones completas: `Topbar`, `Sidebar`, `DataTable`, `ModalForm`, `Odontogram`, `Calendar`, `DashboardCharts`, `BookingWizard` | `frontend/js/components/organisms/` |
 | **A4** Templates | Esqueletos de pantalla: `DashboardLayout` (marco con skip-link, sidebar, topbar y migas), `AuthLayout` (login y contraseña), `DetailLayout` (ficha del paciente) + molécula `Breadcrumbs` | `frontend/js/components/templates/` |
+| **A5** Servicios y sesión | Capa de servicios (9 servicios con la misma interfaz para mock y API), base de datos simulada en `localStorage`, login con contraseñas PBKDF2, sesión con vencimiento, *guard* de páginas por rol, matriz de permisos y auditoría | `frontend/js/services/`, `frontend/js/core/` (`config`, `storage`, `session`, `guard`, `permissions`) |
 
 **Stack del proyecto:** HTML5 + CSS3 + JavaScript puro (ES Modules) en el frontend; Node.js + Express +
 MySQL (mysql2/promise, sin ORM) en el backend (fases C y D). Mientras no existe el backend, las
-pantallas usan **datos mock** copiados del seed de `dentalcare_bd.sql`.
+pantallas usan **datos mock** copiados del seed de `dentalcare_bd.sql`, servidos por la capa de
+servicios de la fase A5.
 
 ---
 
@@ -124,9 +127,13 @@ frontend/
 │   └── main.css                 importa todo en orden de Atomic Design
 └── js/
     ├── core/                    utilidades sin interfaz: dom, validators, format, dates, agenda…
+    │                            + (A5) config, storage, session, guard, permissions
     ├── components/atoms|molecules|organisms|templates/
     ├── data/mock/               datos de prueba copiados del SQL
-    └── pages/                   un controlador por página
+    ├── services/                (A5) capa de servicios: *.service.js, http.js, api-error.js
+    │   └── mock/                base de datos simulada (db.js) y hash de contraseñas (password.js)
+    └── pages/                   un controlador por página (_shared/app-page.js = arranque común)
+tests/                           (raíz del proyecto) pruebas en Node: node tests/<suite>.test.mjs
 ```
 
 ---
@@ -679,7 +686,351 @@ cada pantalla interna tiene:
 
 ---
 
-## 12. Cómo se verificó la calidad
+## 12. Fase A5: capa de servicios, sesión y guards
+
+Hasta A4 los componentes recibían datos "a mano". En A5 se construyó **de dónde salen los datos** y
+**quién puede verlos**: una capa de servicios que hoy responde con una base de datos simulada en el
+navegador y, en la fase D, llamará a la API de Node.js **sin que las páginas cambien una línea**.
+
+| Pieza | Responsabilidad | Dónde está |
+|---|---|---|
+| `config.js` | Interruptor `USE_MOCK`, URL de la API, latencia simulada, duración de la sesión, prefijo de almacenamiento | `js/core/config.js` |
+| `storage.js` | Envoltorio seguro de `localStorage` (prefijo, JSON, respaldo en memoria) | `js/core/storage.js` |
+| `session.js` | Crear, leer, validar y cerrar la sesión; avisar de cambios (también entre pestañas) | `js/core/session.js` |
+| `guard.js` | Proteger cada página: sin sesión → login; rol equivocado → 403 | `js/core/guard.js` |
+| `permissions.js` | Matriz de permisos por rol (RF-ROL-07) | `js/core/permissions.js` |
+| 9 servicios | `auth`, `pacientes`, `citas`, `historias`, `odontograma`, `servicios`, `especialistas`, `ventas`, `novedades` | `js/services/*.service.js` |
+| `mock/db.js` | Base de datos simulada (las tablas del SQL en un JSON) y `mockRequest()` | `js/services/mock/db.js` |
+| `mock/password.js` | Hash PBKDF2 de contraseñas | `js/services/mock/password.js` |
+| `http.js` | Cliente `fetch` para la API real (fase D) | `js/services/http.js` |
+| `api-error.js` | Un solo tipo de error para mock y API | `js/services/api-error.js` |
+| `app-page.js` | Arranque común de las pantallas internas: guard + `DashboardLayout` + carga | `js/pages/_shared/app-page.js` |
+
+### 12.1 El patrón *Service Layer* (capa de servicios)
+
+**Problema:** si cada página leyera `localStorage` o llamara `fetch('/api/pacientes')` directamente,
+cambiar la fuente de datos en la fase D obligaría a reescribir **todas** las páginas, y las reglas
+(quién puede ver qué, validaciones) quedarían repartidas y duplicadas.
+
+**Solución:** una capa intermedia. La página **pide** datos a un servicio; el servicio **sabe** de
+dónde sacarlos. La vista queda **desacoplada** de la fuente de datos.
+
+```
+  PÁGINA (vista)                 CAPA DE SERVICIOS                     FUENTE DE DATOS
+  pages/admin/pacientes.js  ──►  pacientesService.list({ q })  ──┬──►  mock/db.js → localStorage   (USE_MOCK = true)
+  "muéstrame los pacientes"      misma interfaz, mismo error     └──►  http.js → API Express/MySQL (USE_MOCK = false)
+```
+
+Cada servicio tiene **dos implementaciones con la misma forma** (`mock` y `remote`) y exporta una:
+
+```js
+// js/services/citas.service.js
+const mock   = { list: (filtros) => mockRequest(...),        create: (data) => mockRequest(...) };
+const remote = { list: (filtros) => http.get('/citas', filtros), create: (data) => http.post('/citas', data) };
+
+export const citasService = USE_MOCK ? mock : remote;
+```
+
+La página solo conoce el barrel `services/index.js`:
+
+```js
+import { pacientesService, isApiError } from '../../js/services/index.js';
+try {
+  const pacientes = await pacientesService.list({ q: 'galvis' });
+} catch (error) {
+  if (isApiError(error) && error.status === 409) { /* documento repetido */ }
+}
+```
+
+**Ventajas que se pueden defender:**
+- **Desacoplamiento:** cambiar de mock a API es cambiar **una constante**, no las páginas.
+- **Un solo lugar para las reglas:** RN-01, RN-02, permisos y validaciones viven en el servicio.
+- **Contrato explícito:** los métodos del mock imitan las rutas REST que tendrá la API
+  (`GET /citas`, `PATCH /citas/:id/estado`…). El mock **es** la especificación del backend.
+- **Errores uniformes:** mock y API lanzan el mismo `ApiError` (`status`, `message`, `fields`, `code`),
+  así la página maneja los errores de una sola forma.
+- **Probable:** los servicios se prueban en Node sin navegador (65 pruebas, §13).
+
+| `status` de `ApiError` | Significado | Ejemplo |
+|---|---|---|
+| 0 | Sin conexión / tiempo agotado | La API no responde (fase D) |
+| 400 | Datos inválidos (con `fields` por campo) | Paciente sin documento |
+| 401 | Sin sesión o sesión vencida | Token expirado |
+| 403 | Sin permiso | Recepción intenta editar una historia (RN-01) |
+| 404 | No existe | Cita #9999 |
+| 409 | Conflicto | Documento repetido, franja ocupada, cancelar dos veces |
+| 422 | Regla de negocio | Fuera del horario del odontólogo (RN-02) |
+| 507 | Almacenamiento lleno | `localStorage` sin espacio (solo mock) |
+
+### 12.2 La bandera `USE_MOCK` y la configuración central
+
+`js/core/config.js` reúne **todas** las decisiones que cambian entre entornos, en un solo archivo:
+
+| Constante | Valor | Para qué |
+|---|---|---|
+| `USE_MOCK` | `true` | `true` = base simulada; `false` = API REST (fase D) |
+| `API_BASE_URL` | `http://localhost:3000/api` | Raíz de la API de Express |
+| `HTTP_TIMEOUT_MS` | 15 000 | Abortar una petición que tarda demasiado |
+| `MOCK_LATENCY` | 150–300 ms | "Red" simulada |
+| `SESSION_TTL_MS` | 8 horas | Una jornada del consultorio |
+| `STORAGE_PREFIX` | `dentalcare:` | Prefijo de todas las claves de `localStorage` |
+
+Es el principio de **configuración centralizada**: nadie escribe `'http://localhost:3000'` dentro de
+un servicio. En la fase D basta con cambiar `USE_MOCK` a `false`.
+
+### 12.3 La "petición" simulada: `mockRequest()` y la latencia controlada
+
+Todos los servicios mock pasan por `mockRequest(handler, { auth, permiso, write })`, que imita lo
+que hará el servidor con cada petición:
+
+1. **Espera la latencia de red** (150–300 ms aleatorios).
+2. **Autentica:** sin sesión → `401` (y cierra la sesión para que el guard lleve al login).
+3. **Autoriza:** si la operación exige un permiso y el rol no lo tiene → `403`.
+4. **Ejecuta** el `handler`, que lee o modifica las tablas y puede lanzar `400/404/409/422`.
+5. **Commit o rollback:** si escribió y todo salió bien, guarda en `localStorage`; si falló,
+   descarta la copia en memoria (lo guardado sigue intacto). Es la idea de una **transacción**.
+6. **Devuelve una copia** (`structuredClone`): la página no puede modificar la "base de datos"
+   por referencia, igual que con datos que llegan por la red.
+
+**¿Por qué simular latencia si el mock podría responder al instante?**
+- Con respuestas instantáneas **nunca se verían** los spinners, los estados `aria-busy` ni los
+  botones deshabilitados mientras se guarda: se programarían "a ciegas".
+- Los errores de asincronía (la **condición de carrera** de §11.6, doble clic en "Guardar") solo
+  aparecen cuando hay espera. Con latencia aparecen **ahora**, no en la fase D.
+- Es aleatoria (no fija) para que las respuestas puedan llegar en distinto orden, como en la red real.
+- Es **controlada**: el rango está en `config.js` y las pruebas usan `setMockLatency(0)` para no esperar.
+
+### 12.4 Persistencia segura: `storage.js`
+
+La base simulada se guarda como **un** objeto JSON en `localStorage["dentalcare:db"]`; la sesión en
+`localStorage["dentalcare:session"]`. Lo que se agenda o paga **sobrevive a recargas** y se ve en
+todas las pantallas.
+
+| Riesgo | Cómo se maneja |
+|---|---|
+| Otra aplicación en el mismo origen (Live Server sirve varios proyectos en `127.0.0.1:5500`) usa las mismas claves | **Prefijo** `dentalcare:` en todas las claves |
+| `localStorage` no existe o lanza error (modo privado de Safari, almacenamiento bloqueado, Node.js en las pruebas) | Se **prueba** al iniciar (`setItem`/`removeItem` de una clave de sondeo); si falla, se usa un `Map` **en memoria**: la app funciona, solo que sin persistir (`storage.persistent === false`) |
+| Dato corrupto o editado a mano (JSON inválido) | `JSON.parse` dentro de `try/catch`: se devuelve el valor por defecto, la app no se rompe |
+| Almacenamiento lleno (≈5 MB, `QuotaExceededError`) | `set()` lanza; `db.js` lo convierte en `ApiError 507` con un mensaje entendible. El log de auditoría se recorta a los últimos 300 registros |
+| La forma de las tablas cambia entre versiones del código | `DB_VERSION`: si lo guardado tiene otra versión, se descarta y se vuelve a sembrar desde los mocks |
+| Dos pestañas abiertas | El evento `storage` avisa a las **otras** pestañas: descartan su copia en memoria y releen |
+
+> **Límite que hay que reconocer:** `localStorage` **no es un lugar seguro**. Cualquier script de la
+> página puede leerlo; por eso la defensa contra XSS (§5) es tan importante. Por eso tampoco se
+> guarda nunca una contraseña: solo hashes en la base simulada y un token en la sesión. En la fase D
+> se evaluará guardar el token en una *cookie* `HttpOnly` (inaccesible para JavaScript).
+
+### 12.5 Control de sesión: `session.js`
+
+```js
+// localStorage["dentalcare:session"]
+{ token: 'mock.3f2a…', user: { id_usuario: 1, rol: 'ADMINISTRADOR', nombre: 'Laura Gómez', … },
+  createdAt: 1760850000000, expiresAt: 1760878800000 }   // + 8 horas
+```
+
+- **`setSession()`** la crea `auth.service` **después** de verificar la contraseña. Se valida la
+  forma antes de guardar.
+- **`getSession()`** es la **única** forma de leerla, y desconfía de lo guardado: si falta el token,
+  el `id_usuario` no es entero, el rol no existe (`"HACKER"`) o ya venció, la **borra** y devuelve `null`.
+- **`clearSession(reason)`** distingue `'logout'` (el usuario salió) de `'expired'` (venció o la API
+  respondió 401) para mostrar el mensaje correcto en el login.
+- **`onSessionChange()`** escucha un evento propio (`dc:session`) en **esta** pestaña y el evento
+  `storage` de las **demás**: cerrar sesión en una pestaña saca al usuario de todas.
+- **`handleUnauthorized()`**: cuando la API (o el mock) responde 401, la sesión ya no sirve y se cierra.
+
+**Idea clave:** la sesión en el navegador es **comodidad**, no seguridad. Alguien puede editarla
+desde las herramientas del navegador y ponerse `rol: 'ADMINISTRADOR'`. Eso le cambiaría el menú,
+pero **no** los datos que recibe: en la fase D el servidor valida el token en cada petición y no
+cree en el rol que diga el navegador.
+
+### 12.6 Guards de acceso y redirección según el rol: `guard.js`
+
+Cada página protegida llama al guard **antes de dibujar nada** (lo hace `createAppPage()`):
+
+```js
+const user = guard('ADMINISTRADOR');   // o guard(['ADMINISTRADOR', 'RECEPCIONISTA']) o guard(null)
+if (!user) return;                     // ya se está redirigiendo: no dibujar nada
+```
+
+```
+                ┌─ sin sesión / vencida ──► login.html?next=pages%2Fadmin%2Fcitas.html
+ guard(rol) ────┼─ rol no permitido ──────► 403.html?from=pages%2Fadmin%2Fcitas.html
+                └─ todo bien ─────────────► devuelve el usuario y VIGILA la sesión
+                                            (logout, vencimiento u otro rol en otra pestaña → redirige)
+```
+
+| Decisión | Por qué |
+|---|---|
+| `location.replace()` y no `assign()` | La página prohibida **no queda en el historial**: "Atrás" no devuelve a ella ni crea un bucle de redirecciones |
+| Parámetro `next` | Tras iniciar sesión, el usuario vuelve a la página que quería, no al inicio |
+| `safeNext()` valida `next` | Evita la **redirección abierta** (*open redirect*): `login.html?next=https://sitio-falso.com` no debe sacar al usuario de DentalCare. Solo acepta páginas `.html` dentro de la app, que no sean login/403 y de la carpeta de **su** rol |
+| Evento `pageshow` con `persisted` | El *bfcache* del navegador puede mostrar una página guardada en memoria al pulsar "Atrás" **sin ejecutar los scripts**. Si el usuario ya cerró sesión, `pageshow` vuelve a verificar |
+| `redirectIfAuthenticated()` en el login | Si ya hay sesión, no tiene sentido mostrar el formulario: va al inicio de su rol |
+
+Inicio de cada rol (`core/navigation.js → ROLES`):
+
+| Rol (tabla `rol`) | Carpeta | Página de inicio |
+|---|---|---|
+| ADMINISTRADOR | `pages/admin/` | `dashboard.html` |
+| RECEPCIONISTA | `pages/asistente/` | `inicio.html` |
+| ESPECIALISTA | `pages/doctor/` | `dashboard.html` |
+| PACIENTE | `pages/paciente/` | `inicio.html` |
+
+**Defensa en profundidad (la frase clave):** hay **tres capas** y solo la última es seguridad real.
+
+| Capa | Qué hace | ¿Es seguridad? |
+|---|---|---|
+| 1. Interfaz | El sidebar solo muestra el menú del rol; `can()` oculta botones | No: es experiencia de usuario |
+| 2. Guard | Impide **navegar** a páginas de otro rol | No: se puede saltar editando el JavaScript |
+| 3. Servicio / API | Cada operación verifica sesión (401), permiso (403) y propiedad del dato | **Sí** (y en la fase C, en el servidor) |
+
+### 12.7 Autorización dentro de los servicios
+
+- **Matriz de permisos** (`permissions.js`, RF-ROL-07). `can(user, 'REGISTRAR_PAGO')` responde sí o
+  no. Se tomaron los 6 permisos de la tabla `permiso` y se agregaron 5 que el SRS necesita.
+
+  | Rol | Permisos |
+  |---|---|
+  | ADMINISTRADOR | Todos |
+  | RECEPCIONISTA | Crear y cancelar citas, gestionar pacientes, registrar pagos, registrar novedades |
+  | ESPECIALISTA | Crear y cancelar citas, ver y editar historias clínicas, registrar novedades |
+  | PACIENTE | Crear y cancelar citas (solo las suyas) |
+
+  **No se copió `rol_permiso` del seed** porque contradice el SRS: la recepcionista podía editar
+  historias (viola RN-01) y el especialista podía registrar pagos. Se documentará en la fase B.
+- **Propiedad del dato:** un PACIENTE solo ve y cambia **lo suyo** (`assertOwnPaciente` → 403). Al
+  agendar, el servicio **ignora** el `id_paciente` que envíe y usa el de su sesión.
+- **RN-01 en código** (`assertRN01`): solo el administrador o el odontólogo **asignado** (con una
+  cita no cancelada con ese paciente) editan la historia clínica.
+- **Lista blanca de campos** (`pick()`): el servicio copia solo las columnas permitidas. Si alguien
+  envía `{ estado_cita: 'COMPLETADA' }` al crear una cita, se ignora (ataque de **asignación masiva**).
+- **Máquina de estados de la cita:** `PENDIENTE_CONFIRMACION → PROGRAMADA → COMPLETADA`, y
+  `CANCELADA` desde las dos primeras. Cancelar dos veces o completar una cancelada → 409. Las citas
+  **no se borran**, se cancelan (queda la traza).
+- **Auditoría** (RNF-SEG-02): login, login fallido, logout, crear, reprogramar, pagar… quedan en la
+  tabla `log_auditoria` con usuario, acción, tabla y fecha.
+
+### 12.8 Seguridad de contraseñas: PBKDF2 en el mock, bcrypt en el backend
+
+**Hash no es cifrado.** El cifrado se puede revertir con la clave; el **hash es de un solo sentido**.
+Para verificar una contraseña no se "descifra" nada: se calcula el hash de lo que escribió el
+usuario y se compara con el guardado.
+
+El seed de `dentalcare_bd.sql` guarda las contraseñas **en texto plano** (`'Admin2026*'`), lo que
+incumple RNF-SEG-01. En el mock ya están convertidas (con un script de Node, una sola vez):
+
+```
+pbkdf2_sha256 $ 100000 $ yT9xLHL20S3LAzUF0UBkUg== $ 54958FCbp12A0aHhkyyINljIvceUQbjNJcjKOBef05g=
+ algoritmo      iteraciones   sal (16 bytes, base64)        hash (32 bytes, base64)
+```
+
+| Concepto | Qué es | Contra qué protege |
+|---|---|---|
+| **Sal** aleatoria por usuario | Bytes al azar que se mezclan con la contraseña | Dos usuarios con la misma clave tienen hashes distintos; inutiliza las *rainbow tables* (tablas de hashes precalculados) |
+| **100 000 iteraciones** | El cálculo se repite a propósito para que sea **lento** (una fracción de segundo) | Fuerza bruta: probar millones de claves robadas se vuelve muy costoso |
+| **Comparación en tiempo constante** (`sameBytes`) | Recorre **todos** los bytes aunque el primero ya sea distinto | Ataque de tiempo (*timing attack*): medir cuánto tarda la comparación |
+| **`fakeVerify`** | Si el correo no existe, igual se calcula un hash | Que no se pueda saber qué correos existen midiendo el tiempo de respuesta (enumeración) |
+| Formato con el número de iteraciones | Las iteraciones viajan dentro del hash | Subirlas en el futuro sin invalidar las contraseñas existentes |
+
+**¿Por qué PBKDF2 en el frontend y bcrypt en el backend?**
+
+| | PBKDF2-SHA256 (mock, fase A5) | bcrypt (backend, fase C) |
+|---|---|---|
+| Dónde corre | Navegador, con **Web Crypto** (`crypto.subtle`), nativo | Node.js, librería `bcrypt` |
+| Por qué ahí | bcrypt **no existe** nativo en el navegador y la regla es no usar librerías externas | Es el estándar en Node y lo pide el proyecto |
+| Costo | Iteraciones (100 000) | Factor de costo (p. ej. 10 → 2¹⁰ rondas) |
+| Sal | Aparte, 16 bytes | Incluida automáticamente en el hash |
+| ¿Cumple RNF-SEG-01? | Sí: hash lento con sal, recomendado por NIST | Sí |
+
+Lo importante en los dos: **la contraseña nunca se guarda ni se compara en texto plano**. Y el hash
+del frontend es **solo para el mock**: cuando exista el backend, la contraseña viajará por HTTPS y
+el **servidor** la verificará con bcrypt (el navegador no debe decidir si alguien entra).
+
+> **Requisito técnico:** Web Crypto solo existe en **contextos seguros** (`https`, `localhost` o
+> `127.0.0.1`). Live Server abre `http://127.0.0.1:5500`, que sí lo es. Si se abre por la IP de la
+> red local, `password.js` muestra un mensaje claro (`NO_CRYPTO`) en lugar de fallar en silencio.
+
+**Recuperación de contraseña (HU-01) en el mock:**
+- Siempre el **mismo mensaje** exista o no el correo ("*Si* el correo está registrado…").
+- Token aleatorio (`crypto.randomUUID()`), válido **30 minutos** y de **un solo uso**. Pedir un
+  enlace nuevo anula los anteriores.
+- Al verificar el enlace se muestra el correo **enmascarado** (`a••••••@gmail.com`).
+- Como el mock no envía correos, el enlace queda en una "bandeja de salida" simulada
+  (`mockOutbox(email)`), que solo existe con `USE_MOCK = true`.
+
+### 12.9 El cliente HTTP ya está listo para la fase D (`http.js`)
+
+- Agrega `Authorization: Bearer <token>` de la sesión en cada petición.
+- **Tiempo límite** con `AbortController`: a los 15 s se aborta y se lanza `ApiError(0, 'El
+  servidor tardó demasiado…')`. Sin esto, un servidor colgado dejaría el spinner para siempre.
+- Convierte cualquier respuesta no exitosa en `ApiError`, con el **mismo formato** que el mock.
+- Un `401` cierra la sesión (`handleUnauthorized`) y el guard lleva al login con `?expired=1`.
+
+### 12.10 Credenciales de demostración
+
+Son las del seed (`dentalcare_bd.sql`); en el mock se verifican contra su hash PBKDF2.
+
+| Rol | Correo | Contraseña |
+|---|---|---|
+| Administrador | `admin@dentalcare.com` | `Admin2026*` |
+| Recepcionista | `recepcion@dentalcare.com` | `Recep2026*` |
+| Odontólogo | `dr.roberto@dentalcare.com` | `DocRoberto2026*` |
+| Paciente | `andres.galvis@gmail.com` | `AndresG2026*` |
+
+Para volver a los datos iniciales: `resetDemoData()` (exportado por `services/index.js`).
+
+### 12.11 Diferencias con la base de datos (para documentar en la fase B)
+
+Detectadas al construir el mock; irán a `database/CAMBIOS.md`:
+1. `usuario.password_hash` en texto plano → hash (bcrypt en el backend).
+2. `rol.estado` no existe y lo pide RF-ROL-06.
+3. `rol_permiso` contradice el SRS (ver §12.7) y faltan 5 permisos.
+4. Falta una tabla de tokens de recuperación de contraseña (`password_reset`, HU-01).
+5. Ventas del seed marcadas `PAGADO` con saldo pendiente (p. ej. la #2: 350.000 con 150.000
+   abonados); el mock recalcula el estado desde el saldo.
+
+### 12.12 Punto de partida de la fase A6 (pantallas HTML definitivas)
+
+La fase A6 **no** debe tocar la capa de servicios: solo crear los HTML y sus controladores. El
+contrato que cada pantalla interna debe cumplir:
+
+```html
+<!-- pages/admin/pacientes.html -->
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Pacientes · DentalCare</title>
+  <link rel="stylesheet" href="../../css/main.css" />
+  <script type="module" src="../../js/pages/admin/pacientes.js"></script>
+</head>
+<body data-role="ADMINISTRADOR"></body>
+</html>
+```
+
+```js
+// js/pages/admin/pacientes.js
+const page = createAppPage({ role: 'ADMINISTRADOR', activeId: 'pacientes', title: 'Pacientes' });
+if (page) {
+  const pacientes = await loadInto(page.layout, () => pacientesService.list(), 'Cargando pacientes…');
+  if (pacientes) page.layout.setContent(DataTable({ ... }));
+}
+```
+
+Reglas para A6:
+- Importar datos **solo** desde `js/services/index.js` (nunca `data/mock/` ni `mock/db.js`).
+- Toda pantalla interna arranca con `createAppPage()` (guard + layout) y carga con `loadInto()`.
+- Mostrar u ocultar botones con `can(user, PERMISO)`, sabiendo que el servicio vuelve a verificar.
+- Errores de campo del servicio (`error.fields`) → junto al input con `setFieldError()`.
+- Pantallas pendientes: `login.html` (con `?next`, `?expired=1` y `?token=` de recuperación),
+  `403.html`, una entrada `index.html` que lleve al login o al inicio del rol, y las páginas de
+  cada rol listadas en `core/navigation.js → NAV_BY_ROLE`. `js/pages/home.js` ya sirve el inicio
+  de los cuatro roles (`<body data-role="…">`).
+
+---
+
+## 13. Cómo se verificó la calidad
 
 Se escribieron **pruebas automatizadas** que abren el styleguide en un navegador real (Edge sin
 interfaz), simulan clics, teclado y envío de formularios, y comprueban el resultado:
@@ -689,11 +1040,37 @@ interfaz), simulan clics, teclado y envío de formularios, y comprueban el resul
 | Moléculas (A2) | 74 | 74 ✅ |
 | Organismos (A3) | 73 | 73 ✅ |
 | Templates (A4) | 56 | 56 ✅ |
-| Lógica de agenda y datos mock (Node) | 18 | 18 ✅ |
+| Lógica de agenda y datos mock (Node) — `tests/agenda.test.mjs` | 18 | 18 ✅ |
 | Desborde horizontal en móvil (375 px), incluidos los 3 templates | — | sin desborde ✅ |
+| Capa de servicios (A5, Node) — `tests/services.test.mjs` | 65 | 65 ✅ |
+| Storage, sesión y guard (A5, Node) — `tests/guard.test.mjs` | 30 | 30 ✅ |
+| Prueba de humo A5 en Edge real (1366 px y 375 px): login con Web Crypto, `localStorage`, inicio del administrador | 11 | 11 ✅ |
 
 Al terminar A4 se **volvieron a correr** las suites de A2 y A3 (pruebas de regresión): siguen en
 74/74 y 73/73, así que lo nuevo no dañó nada de lo anterior.
+
+**Cómo correr las pruebas de Node** (desde la raíz del proyecto, sin instalar nada):
+
+```bash
+node tests/agenda.test.mjs
+node tests/services.test.mjs
+node tests/guard.test.mjs
+```
+
+**Qué cubren las pruebas de A5:**
+- **Autenticación:** mismo mensaje para correo inexistente y contraseña mala; ninguna contraseña
+  en texto plano en la base; la sesión vence a las 8 h; recuperación de contraseña con enlace de un
+  solo uso.
+- **Autorización:** 401 sin sesión; 403 cuando recepción edita una historia (RN-01), cuando un
+  odontólogo no asignado la edita, cuando el paciente pide datos de otro paciente.
+- **Reglas de negocio:** RN-02 (fuera de horario → 422), franja ocupada → 409, transiciones de
+  estado inválidas → 409, abono mayor al saldo → 422 sin cambiar nada (rollback).
+- **Persistencia:** lo creado queda guardado, las respuestas son copias, `resetDemoData` vuelve al seed.
+- **Storage:** respaldo en memoria si `localStorage` está bloqueado, JSON corrupto no rompe la app.
+- **Sesión manipulada:** un rol inventado o una sesión con forma inválida se descartan.
+- **Guard:** login con `next`, 403 con `from`, logout y vencimiento detectados mientras la página
+  está abierta, y 9 intentos de redirección abierta bloqueados por `safeNext` (otro dominio,
+  `//dominio`, `javascript:`, rutas fuera de la app, carpeta de otro rol…).
 
 **Errores reales que las pruebas encontraron (y se corrigieron):**
 1. `PasswordField` no pasaba el atributo `name` al input → el login no habría podido leer la
@@ -711,16 +1088,28 @@ Al terminar A4 se **volvieron a correr** las suites de A2 y A3 (pruebas de regre
 8. En móvil el resumen de la ficha quedaba en una sola columna larga → mínimo de 130 px por
    indicador; ahora caben dos por fila.
 
+**Hallazgos de A5:**
+9. La página de inicio (`home.js`) y el mensaje de error de carga (`loadInto`) usaban las clases
+   `.item-list` y `.page-error`, que **no existían** en el CSS: la lista de próximas citas salía
+   sin estilo. Se agregaron a `css/templates/app-shell.css` como superficies compartidas para A6.
+10. Las suites de pruebas de servicios y agenda estaban en una carpeta temporal fuera del
+    repositorio (se habrían perdido). Se movieron a `tests/` y se agregó la de `guard.js`, que no
+    tenía pruebas.
+
 **Las pruebas también se equivocan:** la prueba del *skip link* falló la primera vez porque leía
 el estilo **durante** la transición de 120 ms (el enlace todavía se estaba moviendo). El código
-estaba bien; se corrigió la prueba para esperar a que la transición terminara.
+estaba bien; se corrigió la prueba para esperar a que la transición terminara. En A5 pasó algo
+parecido: una prueba del guard falló porque los guards de casos anteriores seguían "vigilando" la
+sesión y también redirigían; el código estaba bien y se ajustó la prueba. Y la prueba en Edge sin
+interfaz se quedaba quieta en el login: el modo de "tiempo virtual" del navegador no espera a Web
+Crypto (que calcula el hash fuera del hilo principal), así que se cambió a esperar en tiempo real.
 
 **Frase para la sustentación:** *"No asumí que funcionaba: lo probé, y las pruebas encontraron
 errores que un usuario habría encontrado primero."*
 
 ---
 
-## 13. Simulacro de preguntas del docente
+## 14. Simulacro de preguntas del docente
 
 **P1. ¿Qué es Atomic Design y por qué lo usaron?**
 R: Una metodología que divide la interfaz en átomos, moléculas, organismos, templates y páginas. La
@@ -794,8 +1183,8 @@ clic en una alternativa la selecciona.
 **P14. ¿Cómo funciona la navegación según el rol?**
 R: `core/navigation.js` define el menú de cada rol de la tabla `rol` (ADMINISTRADOR, RECEPCIONISTA,
 ESPECIALISTA, PACIENTE). El `Sidebar` recibe el rol y construye solo esos enlaces. Ocultar un menú
-**no es** seguridad: en las fases A5 y C se agregan el *guard* de páginas y la autorización por
-permisos en la API.
+**no es** seguridad: en la fase A5 se agregaron el *guard* de páginas y la autorización por
+permisos en cada servicio (§12.6 y §12.7); en la fase C la API lo repetirá en el servidor.
 
 **P15. ¿Qué son los design tokens?**
 R: Variables CSS con nombre para colores, espacios y tipografía. Tienen dos capas: valores
@@ -819,9 +1208,10 @@ odontograma decide si el panel va al lado o debajo según el espacio que realmen
 hace reutilizable en cualquier página o modal.
 
 **P19. ¿Cómo prueban que todo funciona?**
-R: Con 221 pruebas automatizadas en un navegador real y en Node: interacciones, teclado, ARIA,
-validaciones, reglas de negocio y diseño responsive. Encontraron seis errores reales que se
-corrigieron (sección 12).
+R: Con 327 pruebas automatizadas en un navegador real y en Node: interacciones, teclado, ARIA,
+validaciones, reglas de negocio, permisos, sesión y diseño responsive. Encontraron errores reales
+que se corrigieron (sección 13). Las de Node están en `tests/` y cualquiera las puede repetir con
+`node tests/<suite>.test.mjs`.
 
 **P20. ¿Qué cambios necesita la base de datos y por qué?**
 R: Se documentarán en `database/CAMBIOS.md` (fase B). Por ejemplo: `cita.id_servicio` (RF-CIT-01
@@ -883,34 +1273,160 @@ R: `pushState` agrega una entrada al historial por cada pestaña abierta, y el b
 recorriendo pestañas en lugar de volver a la página anterior. `replaceState` actualiza la URL (se
 puede compartir o recargar en la misma pestaña) sin ensuciar el historial.
 
+#### Preguntas de la fase A5 (capa de servicios, sesión y seguridad)
+
+**P31. ¿Qué es el patrón *Service Layer* y qué problema resuelve en DentalCare?**
+R: Es una capa entre la vista y la fuente de datos. Las páginas no saben si los datos vienen de
+`localStorage` o de la API: llaman a `pacientesService.list()` y el servicio decide. Resuelve dos
+problemas: en la fase D cambiamos de mock a API sin reescribir páginas, y las reglas (permisos,
+RN-01, RN-02, validaciones) quedan en un solo lugar en vez de repetidas en cada pantalla.
+
+**P32. ¿Cómo cambian del mock a la API real?**
+R: Con la bandera `USE_MOCK` de `js/core/config.js`. Cada servicio tiene dos implementaciones con
+la misma interfaz y exporta `USE_MOCK ? mock : remote`. Además, los dos lanzan el mismo `ApiError`,
+así que la página maneja los errores igual. Cambiar a `false` es la única modificación.
+
+**P33. Si el mock vive en el navegador, ¿para qué simulan latencia?**
+R: Para que la interfaz se construya pensando en la espera real: spinners, `aria-busy`, botones
+deshabilitados mientras se guarda. También hace aparecer los errores de asincronía, como la
+condición de carrera, en esta fase y no cuando ya exista el servidor. Es aleatoria (150–300 ms)
+para que las respuestas puedan llegar en desorden, y en las pruebas se pone en 0.
+
+**P34. ¿Qué hace `mockRequest()`?**
+R: Imita lo que hará el servidor en cada petición: espera la latencia, verifica la sesión (401) y
+el permiso (403), ejecuta la operación y, si escribió, guarda en `localStorage` (commit). Si algo
+falla, descarta los cambios en memoria (rollback). Y devuelve una copia, para que la página no
+pueda modificar la base por referencia.
+
+**P35. ¿Guardar la sesión en `localStorage` es seguro?**
+R: No es una medida de seguridad, y lo asumimos así. Cualquier script de la página o el propio
+usuario puede leerla y editarla. Por eso `getSession()` desconfía de lo guardado (valida la forma,
+el rol y el vencimiento) y, sobre todo, la seguridad real está en los servicios y en la API: aunque
+alguien se cambie el rol en el navegador, el servidor valida el token y responde 403. Por la misma
+razón nunca guardamos contraseñas allí, y en la fase D evaluaremos una *cookie* `HttpOnly`.
+
+**P36. ¿Qué pasa si `localStorage` no está disponible?**
+R: `storage.js` lo prueba al iniciar escribiendo y borrando una clave. Si falla (modo privado,
+almacenamiento bloqueado o Node.js en las pruebas), usa un `Map` en memoria: la aplicación sigue
+funcionando, solo que los datos no sobreviven a una recarga. Además, un JSON corrupto devuelve el
+valor por defecto y el almacenamiento lleno se convierte en un mensaje claro (`ApiError 507`).
+
+**P37. ¿Para qué sirve el prefijo `dentalcare:`?**
+R: `localStorage` es compartido por todo el origen. Live Server sirve todos los proyectos en
+`127.0.0.1:5500`, así que otro proyecto podría usar una clave `session` y pisar la nuestra. Con el
+prefijo, nuestras claves no chocan con las de nadie.
+
+**P38. ¿Qué hace el *guard* y por qué usa `location.replace`?**
+R: Cada página protegida lo llama antes de dibujar. Sin sesión, redirige al login con `?next=` para
+volver después; con un rol sin permiso, a `403.html`; si todo está bien, devuelve el usuario y
+sigue vigilando la sesión (si se cierra en otra pestaña o vence, redirige). Usa `replace` y no
+`assign` para que la página prohibida no quede en el historial: así "Atrás" no lleva de vuelta a
+ella ni produce un bucle de redirecciones.
+
+**P39. Si existe el guard, ¿por qué los servicios vuelven a revisar permisos?**
+R: Porque el guard solo controla la **navegación**: es JavaScript en el navegador del usuario y se
+puede saltar. Es defensa en profundidad: la interfaz oculta lo que no aplica, el guard impide
+navegar a otra sección y el servicio (en la fase C, el servidor) es el que de verdad rechaza la
+operación. Solo la última capa es seguridad.
+
+**P40. ¿Qué es una redirección abierta y cómo la evitan?**
+R: Es usar un parámetro de la URL, como `?next=`, para mandar al usuario a un sitio externo. Un
+atacante enviaría `login.html?next=https://sitio-falso.com`: la víctima ve nuestro login real,
+ingresa y termina en una copia falsa que le pide los datos otra vez. `safeNext()` solo acepta
+páginas `.html` dentro de la app, que no sean el login o el 403 y que pertenezcan al rol del
+usuario; cualquier otra cosa lleva al inicio de su rol. Hay 9 pruebas de ataques bloqueados.
+
+**P41. ¿Por qué usaron PBKDF2 y no bcrypt en el frontend?**
+R: bcrypt no existe nativo en el navegador y no queremos librerías externas; PBKDF2 sí está en Web
+Crypto (`crypto.subtle`). Los dos cumplen RNF-SEG-01 porque son hashes **lentos y con sal**. En el
+backend (fase C) usaremos bcrypt, que es el estándar en Node. Y aclaro: el hash del frontend es solo
+para el mock; con el backend, quien verifica la contraseña es el servidor.
+
+**P42. ¿Qué es la sal y para qué sirven las 100 000 iteraciones?**
+R: La sal son 16 bytes aleatorios distintos para cada usuario que se mezclan con la contraseña: dos
+personas con la misma clave tienen hashes diferentes y las tablas de hashes precalculados (*rainbow
+tables*) no sirven. Las iteraciones hacen el cálculo lento a propósito: para un usuario es una
+fracción de segundo, pero para un atacante que quiere probar millones de claves es muy costoso.
+
+**P43. ¿Por qué comparan los hashes "en tiempo constante" y por qué calculan un hash cuando el
+correo no existe?**
+R: Una comparación normal se detiene en el primer byte distinto; midiendo cuánto tarda, un
+atacante podría ir adivinando (ataque de tiempo). `sameBytes` recorre siempre todos los bytes. Y si
+el correo no existe y respondiéramos de inmediato, la diferencia de tiempo revelaría qué correos
+están registrados; `fakeVerify` hace el mismo cálculo costoso para que las dos respuestas tarden lo
+mismo. Es el complemento del mensaje genérico "Correo o contraseña incorrectos" (RF-ACC-02).
+
+**P44. ¿Cómo funciona la recuperación de contraseña en el mock?**
+R: Siempre se responde lo mismo, exista o no el correo. Si existe, se crea un token aleatorio
+(`crypto.randomUUID()`) que vence en 30 minutos, sirve una sola vez y anula los enlaces anteriores.
+Como el mock no envía correos, el enlace queda en una bandeja simulada (`mockOutbox`). La nueva
+contraseña se valida y se guarda como hash; la vieja deja de funcionar. Todo queda en la auditoría.
+
+**P45. ¿Qué es la "asignación masiva" y cómo la previenen?**
+R: Es cuando el cliente envía campos que no debería poder escribir, por ejemplo
+`{ estado_cita: 'COMPLETADA' }` al crear una cita, o un paciente que cambia su nombre cuando solo
+puede cambiar sus datos de contacto. Los servicios usan `pick()`, una lista blanca de columnas
+permitidas: todo lo demás se ignora.
+
+**P46. ¿Qué cambios a la base de datos encontraron al construir los servicios?**
+R: Contraseñas en texto plano en el seed, falta `rol.estado` (RF-ROL-06), la tabla `rol_permiso`
+contradice el SRS (la recepcionista podía editar historias, contra RN-01), falta una tabla para los
+tokens de recuperación y hay ventas `PAGADO` con saldo pendiente. Se documentarán en
+`database/CAMBIOS.md` en la fase B; mientras tanto el mock ya trabaja con la versión corregida.
+
+**P47. ¿Qué le falta al frontend para estar completo y cómo se conecta con lo que ya hicieron?**
+R: La fase A6: los HTML de cada pantalla. Cada uno solo declara su rol (`<body data-role>`), carga
+su controlador y este llama a `createAppPage()` (guard + `DashboardLayout`), pide los datos a los
+servicios con `loadInto()` y los muestra con los organismos que ya existen. No hay que tocar ni los
+componentes ni los servicios: esa es la ventaja de haberlos separado.
+
 ---
 
-## 14. Glosario
+## 15. Glosario
 
 | Término | Definición breve |
 |---|---|
 | **a11y** | Abreviatura de *accessibility* (a + 11 letras + y) |
+| **AbortController** | API del navegador para cancelar un `fetch` (la usamos como tiempo límite) |
 | **aria-busy** | Indica que una región se está actualizando; el lector espera a que termine |
+| **Asignación masiva** | Ataque que envía campos que el cliente no debería poder escribir; se evita con una lista blanca (`pick()`) |
+| **Ataque de tiempo** | Deducir información midiendo cuánto tarda una operación |
 | **BEM** | Convención de nombres CSS: Bloque__Elemento--Modificador |
 | **Barrel** | Archivo `index.js` que reexporta los módulos de una carpeta |
+| **bcrypt** | Algoritmo de hash de contraseñas lento y con sal; lo usará el backend |
+| **bfcache** | Caché del navegador que guarda la página entera para el botón "Atrás" sin volver a ejecutar sus scripts |
+| **Bearer token** | Token que se envía en el encabezado `Authorization` para identificar la sesión ante la API |
 | **Breadcrumbs (migas de pan)** | Ruta jerárquica hasta la página actual: Inicio › Pacientes › Andrés |
 | **Closure** | Función que "recuerda" las variables del lugar donde se creó; así guardamos el estado de cada componente |
 | **Condición de carrera** | Error que aparece cuando el resultado depende de qué operación asíncrona termina primero |
 | **Container query** | Estilos según el ancho del contenedor, no de la ventana |
+| **Contexto seguro** | Página servida por `https`, `localhost` o `127.0.0.1`; requisito de Web Crypto |
 | **Debounce** | Esperar a que un evento deje de repetirse antes de actuar |
+| **Defensa en profundidad** | Varias capas de protección; si una falla, la siguiente detiene el ataque |
 | **Design token** | Variable de diseño con nombre (color, espacio, radio…) |
 | **Disclosure** | Patrón de botón que muestra u oculta un panel |
 | **dvh** | Alto dinámico de la ventana: descuenta las barras del navegador móvil |
+| **Enumeración de usuarios** | Averiguar qué cuentas existen por las diferencias en mensajes o tiempos de respuesta |
 | **ES Modules** | Sistema nativo de `import`/`export` de JavaScript (requiere servidor, por eso Live Server) |
 | **FDI** | Sistema internacional de numeración dental de dos dígitos |
+| **Guard** | Función que se ejecuta al abrir una página y redirige si no hay sesión o el rol no tiene acceso |
+| **Hash** | Resumen de un solo sentido de un dato; no se puede revertir (a diferencia del cifrado) |
 | **Idempotente** | Operación que da el mismo resultado si se ejecuta una o varias veces |
 | **Landmark** | Región de la página (banner, navigation, main…) a la que el lector de pantalla puede saltar |
+| **localStorage** | Almacenamiento clave-valor del navegador que persiste entre recargas (≈5 MB por origen) |
 | **Mock** | Datos de prueba que imitan los reales mientras no existe el backend |
+| **PBKDF2** | Algoritmo de derivación de claves (hash lento con sal e iteraciones), nativo en Web Crypto |
+| **Redirección abierta** | Vulnerabilidad que usa un parámetro de la URL para enviar al usuario a un sitio externo |
 | **Reflow** | Recálculo del layout que hace el navegador |
 | **replaceState** | Cambia la URL sin agregar una entrada al historial del navegador |
+| **Rollback** | Deshacer los cambios de una operación que falló, dejando los datos como estaban |
 | **Roving tabindex** | Solo un elemento del grupo es tabulable; las flechas mueven el foco dentro del grupo |
+| **Sal (salt)** | Bytes aleatorios por usuario que se mezclan con la contraseña antes del hash |
+| **Service Layer** | Capa que separa la vista de la fuente de datos; las páginas piden, el servicio sabe de dónde sacar |
 | **Skip link** | Enlace inicial "Saltar al contenido principal" para usuarios de teclado |
 | **Slot** | Hueco de un template que la página llena con su contenido |
+| **structuredClone** | Copia profunda nativa de un objeto; evita modificar la base simulada por referencia |
 | **Template** | Estructura de una pantalla sin datos (nivel 4 de Atomic Design) |
 | **WAI-ARIA** | Especificación del W3C de roles y atributos para accesibilidad |
+| **Web Crypto** | API criptográfica nativa del navegador (`crypto.subtle`, `crypto.getRandomValues`) |
 | **XSS** | Cross-Site Scripting: inyección de scripts maliciosos |

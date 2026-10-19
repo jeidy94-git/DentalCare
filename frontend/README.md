@@ -5,6 +5,10 @@ HTML5 + CSS3 + JavaScript puro (ES Modules), organizado con **Atomic Design**. S
 ## Cómo ejecutar
 Los ES Modules no funcionan abriendo el archivo con doble clic (`file://`). Usa un servidor local:
 - VS Code → extensión **Live Server** → clic derecho en `styleguide.html` → *Open with Live Server*.
+- Ábrelo por `127.0.0.1` o `localhost` (no por la IP de la red): el login usa Web Crypto, que solo existe en contextos seguros.
+
+## Pruebas
+Desde la raíz del proyecto, sin instalar nada (Node 20+): `node tests/agenda.test.mjs`, `node tests/services.test.mjs`, `node tests/guard.test.mjs`.
 
 ## Estructura
 ```
@@ -22,6 +26,8 @@ js/
                format.js → formatNumber, formatCOP, formatDate, formatLongDate, formatRelative, toDate (es-CO)
                dates.js → toISODate, addDays, startOfWeek… · agenda.js → franjas, RN-02, alternativas
                popover.js → menús desplegables · navigation.js → menú por rol + appUrl()
+               config.js → USE_MOCK, API_BASE_URL… · storage.js → localStorage con prefijo y respaldo en memoria
+               session.js → sesión con vencimiento · guard.js → protección de páginas por rol · permissions.js → can()
   components/
     atoms/     Icon, Button, Input, Select, Textarea, Checkbox, Radio, Switch,
                Badge/StatusBadge, Avatar, Label, Spinner, Link  (barrel: index.js)
@@ -30,8 +36,11 @@ js/
     organisms/ Topbar, Sidebar, DataTable, openModalForm, Odontogram, Calendar,
                BarChart/DashboardCharts, BookingWizard  (barrel: index.js)
     templates/ DashboardLayout, AuthLayout, DetailLayout  (barrel: index.js)
-  data/mock/   pacientes, especialistas (+horarios), servicios, citas, odontograma, historias, usuarios
-  pages/       un controlador por página HTML
+  data/mock/   pacientes, especialistas (+horarios), servicios, citas, odontograma, historias, consultas,
+               ventas, novedades, seguridad (roles, permisos, usuarios con hash PBKDF2), usuarios
+  services/    capa de servicios: auth, pacientes, citas, historias, odontograma, servicios, especialistas,
+               ventas, novedades (barrel: index.js) · http.js (API) · api-error.js · mock/db.js · mock/password.js
+  pages/       un controlador por página HTML · _shared/app-page.js → createAppPage() + loadInto()
 styleguide.html  catálogo vivo de tokens y componentes
 ```
 
@@ -42,5 +51,8 @@ styleguide.html  catálogo vivo de tokens y componentes
 - Los estados del dominio (`PROGRAMADA`, `PAGADO`…) se pintan con `StatusBadge(estado)`; el catálogo está en `ESTADOS`.
 - Los formularios llevan `novalidate`; la validación en línea la hace `FormField` y al enviar se llama `validateForm(form)`.
 - Odontograma: rojo = por tratar, azul = realizado (convención clínica). Las caras usan los códigos de `odontograma.cara_diente`.
+- Datos: las páginas importan **solo** de `js/services/index.js`; nunca de `data/mock/` ni de `services/mock/`.
+  `USE_MOCK` (en `core/config.js`) elige entre la base simulada en `localStorage` y la API REST.
+- Pantallas internas: arrancan con `createAppPage({ role, activeId, title })` (guard + layout) y cargan con `loadInto()`.
 - Templates: cada pantalla interna se arma con `DashboardLayout` (un solo `<h1>`, migas y skip-link incluidos) y
   cambia su contenido con `setContent()` / `setLoading()`. Login y contraseña usan `AuthLayout`; las fichas, `DetailLayout`.

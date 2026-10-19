@@ -185,3 +185,69 @@
   font-weight: var(--font-medium);
   overflow-wrap: anywhere;
 }
+
+/* Lista de elementos con avatar, texto, dato al lado y estado (p. ej. "Próximas citas") */
+.item-list {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.item-list__item {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-3);
+  padding: var(--space-3) 0;
+  border-top: var(--border-width) solid var(--color-border);
+}
+
+.item-list__item:first-child {
+  border-top: 0;
+}
+
+.item-list__main {
+  display: flex;
+  flex: 1 1 12rem;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.item-list__title {
+  font-size: var(--text-sm);
+  font-weight: var(--font-medium);
+  overflow-wrap: anywhere;
+}
+
+.item-list__meta,
+.item-list__aside {
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+}
+
+.item-list__empty {
+  margin: 0;
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+
+/* ---------- Error al cargar el contenido (loadInto) ---------- */
+.page-error {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-4);
+  padding: var(--space-12) var(--space-4);
+  border: var(--border-width) solid var(--color-danger-100);
+  border-radius: var(--radius-lg);
+  background: var(--color-danger-50);
+  color: var(--color-danger-700);
+  text-align: center;
+}
+
+.page-error p {
+  margin: 0;
+  font-size: var(--text-sm);
+}
