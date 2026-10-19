@@ -213,3 +213,70 @@
   background: var(--color-success-50);
   color: var(--color-success-700);
 }
+
+/* ---------- Páginas reales (fase A6) ---------- */
+.auth-form__alert:empty {
+  display: none;
+}
+
+/* Cuentas de demostración (solo con USE_MOCK): clic = llena el formulario */
+.auth-demo {
+  text-align: left;
+}
+
+.auth-demo summary {
+  cursor: pointer;
+  font-weight: var(--font-medium);
+  color: var(--color-text-secondary);
+}
+
+.auth-demo__list {
+  display: grid;
+  gap: var(--space-2);
+  margin: var(--space-3) 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.auth-demo__item {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: var(--space-1) var(--space-3);
+  width: 100%;
+  padding: var(--space-2) var(--space-3);
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font: inherit;
+  font-size: var(--text-xs);
+  text-align: left;
+  cursor: pointer;
+}
+
+.auth-demo__item:hover {
+  background: var(--color-surface-hover);
+}
+
+.auth-demo__item:focus-visible {
+  outline: 2px solid var(--color-brand);
+  outline-offset: 2px;
+}
+
+.auth-demo__item span {
+  color: var(--color-text-muted);
+  overflow-wrap: anywhere;
+}
+
+/* 403: ícono de escudo en tono de alerta y la ruta pedida */
+.auth-notice--denied .auth-notice__icon {
+  background: var(--color-danger-50);
+  color: var(--color-danger-700);
+}
+
+.auth-notice__detail {
+  margin: 0;
+  font-size: var(--text-xs);
+  overflow-wrap: anywhere;
+}

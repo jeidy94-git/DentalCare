@@ -17,6 +17,10 @@ export const ROLES = {
   PACIENTE: { label: 'Paciente', home: 'pages/paciente/inicio.html' },
 };
 
+/**
+ * Menú de cada rol = pantallas de la fase A6. Los `id` son los `activeId` que usa cada página.
+ * Las fichas (pages/doctor/historia.html?id=…) no van en el menú: se abren desde Pacientes o Agenda.
+ */
 export const NAV_BY_ROLE = {
   ADMINISTRADOR: [
     {
@@ -26,17 +30,9 @@ export const NAV_BY_ROLE = {
         { id: 'citas', label: 'Citas', icon: 'calendar', href: 'pages/admin/citas.html' },
         { id: 'pacientes', label: 'Pacientes', icon: 'users', href: 'pages/admin/pacientes.html' },
         { id: 'especialistas', label: 'Especialistas', icon: 'user', href: 'pages/admin/especialistas.html' },
-        { id: 'tratamientos', label: 'Tratamientos', icon: 'tooth', href: 'pages/admin/tratamientos.html' },
-        { id: 'historias', label: 'Historias clínicas', icon: 'file-text', href: 'pages/admin/historias.html' },
+        { id: 'servicios', label: 'Tratamientos', icon: 'tooth', href: 'pages/admin/servicios.html' },
         { id: 'pagos', label: 'Pagos', icon: 'credit-card', href: 'pages/admin/pagos.html' },
-        { id: 'novedades', label: 'Novedades', icon: 'clipboard', href: 'pages/admin/novedades.html' },
-      ],
-    },
-    {
-      section: 'Configuración',
-      items: [
-        { id: 'roles', label: 'Roles y permisos', icon: 'shield', href: 'pages/admin/roles.html' },
-        { id: 'usuarios', label: 'Usuarios', icon: 'settings', href: 'pages/admin/usuarios.html' },
+        { id: 'reportes', label: 'Reportes', icon: 'file-text', href: 'pages/admin/reportes.html' },
       ],
     },
   ],
@@ -46,7 +42,6 @@ export const NAV_BY_ROLE = {
       items: [
         { id: 'inicio', label: 'Inicio', icon: 'home', href: 'pages/asistente/inicio.html' },
         { id: 'agenda', label: 'Agenda', icon: 'calendar', href: 'pages/asistente/agenda.html' },
-        { id: 'agendar', label: 'Agendar cita', icon: 'plus', href: 'pages/asistente/agendar.html' },
         { id: 'pacientes', label: 'Pacientes', icon: 'users', href: 'pages/asistente/pacientes.html' },
         { id: 'pagos', label: 'Pagos', icon: 'credit-card', href: 'pages/asistente/pagos.html' },
         { id: 'novedades', label: 'Novedades', icon: 'clipboard', href: 'pages/asistente/novedades.html' },
@@ -58,16 +53,10 @@ export const NAV_BY_ROLE = {
       section: 'Consulta',
       items: [
         { id: 'dashboard', label: 'Dashboard', icon: 'dashboard', href: 'pages/doctor/dashboard.html' },
-        { id: 'agenda', label: 'Agenda', icon: 'calendar', href: 'pages/doctor/agenda.html' },
+        { id: 'agenda', label: 'Mi agenda', icon: 'calendar', href: 'pages/doctor/agenda.html' },
         { id: 'pacientes', label: 'Pacientes', icon: 'users', href: 'pages/doctor/pacientes.html' },
-        { id: 'tratamientos', label: 'Tratamientos', icon: 'tooth', href: 'pages/doctor/tratamientos.html' },
-        { id: 'reportes', label: 'Reportes', icon: 'file-text', href: 'pages/doctor/reportes.html' },
         { id: 'novedades', label: 'Novedades', icon: 'clipboard', href: 'pages/doctor/novedades.html' },
       ],
-    },
-    {
-      section: 'Cuenta',
-      items: [{ id: 'configuracion', label: 'Configuración', icon: 'settings', href: 'pages/doctor/configuracion.html' }],
     },
   ],
   PACIENTE: [
@@ -75,10 +64,10 @@ export const NAV_BY_ROLE = {
       section: 'Mi portal',
       items: [
         { id: 'inicio', label: 'Inicio', icon: 'home', href: 'pages/paciente/inicio.html' },
-        { id: 'citas', label: 'Mis citas', icon: 'calendar', href: 'pages/paciente/citas.html' },
-        { id: 'solicitar', label: 'Solicitar cita', icon: 'plus', href: 'pages/paciente/solicitar.html' },
-        { id: 'historia', label: 'Mi historia clínica', icon: 'file-text', href: 'pages/paciente/historia.html' },
-        { id: 'pagos', label: 'Mis pagos', icon: 'credit-card', href: 'pages/paciente/pagos.html' },
+        { id: 'agendar', label: 'Solicitar cita', icon: 'plus', href: 'pages/paciente/agendar.html' },
+        { id: 'citas', label: 'Mis citas', icon: 'calendar', href: 'pages/paciente/mis-citas.html' },
+        { id: 'historia', label: 'Mi historia clínica', icon: 'file-text', href: 'pages/paciente/mi-historia.html' },
+        { id: 'pagos', label: 'Mis pagos', icon: 'credit-card', href: 'pages/paciente/mis-pagos.html' },
       ],
     },
   ],

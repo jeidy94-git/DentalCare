@@ -4,11 +4,27 @@ HTML5 + CSS3 + JavaScript puro (ES Modules), organizado con **Atomic Design**. S
 
 ## Cómo ejecutar
 Los ES Modules no funcionan abriendo el archivo con doble clic (`file://`). Usa un servidor local:
-- VS Code → extensión **Live Server** → clic derecho en `styleguide.html` → *Open with Live Server*.
+- VS Code → extensión **Live Server** → clic derecho en `index.html` → *Open with Live Server*.
+  En el login, "Cuentas de demostración" llena el formulario con un usuario de cada rol.
+- El catálogo de componentes está en `styleguide.html`.
 - Ábrelo por `127.0.0.1` o `localhost` (no por la IP de la red): el login usa Web Crypto, que solo existe en contextos seguros.
 
 ## Pruebas
-Desde la raíz del proyecto, sin instalar nada (Node 20+): `node tests/agenda.test.mjs`, `node tests/services.test.mjs`, `node tests/guard.test.mjs`.
+Desde la raíz del proyecto, sin instalar nada (Node 22+): `node tests/agenda.test.mjs`, `node tests/services.test.mjs`, `node tests/guard.test.mjs`.
+
+En navegador real (Edge; otro navegador con `BROWSER_PATH`): `node tests/e2e/server.mjs` en una terminal y, en otra,
+`node tests/e2e/recorrido.test.mjs [ancho]` y `node tests/e2e/flujos.test.mjs [ancho]`.
+
+## Pantallas (fase A6)
+```
+index.html · login.html · 403.html
+pages/admin/      dashboard, pacientes, citas, especialistas, servicios, pagos, reportes
+pages/asistente/  inicio, agenda, pacientes, pagos, novedades
+pages/doctor/     dashboard, agenda, pacientes, historia (?id=), novedades
+pages/paciente/   inicio, agendar, mis-citas, mi-historia, mis-pagos
+```
+Cada HTML declara su rol (`<body data-role="…">`) y carga un controlador de `js/pages/` que puede servir a varios roles
+(p. ej. `pacientes.js` para admin, asistente y doctor).
 
 ## Estructura
 ```
@@ -40,7 +56,9 @@ js/
                ventas, novedades, seguridad (roles, permisos, usuarios con hash PBKDF2), usuarios
   services/    capa de servicios: auth, pacientes, citas, historias, odontograma, servicios, especialistas,
                ventas, novedades (barrel: index.js) · http.js (API) · api-error.js · mock/db.js · mock/password.js
-  pages/       un controlador por página HTML · _shared/app-page.js → createAppPage() + loadInto()
+  pages/       un controlador por vista (compartido entre roles): home, pacientes, citas, pagos, novedades, historia,
+               especialistas, servicios, reportes, agendar, mis-citas, login, forbidden (403), entry (index)
+               _shared/ → app-page.js (createAppPage, loadInto) · ui.js (card, dataList, withFieldErrors…) · citas.js
 styleguide.html  catálogo vivo de tokens y componentes
 ```
 

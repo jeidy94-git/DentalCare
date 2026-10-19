@@ -7,7 +7,7 @@
  * Cada servicio elige su implementación con USE_MOCK (js/core/config.js): mock (localStorage) o API REST.
  */
 export { ApiError, isApiError } from './api-error.js';
-export { authService, mockOutbox } from './auth.service.js';
+export { authService, mockOutbox, demoAccounts, demoNotifications } from './auth.service.js';
 export { pacientesService } from './pacientes.service.js';
 export { citasService } from './citas.service.js';
 export { historiasService } from './historias.service.js';

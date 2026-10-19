@@ -1,10 +1,11 @@
-# Documento de sustentación — DentalCare (Frontend, fases A0 a A5)
+# Documento de sustentación — DentalCare (Frontend, fases A0 a A6)
 
 > Guía de estudio para la sustentación individual. Explica **qué** se construyó, **por qué** se
 > tomó cada decisión y **cómo** defenderla ante el docente. Cada concepto apunta al archivo real del
 > proyecto para que puedas mostrarlo en vivo.
 >
-> Para ver todo funcionando: abrir `frontend/styleguide.html` con **Live Server** (VS Code).
+> Para ver todo funcionando: abrir `frontend/index.html` con **Live Server** (VS Code) e ingresar con
+> una cuenta de demostración (§12.10). El catálogo de componentes sigue en `frontend/styleguide.html`.
 
 ---
 
@@ -22,9 +23,10 @@
 10. [Fase A3: organismos y reglas de negocio](#10-fase-a3-organismos-y-reglas-de-negocio)
 11. [Fase A4: templates](#11-fase-a4-templates)
 12. [Fase A5: capa de servicios, sesión y guards](#12-fase-a5-capa-de-servicios-sesión-y-guards)
-13. [Cómo se verificó la calidad](#13-cómo-se-verificó-la-calidad)
-14. [Simulacro de preguntas del docente](#14-simulacro-de-preguntas-del-docente)
-15. [Glosario](#15-glosario)
+13. [Fase A6: pantallas definitivas por rol](#13-fase-a6-pantallas-definitivas-por-rol)
+14. [Cómo se verificó la calidad](#14-cómo-se-verificó-la-calidad)
+15. [Simulacro de preguntas del docente](#15-simulacro-de-preguntas-del-docente)
+16. [Glosario](#16-glosario)
 
 ---
 
@@ -38,6 +40,7 @@
 | **A3** Organismos | Secciones completas: `Topbar`, `Sidebar`, `DataTable`, `ModalForm`, `Odontogram`, `Calendar`, `DashboardCharts`, `BookingWizard` | `frontend/js/components/organisms/` |
 | **A4** Templates | Esqueletos de pantalla: `DashboardLayout` (marco con skip-link, sidebar, topbar y migas), `AuthLayout` (login y contraseña), `DetailLayout` (ficha del paciente) + molécula `Breadcrumbs` | `frontend/js/components/templates/` |
 | **A5** Servicios y sesión | Capa de servicios (9 servicios con la misma interfaz para mock y API), base de datos simulada en `localStorage`, login con contraseñas PBKDF2, sesión con vencimiento, *guard* de páginas por rol, matriz de permisos y auditoría | `frontend/js/services/`, `frontend/js/core/` (`config`, `storage`, `session`, `guard`, `permissions`) |
+| **A6** Pantallas | 25 pantallas HTML: entrada (`index`, `login`, `403`) y las de cada rol, con 14 controladores compartidos que solo consumen la capa de servicios | `frontend/*.html`, `frontend/pages/<rol>/`, `frontend/js/pages/` |
 
 **Stack del proyecto:** HTML5 + CSS3 + JavaScript puro (ES Modules) en el frontend; Node.js + Express +
 MySQL (mysql2/promise, sin ORM) en el backend (fases C y D). Mientras no existe el backend, las
@@ -749,7 +752,7 @@ try {
   (`GET /citas`, `PATCH /citas/:id/estado`…). El mock **es** la especificación del backend.
 - **Errores uniformes:** mock y API lanzan el mismo `ApiError` (`status`, `message`, `fields`, `code`),
   así la página maneja los errores de una sola forma.
-- **Probable:** los servicios se prueban en Node sin navegador (65 pruebas, §13).
+- **Comprobable:** los servicios se prueban en Node sin navegador (67 pruebas, §14).
 
 | `status` de `ApiError` | Significado | Ejemplo |
 |---|---|---|
@@ -1028,9 +1031,206 @@ Reglas para A6:
   cada rol listadas en `core/navigation.js → NAV_BY_ROLE`. `js/pages/home.js` ya sirve el inicio
   de los cuatro roles (`<body data-role="…">`).
 
+> **Cómo quedó en A6:** en vez de un controlador por carpeta (`js/pages/admin/pacientes.js`), se usó
+> un controlador **por vista** compartido entre roles (`js/pages/pacientes.js`), que toma el rol de
+> `<body data-role>`. Ver §13.1.
+
 ---
 
-## 13. Cómo se verificó la calidad
+## 13. Fase A6: pantallas definitivas por rol
+
+En A6 se construyó el **último nivel de Atomic Design: las páginas**. Cada pantalla es un HTML
+casi vacío más un controlador que: (1) verifica sesión y rol, (2) pide datos a los servicios y
+(3) los muestra con los organismos que ya existían. **No se escribió ningún componente nuevo**: se
+compusieron los de A1–A4.
+
+| Rol | Carpeta | Pantallas | Organismos que usa |
+|---|---|---|---|
+| — (entrada) | `frontend/` | `index.html`, `login.html`, `403.html` | `AuthLayout` |
+| Administrador | `pages/admin/` | `dashboard`, `pacientes`, `citas`, `especialistas`, `servicios`, `pagos`, `reportes` | `DataTable`, `Calendar`, `BookingWizard`, `ModalForm`, `DashboardCharts`, `BarChart` |
+| Recepcionista | `pages/asistente/` | `inicio`, `agenda`, `pacientes`, `pagos`, `novedades` | `Calendar`, `BookingWizard`, `DataTable`, `ModalForm` |
+| Odontólogo | `pages/doctor/` | `dashboard`, `agenda`, `pacientes`, `historia` (ficha), `novedades` | `Calendar`, `DetailLayout`, `Odontogram`, `DataTable` |
+| Paciente | `pages/paciente/` | `inicio`, `agendar`, `mis-citas`, `mi-historia`, `mis-pagos` | `BookingWizard`, `DetailLayout`, `Odontogram` (solo lectura), `DataTable` |
+
+### 13.1 Un controlador por vista, compartido entre roles
+
+25 HTML, pero solo **14 controladores** en `js/pages/`. "Pacientes" existe para tres roles y es la
+misma vista con distintos permisos: `pages/admin/pacientes.html`, `pages/asistente/pacientes.html` y
+`pages/doctor/pacientes.html` cargan el mismo `js/pages/pacientes.js`. Lo que cambia es el rol que
+declara cada HTML:
+
+```html
+<body data-role="RECEPCIONISTA">   <!-- pages/asistente/pacientes.html -->
+```
+
+```js
+// js/pages/pacientes.js
+const page = createAppPage({ activeId: 'pacientes', title: 'Pacientes' }); // rol ← <body data-role>
+const gestiona = can(user, PERMISOS.GESTIONAR_PACIENTES);  // admin y recepción: crear/editar/eliminar
+const esOdontologo = user.rol === 'ESPECIALISTA';           // odontólogo: "Ver ficha clínica"
+```
+
+| Controlador | Pantallas que atiende |
+|---|---|
+| `home.js` | inicio/dashboard de los 4 roles |
+| `pacientes.js` | admin, asistente, doctor |
+| `citas.js` | `admin/citas`, `asistente/agenda`, `doctor/agenda` |
+| `pagos.js` | `admin/pagos`, `asistente/pagos`, `paciente/mis-pagos` |
+| `novedades.js` | `asistente/novedades`, `doctor/novedades` |
+| `historia.js` | `doctor/historia?id=…`, `paciente/mi-historia` |
+| `especialistas.js`, `servicios.js`, `reportes.js` | solo administrador |
+| `agendar.js`, `mis-citas.js` | solo paciente |
+| `entry.js`, `login.js`, `forbidden.js` | `index.html`, `login.html`, `403.html` |
+
+**¿Por qué?** Evita copiar y pegar (DRY): una corrección en la tabla de pacientes llega a los tres
+roles. Y como el rol que decide es el de la **sesión**, no el del HTML, alguien que edite el
+`data-role` no gana nada: el guard compara contra su sesión y lo manda al 403.
+
+**Detalle de seguridad:** si a una página se le olvidara el `data-role`, `guard(undefined)` dejaría
+entrar a **cualquier** usuario con sesión. Por eso `createAppPage()` lanza un error si no recibe
+rol: es preferible una página rota durante el desarrollo a una página abierta sin querer.
+
+Piezas compartidas en `js/pages/_shared/`:
+- `app-page.js`: `createAppPage()` (guard + layout) y `loadInto()` (carga con spinner y error con "Reintentar").
+- `ui.js`: `card()`, `dataList()`, `notice()`, `crumbs()`, `withFieldErrors()`, `runAction()`.
+- `citas.js`: columnas, filtros y **acciones por estado** de las citas (las usan 4 pantallas).
+
+### 13.2 El HTML de cada página
+
+```html
+<head>
+  <title>Pacientes · DentalCare</title>
+  <link rel="icon" href="../../favicon.svg" type="image/svg+xml" />
+  <link rel="stylesheet" href="../../css/main.css" />
+  <script type="module" src="../../js/pages/pacientes.js"></script>
+</head>
+<body data-role="ADMINISTRADOR">
+  <noscript><p class="noscript">DentalCare necesita JavaScript activado para funcionar.</p></noscript>
+</body>
+```
+
+- `type="module"` se ejecuta **diferido** (después de leer el HTML), aunque esté en el `<head>`:
+  cuando corre, `document.body` ya existe.
+- El `<title>` inicial es el que se ve mientras carga; luego `DashboardLayout` lo actualiza.
+- `<noscript>`: sin JavaScript la app no funciona, y se dice en vez de mostrar una página en blanco.
+- `<meta name="robots" content="noindex">`: son pantallas internas, no deben aparecer en buscadores.
+- Los 25 HTML se generaron con un script a partir de una tabla (ruta, rol, título, controlador),
+  para que todos tengan **exactamente** el mismo esqueleto.
+
+### 13.3 Entrada: `index.html`, `login.html` y `403.html`
+
+| Pantalla | Comportamiento |
+|---|---|
+| `index.html` | No dibuja nada: con sesión → inicio del rol; sin sesión → login. Usa `location.replace` para no quedar en el historial |
+| `login.html` | Vistas de `AuthLayout` sin recargar: **ingresar → recuperar → "revisa tu correo" → contraseña nueva** |
+| `login.html?next=…` | Tras ingresar vuelve a esa página, **validada** con `safeNext()` (§12.6) |
+| `login.html?expired=1` | Aviso "Tu sesión terminó por seguridad" (`role="status"`) |
+| `login.html?token=…` | Verifica el enlace: si sirve, pide la contraseña nueva; si no, "Enlace no válido" y opción de pedir otro. Luego quita el token de la URL con `history.replaceState` |
+| `403.html?from=…` | "Acceso denegado", la página pedida (como texto, nunca como HTML), "Ir a mi inicio" e "Ingresar con otra cuenta" |
+
+- **Error de login junto al campo:** el 401 se muestra en la contraseña con `setFieldError` y el
+  mismo texto para correo o contraseña equivocados (RF-ACC-02). Los demás errores (cuenta inactiva,
+  sin conexión) van en una alerta arriba del formulario.
+- **Cuentas de demostración:** un `<details>` con las 4 cuentas; un clic llena el formulario. Las
+  entrega `demoAccounts()` del servicio de autenticación, que con `USE_MOCK = false` devuelve una
+  lista **vacía**: con la API real ese panel desaparece solo.
+
+### 13.4 Menú por rol = pantallas que existen
+
+El menú de A3 (`NAV_BY_ROLE`) tenía enlaces a pantallas que no se iban a construir en A6 (roles y
+usuarios, historias del administrador, configuración del odontólogo…). Un enlace a una página que no
+existe es un error 404 para el usuario, así que el menú se **alineó** con las 25 pantallas. Las
+fichas (`doctor/historia.html?id=…`) no van en el menú: se abren desde Pacientes o desde la Agenda.
+
+### 13.5 Errores del servicio dentro de los formularios
+
+El servicio responde `ApiError(409, …, { fields: { numero_documento: 'Ya existe…' } })`, pero
+`ModalForm` muestra junto al campo solo los errores con `.field`. `withFieldErrors()` traduce uno en
+el otro:
+
+```js
+onSubmit: withFieldErrors((data) => pacientesService.create(data)),
+// ApiError.fields.numero_documento → FieldError('numero_documento', 'Ya existe…') → junto al input
+```
+
+Así el usuario ve el error **en el campo que debe corregir**, con el foco puesto ahí, y no en un
+mensaje genérico arriba del formulario.
+
+### 13.6 Privacidad al agendar: `citasService.ocupacion()`
+
+El `BookingWizard` calcula las franjas libres con las citas existentes (RN-02). Para recepción eso
+no es problema, pero **el paciente no puede ver las citas de otros pacientes**: `citasService.list()`
+solo le devuelve las suyas. Si el wizard usara solo esas, le ofrecería franjas ocupadas y fallaría al
+guardar.
+
+Solución: un método nuevo que entrega **solo lo necesario** para calcular disponibilidad:
+
+```js
+citasService.ocupacion({ desde: '2026-10-19' })
+// → [{ id_especialista: 1, fecha_hora: '2026-10-20 09:00:00', estado_cita: 'PROGRAMADA' }, …]
+//   sin id_cita, sin id_paciente, sin nombres
+```
+
+Es la idea de **minimización de datos**: cada pantalla recibe solo lo que necesita. Va en la línea
+del principio de *acceso y circulación restringida* de la Ley 1581 de 2012 (protección de datos
+personales en Colombia), y los datos de salud son datos **sensibles**. Hay una prueba que verifica que cada registro tiene
+exactamente esas tres claves.
+
+### 13.7 Ajustes a organismos (sin romper lo anterior)
+
+| Pieza | Cambio | Por qué |
+|---|---|---|
+| `BookingWizard` | `pacienteId` (paciente fijo: se omite el paso 1) | En el portal, el paciente es el de la sesión |
+| `BookingWizard` | `pendingConfirmation` | HU-06: lo que pide el paciente queda "Pendiente de confirmación"; el aviso del paso final y el resumen lo dicen |
+| `BookingWizard` | Usa la cita que **devuelve** `onComplete` | Antes inventaba el id y siempre decía "Programada"; ahora muestra el id y el estado **reales** del servicio |
+| `Odontogram` | El evento `remove` incluye el hallazgo quitado | Sin él, la página no sabía qué registro borrar en el servicio |
+| `especialistaConNombre` | Devuelve también `nombres` y `apellidos` | Para editar el nombre sin adivinar dónde termina el nombre y empieza el apellido |
+
+Todas son **opcionales y retrocompatibles**: el styleguide y las pruebas anteriores siguen igual.
+
+### 13.8 La ficha clínica (`historia.js`)
+
+- **RN-01 en la interfaz:** la ficha se edita (odontograma, consultas, historia) si el usuario es
+  administrador o un odontólogo **con una cita no cancelada** con ese paciente. Si no, se muestra
+  en solo lectura con una alerta que explica por qué. Es la misma regla de `assertRN01` en el
+  servicio: la interfaz solo evita mostrar botones que fallarían.
+- **Alergias siempre visibles** (alerta roja sobre las pestañas), como se definió en A4.
+- **Actualización optimista del odontograma:** el diente cambia de color al instante y luego se
+  guarda. Si el servicio lo rechaza, se avisa y se **recarga lo guardado** (la pantalla no puede
+  quedarse mostrando algo que no está en la base).
+- **Registrar consulta:** solo sobre citas propias programadas y sin consulta; la cita queda
+  completada (lo hace el servicio).
+- **Piezas ausentes:** se pueden marcar en pantalla, pero la tabla `odontograma` no tiene ese dato;
+  el sistema lo **dice** en vez de fingir que se guardó (cambio previsto para la fase B).
+- El paciente ve **su** ficha (`mi-historia.html`): el id sale de la sesión, no de la URL. Un
+  paciente no puede escribir `?id=12` para ver la de otro: esa página ni siquiera lee la URL, y el
+  servicio respondería 403.
+
+### 13.9 Acciones según el estado de la cita
+
+Los botones de cada cita salen de `allowedTransitions(cita, user)`, que replica la máquina de
+estados del servicio:
+
+| Acción | Cuándo aparece |
+|---|---|
+| Confirmar | Cita *pendiente de confirmación* · administrador o recepción |
+| Marcar como completada | Cita *programada* · administrador o el odontólogo de esa cita |
+| Cancelar | Cita activa · quien tenga `CANCELAR_CITA` (el paciente, solo citas futuras y suyas) |
+| Ver ficha | Odontólogo |
+
+Cancelar **siempre** pide confirmación (no se puede deshacer). En el calendario, al elegir una cita
+se abre su resumen con un selector de las acciones permitidas.
+
+### 13.10 Pendientes conscientes (fuera del alcance de A6)
+
+- Gestión de **usuarios y roles** (RF-ROL): requiere un servicio que aún no existe.
+- **Novedades** e **historias** desde el menú del administrador (los servicios ya lo permiten).
+- **Piezas ausentes** del odontograma (falta la columna en la BD).
+- Las **notificaciones** de la topbar siguen siendo de demostración.
+
+---
+
+## 14. Cómo se verificó la calidad
 
 Se escribieron **pruebas automatizadas** que abren el styleguide en un navegador real (Edge sin
 interfaz), simulan clics, teclado y envío de formularios, y comprueban el resultado:
@@ -1042,9 +1242,11 @@ interfaz), simulan clics, teclado y envío de formularios, y comprueban el resul
 | Templates (A4) | 56 | 56 ✅ |
 | Lógica de agenda y datos mock (Node) — `tests/agenda.test.mjs` | 18 | 18 ✅ |
 | Desborde horizontal en móvil (375 px), incluidos los 3 templates | — | sin desborde ✅ |
-| Capa de servicios (A5, Node) — `tests/services.test.mjs` | 65 | 65 ✅ |
+| Capa de servicios (A5 + `ocupacion` de A6, Node) — `tests/services.test.mjs` | 67 | 67 ✅ |
 | Storage, sesión y guard (A5, Node) — `tests/guard.test.mjs` | 30 | 30 ✅ |
 | Prueba de humo A5 en Edge real (1366 px y 375 px): login con Web Crypto, `localStorage`, inicio del administrador | 11 | 11 ✅ |
+| **Recorrido A6** en Edge real — `tests/e2e/recorrido.test.mjs`: las 25 pantallas con los 4 roles, un solo `<h1>`, sin errores de carga, sin desborde, guards y redirecciones | 59 | 59 ✅ a 1366 px y a 375 px |
+| **Flujos A6** en Edge real — `tests/e2e/flujos.test.mjs`: registrar paciente, pedir cita, cancelar, confirmar, registrar consulta, RN-01 en solo lectura, abono, cerrar sesión | 17 | 17 ✅ a 1366 px y a 375 px |
 
 Al terminar A4 se **volvieron a correr** las suites de A2 y A3 (pruebas de regresión): siguen en
 74/74 y 73/73, así que lo nuevo no dañó nada de lo anterior.
@@ -1056,6 +1258,19 @@ node tests/agenda.test.mjs
 node tests/services.test.mjs
 node tests/guard.test.mjs
 ```
+
+**Cómo correr las pruebas en navegador (A6)** — necesitan Microsoft Edge (o Chrome con
+`BROWSER_PATH`) y el servidor de pruebas abierto en otra terminal:
+
+```bash
+node tests/e2e/server.mjs                 # terminal 1: sirve frontend/ en http://127.0.0.1:5600
+node tests/e2e/recorrido.test.mjs 1366    # terminal 2 (375 para móvil)
+node tests/e2e/flujos.test.mjs 1366
+```
+
+Usan el **protocolo DevTools (CDP)** directamente desde Node, sin librerías: abren el navegador sin
+interfaz, escriben en los formularios, hacen clic y leen el resultado. Además recogen **todo error de
+JavaScript** que aparezca en la consola: una página que "se ve bien" pero lanza errores no pasa.
 
 **Qué cubren las pruebas de A5:**
 - **Autenticación:** mismo mensaje para correo inexistente y contraseña mala; ninguna contraseña
@@ -1096,6 +1311,19 @@ node tests/guard.test.mjs
     repositorio (se habrían perdido). Se movieron a `tests/` y se agregó la de `guard.js`, que no
     tenía pruebas.
 
+**Hallazgos de A6:**
+11. **Promesa rechazada sin manejar:** después de cancelar una cita, la lista se recarga. Si la
+    sesión vencía justo en ese momento, el 401 de la recarga quedaba como error sin manejar en la
+    consola. Ahora la recarga pasa por `runAction()` y se muestra un aviso. Lo encontró la prueba de
+    flujos, que cierra sesión muy rápido después de cancelar.
+12. **El wizard mentía sobre el estado:** decía "estado Programada" aunque el servicio guardara la
+    cita del paciente como *pendiente de confirmación*. Ahora muestra la cita que devuelve el servicio.
+13. **El odontograma no decía qué se borró:** el evento `remove` no traía el hallazgo, así que no se
+    podía eliminar en el servicio.
+14. **Riesgo de página abierta:** un HTML sin `data-role` habría dejado entrar a cualquier rol.
+    `createAppPage()` ahora lo impide (§13.1).
+15. Faltaba el **favicon** (error 404 en la consola de todas las páginas) → `favicon.svg`.
+
 **Las pruebas también se equivocan:** la prueba del *skip link* falló la primera vez porque leía
 el estilo **durante** la transición de 120 ms (el enlace todavía se estaba moviendo). El código
 estaba bien; se corrigió la prueba para esperar a que la transición terminara. En A5 pasó algo
@@ -1103,13 +1331,18 @@ parecido: una prueba del guard falló porque los guards de casos anteriores segu
 sesión y también redirigían; el código estaba bien y se ajustó la prueba. Y la prueba en Edge sin
 interfaz se quedaba quieta en el login: el modo de "tiempo virtual" del navegador no espera a Web
 Crypto (que calcula el hash fuera del hilo principal), así que se cambió a esperar en tiempo real.
+En A6, las pruebas de navegador fallaban **a veces** en pasos distintos ("no encontré el botón").
+La causa era la prueba: tras pedir una página nueva esperaba 400 ms fijos y, si el navegador aún
+mostraba la anterior, buscaba el botón en la página equivocada. Se corrigió esperando a que la URL
+sea la nueva, y se repitió la suite varias veces seguidas para confirmar que ya es estable. Una
+prueba que falla "a veces" no se ignora: o hay un error en el código, o la prueba no es confiable.
 
 **Frase para la sustentación:** *"No asumí que funcionaba: lo probé, y las pruebas encontraron
 errores que un usuario habría encontrado primero."*
 
 ---
 
-## 14. Simulacro de preguntas del docente
+## 15. Simulacro de preguntas del docente
 
 **P1. ¿Qué es Atomic Design y por qué lo usaron?**
 R: Una metodología que divide la interfaz en átomos, moléculas, organismos, templates y páginas. La
@@ -1208,9 +1441,10 @@ odontograma decide si el panel va al lado o debajo según el espacio que realmen
 hace reutilizable en cualquier página o modal.
 
 **P19. ¿Cómo prueban que todo funciona?**
-R: Con 327 pruebas automatizadas en un navegador real y en Node: interacciones, teclado, ARIA,
-validaciones, reglas de negocio, permisos, sesión y diseño responsive. Encontraron errores reales
-que se corrigieron (sección 13). Las de Node están en `tests/` y cualquiera las puede repetir con
+R: Con 405 pruebas automatizadas en un navegador real y en Node: interacciones, teclado, ARIA,
+validaciones, reglas de negocio, permisos, sesión, diseño responsive y, desde A6, recorridos
+completos de usuario por las 25 pantallas. Encontraron errores reales
+que se corrigieron (sección 14). Las de Node están en `tests/` y cualquiera las puede repetir con
 `node tests/<suite>.test.mjs`.
 
 **P20. ¿Qué cambios necesita la base de datos y por qué?**
@@ -1380,9 +1614,71 @@ su controlador y este llama a `createAppPage()` (guard + `DashboardLayout`), pid
 servicios con `loadInto()` y los muestra con los organismos que ya existen. No hay que tocar ni los
 componentes ni los servicios: esa es la ventaja de haberlos separado.
 
+#### Preguntas de la fase A6 (pantallas por rol)
+
+**P48. ¿Cuál es la diferencia entre un template y una página en su proyecto? Muéstrelo.**
+R: `DashboardLayout` es el template: sidebar, topbar, migas, título y un hueco para el contenido.
+`pages/admin/pacientes.html` es una página: usa ese template, le pone el título "Pacientes", pide
+los pacientes a `pacientesService` y mete un `DataTable` en el hueco. En A6 no se creó ningún
+componente: solo se compusieron los existentes con datos reales.
+
+**P49. ¿Por qué hay 25 HTML pero solo 14 controladores?**
+R: Porque varias pantallas son la misma vista para distintos roles. `pacientes.js` atiende a
+administración, recepción y odontólogo; el HTML de cada carpeta declara su rol con
+`<body data-role>`, y el controlador decide qué botones mostrar con `can(user, permiso)`. Así una
+corrección llega a los tres roles a la vez (principio DRY).
+
+**P50. Si el rol viene del HTML, ¿no puede alguien cambiarlo y entrar como administrador?**
+R: No. El `data-role` dice qué rol **exige** la página, no qué rol **tiene** el usuario. El guard
+compara ese requisito con el rol de la sesión: si alguien edita el HTML para que pida su propio rol,
+solo verá la pantalla, pero cada dato lo pide a un servicio que verifica permisos con la sesión
+(y en la fase C, el servidor con el token). Además, si una página no declarara rol,
+`createAppPage()` falla a propósito para que no quede abierta.
+
+**P51. ¿Cómo agenda un paciente sin ver las citas de los demás?**
+R: El wizard necesita saber qué franjas están ocupadas, pero no **de quién**. Se creó
+`citasService.ocupacion()`, que devuelve solo odontólogo, fecha y estado: sin paciente, sin id y sin
+motivo. Es minimización de datos, importante porque son datos de salud. Una prueba verifica que cada
+registro trae exactamente esas tres claves.
+
+**P52. ¿Qué pasa cuando el paciente pide una cita?**
+R: Elige tratamiento, odontólogo y una franja libre (RN-02); la cita queda *pendiente de
+confirmación* (HU-06) y así lo dice el resumen final, porque muestra lo que devolvió el servicio.
+Recepción la ve en su agenda con el contador "por confirmar", la confirma y pasa a *programada*.
+Esa secuencia completa está en la prueba de flujos.
+
+**P53. ¿Cómo muestran un error del servidor dentro de un formulario?**
+R: El servicio lanza `ApiError` con `fields` (por ejemplo, documento repetido). `withFieldErrors()`
+lo convierte en un `FieldError` y el `ModalForm` lo pinta debajo del campo exacto y le pone el foco.
+El usuario sabe qué corregir sin leer un mensaje genérico.
+
+**P54. ¿Qué es una actualización optimista y dónde la usan?**
+R: Mostrar el cambio en pantalla antes de que el servidor confirme, para que la interfaz se sienta
+inmediata. La usamos en el odontograma: el diente cambia de color al instante y se guarda en segundo
+plano. Si el servicio lo rechaza (por ejemplo, RN-01), se muestra el error y se recarga lo guardado,
+para que la pantalla nunca muestre algo que no está en la base.
+
+**P55. ¿Por qué el menú ya no tiene "Roles y permisos" ni "Usuarios"?**
+R: Porque esas pantallas no se construyeron en A6 (necesitan un servicio de usuarios que aún no
+existe). Dejar el enlace llevaría a un error 404. Es una decisión consciente y está documentada como
+pendiente.
+
+**P56. ¿Cómo probaron las pantallas?**
+R: Con dos pruebas en Edge real controlado desde Node por el protocolo DevTools. El recorrido entra
+con cada rol a sus pantallas y verifica que cargan, que tienen un solo `<h1>`, que no desbordan en
+móvil y que el guard redirige bien (sin sesión → login; rol equivocado → 403). La de flujos usa la
+aplicación como una persona: registra un paciente, pide una cita, la cancela, la confirma, registra
+una consulta y un abono. Ambas fallan si aparece cualquier error de JavaScript en la consola.
+
+**P57. ¿Qué es una prueba "intermitente" (*flaky*) y qué hicieron con la suya?**
+R: Una prueba que a veces pasa y a veces falla sin cambios en el código. La nuestra buscaba un botón
+mientras el navegador todavía mostraba la página anterior. No la ignoramos: corregimos la espera
+(hasta que la URL sea la nueva) y la corrimos varias veces seguidas hasta que fue estable. Una
+prueba intermitente que se ignora termina escondiendo errores reales.
+
 ---
 
-## 15. Glosario
+## 16. Glosario
 
 | Término | Definición breve |
 |---|---|
@@ -1414,6 +1710,12 @@ componentes ni los servicios: esa es la ventaja de haberlos separado.
 | **Idempotente** | Operación que da el mismo resultado si se ejecuta una o varias veces |
 | **Landmark** | Región de la página (banner, navigation, main…) a la que el lector de pantalla puede saltar |
 | **localStorage** | Almacenamiento clave-valor del navegador que persiste entre recargas (≈5 MB por origen) |
+| **Actualización optimista** | Mostrar un cambio en pantalla antes de que el servidor lo confirme, y revertirlo si falla |
+| **CDP (Chrome DevTools Protocol)** | Protocolo para controlar Edge/Chrome desde un programa; lo usan las pruebas E2E |
+| **DRY** | *Don't Repeat Yourself*: no duplicar código; aquí, un controlador compartido entre roles |
+| **E2E (de punta a punta)** | Prueba que usa la aplicación completa en un navegador, como lo haría una persona |
+| **Flaky (intermitente)** | Prueba que a veces pasa y a veces falla sin cambios en el código |
+| **Minimización de datos** | Entregar a cada pantalla solo los datos que necesita (p. ej. `ocupacion()` sin pacientes) |
 | **Mock** | Datos de prueba que imitan los reales mientras no existe el backend |
 | **PBKDF2** | Algoritmo de derivación de claves (hash lento con sal e iteraciones), nativo en Web Crypto |
 | **Redirección abierta** | Vulnerabilidad que usa un parámetro de la URL para enviar al usuario a un sitio externo |

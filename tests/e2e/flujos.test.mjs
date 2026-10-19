@@ -1,0 +1,129 @@
+// Flujos de la fase A6 de punta a punta, como los haría cada usuario:
+//  A recepción registra un paciente (documento repetido → error en el campo)   B el paciente solicita una cita
+//  C el paciente cancela   D recepción confirma   E el odontólogo registra una consulta
+//  F RN-01: otra odontóloga sin citas ve la ficha en solo lectura   G abono   H cerrar sesión
+// Requiere el servidor: node tests/e2e/server.mjs
+// Uso: node tests/e2e/flujos.test.mjs [ancho=1366]
+import { startBrowser, sleep } from './harness.mjs';
+
+const b = await startBrowser(Number(process.argv[2] ?? 1366));
+const { send, evaluate, go, waitReady, login, here, check } = b;
+
+// Utilidades que corren DENTRO de la página
+const PAGE_HELPERS = `
+  window.__t = {
+    q: (sel) => document.querySelector(sel),
+    byText: (sel, text) => [...document.querySelectorAll(sel)].find((el) => el.textContent.trim().includes(text)),
+    click(sel, text) { const el = text ? this.byText(sel, text) : this.q(sel); if (!el) throw new Error('No encontré ' + sel + ' ' + (text ?? '')); el.click(); return true; },
+    set(sel, value) { const el = this.q(sel); if (!el) throw new Error('No encontré ' + sel); el.value = value; el.dispatchEvent(new Event('input', { bubbles: true })); el.dispatchEvent(new Event('change', { bubbles: true })); return true; },
+    selectWhere(sel, pred) { const el = this.q(sel); const opt = [...el.options].find((o) => o.value && pred(o)); el.value = opt.value; el.dispatchEvent(new Event('change', { bubbles: true })); return opt.textContent; },
+    submitDialog() { this.q('dialog[open] form').requestSubmit(); return true; },
+  };`;
+const t = async (code) => {
+  await evaluate(PAGE_HELPERS);
+  const r = await send('Runtime.evaluate', { expression: code, returnByValue: true, awaitPromise: true });
+  if (r.exceptionDetails) throw new Error(r.exceptionDetails.exception?.description ?? r.exceptionDetails.text);
+  return r.result?.value;
+};
+const bodyText = () => evaluate('document.body.innerText');
+const waitText = async (text, timeout = 5000) => {
+  const t0 = Date.now();
+  while (Date.now() - t0 < timeout) {
+    if ((await bodyText()).includes(text)) return true;
+    await sleep(150);
+  }
+  return false;
+};
+async function as(email, pwd) {
+  await evaluate('localStorage.removeItem("dentalcare:session")');
+  await login(email, pwd);
+  await waitReady();
+}
+
+try {
+  await go('login.html');
+  await evaluate('localStorage.clear()'); // datos de demostración desde el seed
+
+  /* A. Recepción registra un paciente: documento repetido → error junto al campo */
+  await as('recepcion@dentalcare.com', 'Recep2026*');
+  await go('pages/asistente/pacientes.html'); await waitReady();
+  await t(`__t.click('button', 'Nuevo paciente')`); await sleep(300);
+  await t(`[['nombres','Ana'],['apellidos','Prueba E2E'],['tipo_documento','CC'],['numero_documento','1036000101'],['fecha_nacimiento','1999-01-01'],['genero','FEMENINO'],['telefono','3001234567']].forEach(([n,v]) => __t.set('dialog[open] [name="'+n+'"]', v)) || __t.submitDialog()`);
+  await sleep(900);
+  const dupMsg = await t(`__t.q('dialog[open] [name="numero_documento"]')?.closest('.field')?.textContent ?? 'sin modal'`);
+  check('A1 Documento repetido → error en el campo', dupMsg.includes('Ya existe'), dupMsg.slice(-70));
+  await t(`__t.set('dialog[open] [name="numero_documento"]', '1099000111') && __t.submitDialog()`);
+  check('A2 Paciente registrado', await waitText('Paciente registrado'));
+  check('A3 Modal cerrado', !(await evaluate(`!!document.querySelector('dialog[open]')`)));
+
+  /* B. El paciente solicita una cita con el Dr. Roberto (queda por confirmar) */
+  await as('andres.galvis@gmail.com', 'AndresG2026*');
+  await go('pages/paciente/agendar.html'); await waitReady();
+  const servicio = await t(`__t.selectWhere('[name="id_servicio"]', () => true)`);
+  const odonto = await t(`__t.selectWhere('[name="id_especialista"]', (o) => o.textContent.includes('Roberto'))`);
+  await t(`__t.click('button', 'Siguiente')`); await sleep(300);
+  // Hoy puede no quedar franja libre: se busca el siguiente día con disponibilidad.
+  let slot = null;
+  for (let i = 1; i <= 10 && !slot; i++) {
+    const d = new Date();
+    d.setDate(d.getDate() + i);
+    const iso = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    await t(`__t.set('[name="fecha"]', '${iso}')`); await sleep(150);
+    slot = await t(`(() => { const b = document.querySelector('.time-slot:not([aria-disabled])'); if (!b) return null; b.click(); return '${iso} ' + b.textContent; })()`);
+  }
+  check('B1 Hay franjas libres (RN-02)', Boolean(slot), `${servicio} · ${odonto} · ${slot}`);
+  await t(`__t.click('button', 'Siguiente')`); await sleep(300);
+  check('B2 Aviso: quedará pendiente de confirmación', (await bodyText()).includes('Pendiente de confirmación'));
+  await t(`__t.click('button', 'Agendar cita')`);
+  check('B3 Solicitud enviada', await waitText('Solicitud enviada'));
+  check('B4 Estado real: pendiente de confirmación', await waitText('estado pendiente de confirmación'));
+
+  /* C. El paciente cancela una de sus citas futuras */
+  await go('pages/paciente/mis-citas.html'); await waitReady();
+  check('C1 Aviso de solicitudes por confirmar', (await bodyText()).includes('esperando confirmación'));
+  await t(`__t.click('button[aria-label^="Cancelar cita"]')`); await sleep(300);
+  await t(`__t.click('dialog[open] .dialog__actions button', 'Cancelar cita')`);
+  check('C2 Cita cancelada por el paciente', await waitText('La cita fue cancelada.'));
+
+  /* D. Recepción confirma solicitudes desde la agenda (lista filtrada) */
+  await as('recepcion@dentalcare.com', 'Recep2026*');
+  await go('pages/asistente/agenda.html'); await waitReady();
+  await t(`__t.click('[role="tab"]', 'Lista')`); await sleep(200);
+  await t(`__t.click('.data-table__chips button', 'Por confirmar')`); await sleep(200);
+  await t(`__t.click('button[aria-label^="Confirmar"]')`); await sleep(300);
+  await t(`__t.click('dialog[open] .dialog__actions button', 'Confirmar')`);
+  check('D1 Recepción confirma una solicitud', await waitText('La cita quedó programada.'));
+
+  /* E. El odontólogo registra una consulta (RN-01: es el asignado) */
+  await as('dr.roberto@dentalcare.com', 'DocRoberto2026*');
+  await go('pages/doctor/historia.html?id=11'); await waitReady();
+  await t(`__t.click('[role="tab"]', 'Consultas')`); await sleep(200);
+  await t(`__t.click('button', 'Registrar consulta')`); await sleep(300);
+  await t(`__t.set('dialog[open] [name="diagnostico"]', 'Caries incipiente en 36') && __t.set('dialog[open] [name="procedimiento_realizado"]', 'Sellante de fosas y fisuras') && __t.submitDialog()`);
+  check('E1 Consulta registrada', await waitText('Consulta registrada'));
+  check('E2 Aparece en la línea de tiempo', await waitText('Caries incipiente en 36'));
+
+  /* F. Otra odontóloga sin citas con el paciente nuevo → solo lectura (RN-01) */
+  await as('dra.sofia@dentalcare.com', 'DocSofia2026*');
+  const idNuevo = await evaluate(`JSON.parse(localStorage.getItem('dentalcare:db')).paciente.find((p) => p.numero_documento === '1099000111').id_paciente`);
+  await go(`pages/doctor/historia.html?id=${idNuevo}`); await waitReady();
+  check('F1 Ficha sin citas → solo lectura', (await bodyText()).includes('Solo lectura'), `paciente #${idNuevo}`);
+  check('F2 Sin botón "Editar" historia', !(await evaluate(`[...document.querySelectorAll('aside button')].some((b) => b.textContent.includes('Editar'))`)));
+
+  /* G. Administración registra un abono */
+  await as('admin@dentalcare.com', 'Admin2026*');
+  await go('pages/admin/pagos.html'); await waitReady();
+  await t(`__t.click('button[aria-label^="Registrar abono"]')`); await sleep(300);
+  await t(`__t.set('dialog[open] [name="monto_abonado"]', '1000') && __t.selectWhere('dialog[open] [name="id_metodo"]', () => true) && __t.submitDialog()`);
+  check('G1 Abono registrado', await waitText('Abono registrado'));
+
+  /* H. Cerrar sesión desde la topbar → login */
+  await t(`__t.click('.topbar__profile')`); await sleep(200);
+  await t(`__t.click('button, a', 'Cerrar sesión')`);
+  await sleep(1200);
+  check('H1 Cerrar sesión → login', (await here()).startsWith('/login.html'), await here());
+} catch (error) {
+  check('EXCEPCIÓN', false, error.message);
+}
+
+b.finish();

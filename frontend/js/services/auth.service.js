@@ -5,6 +5,7 @@ import { http } from './http.js';
 import { ApiError } from './api-error.js';
 import { mockRequest, audit, assertValid } from './mock/db.js';
 import { hashPassword, verifyPassword, fakeVerify } from './mock/password.js';
+import { CREDENCIALES_DEMO, NOTIFICACIONES_DEMO } from '../data/mock/usuarios.js';
 
 /**
  * Servicio de autenticación (RF-ACC-01/02, HU-01, HU-02).
@@ -167,4 +168,10 @@ export const authService = USE_MOCK ? mock : remote;
  * SOLO modo mock: simula abrir el correo del usuario y devuelve el enlace de restablecimiento.
  * No forma parte del contrato de la API (en producción el enlace llega por correo electrónico).
  */
+/** SOLO modo mock: una cuenta de prueba por rol, para mostrarlas en el login de la demo. Con la API real: []. */
+export const demoAccounts = () => (USE_MOCK ? CREDENCIALES_DEMO.map((c) => ({ ...c })) : []);
+
+/** Notificaciones de la topbar. Aún no hay tabla ni servicio de notificaciones: en mock son de demostración. */
+export const demoNotifications = () => (USE_MOCK ? NOTIFICACIONES_DEMO.map((n) => ({ ...n })) : []);
+
 export const mockOutbox = (email) => (USE_MOCK ? outbox.get(String(email ?? '').trim().toLowerCase()) ?? null : null);

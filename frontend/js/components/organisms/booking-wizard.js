@@ -3,7 +3,7 @@ import { validators } from '../../core/validators.js';
 import { formatCOP, formatDate, formatLongDate, normalizeText } from '../../core/format.js';
 import { toISODate, toSqlDateTime } from '../../core/dates.js';
 import { getDaySlots, isSlotAvailable, suggestAlternatives, describeSchedule, toMinutes, toHHMM, SLOT_MINUTES } from '../../core/agenda.js';
-import { Button, setButtonLoading, setButtonLabel, Avatar, Icon } from '../atoms/index.js';
+import { Button, setButtonLoading, setButtonLabel, Avatar, Icon, ESTADOS } from '../atoms/index.js';
 import { FormField, SearchBar, TimeSlot, validateForm, toast } from '../molecules/index.js';
 import { openModalForm, FieldError } from './modal-form.js';
 import { patientQuickFields } from './patient-fields.js';
@@ -32,14 +32,19 @@ const MAX_MATCHES = 6;
  * @param {object[]} props.servicios
  * @param {object[]} props.horarios
  * @param {object[]} props.citas
- * @param {(cita: object) => Promise<void>|void} [props.onComplete]          Persistir la cita (servicio).
+ *        Para calcular franjas basta { id_especialista, fecha_hora, estado_cita } (citasService.ocupacion()).
+ * @param {(cita: object) => Promise<object|void>|object|void} [props.onComplete]
+ *        Persistir la cita (servicio). Si devuelve la cita guardada, el resumen final usa esa (id y estado reales).
  * @param {(paciente: object) => Promise<object>|object} [props.onCreatePatient] Persistir el paciente nuevo.
+ * @param {number} [props.pacienteId]          Paciente fijo (portal del paciente): se omite el paso 1.
+ * @param {boolean} [props.pendingConfirmation=false]  La cita queda por confirmar (HU-06: la pide el paciente).
  * @param {Date} [props.now]
  * @returns {HTMLElement}
  */
-export function BookingWizard({ pacientes = [], especialistas = [], servicios = [], horarios = [], citas = [], onComplete, onCreatePatient, now = new Date(), className } = {}) {
+export function BookingWizard({ pacientes = [], especialistas = [], servicios = [], horarios = [], citas = [], onComplete, onCreatePatient, pacienteId = null, pendingConfirmation = false, now = new Date(), className } = {}) {
   const data = { pacientes: [...pacientes], citas: [...citas] };
-  const fresh = () => ({ step: 0, pacienteId: null, servicioId: '', especialistaId: '', date: toISODate(now), start: null, motivo: '', done: null });
+  const first = pacienteId ? 1 : 0;
+  const fresh = () => ({ step: first, pacienteId, servicioId: '', especialistaId: '', date: toISODate(now), start: null, motivo: '', done: null });
   let state = fresh();
   let searchTerm = '';
 
@@ -52,7 +57,7 @@ export function BookingWizard({ pacientes = [], especialistas = [], servicios = 
   const nextBtn = Button({ label: 'Siguiente', iconRight: 'chevron-right', onClick: () => next() });
   const footer = h('div', { class: 'wizard__footer' }, backBtn, nextBtn);
 
-  const paciente = () => data.pacientes.find((p) => p.id_paciente === state.pacienteId);
+  const paciente = () => data.pacientes.find((p) => p.id_paciente === state.pacienteId) ?? { nombres: 'Paciente', apellidos: `#${state.pacienteId}`, tipo_documento: '', numero_documento: '' };
   const especialista = () => especialistas.find((e) => e.id_especialista === Number(state.especialistaId));
   const servicio = () => servicios.find((s) => s.id_servicio === Number(state.servicioId));
   const fullName = (p) => `${p.nombres} ${p.apellidos}`;
@@ -326,7 +331,12 @@ export function BookingWizard({ pacientes = [], especialistas = [], servicios = 
           state.motivo = event.target.value;
         },
       }),
-      h('p', { class: 'wizard__note' }, Icon({ name: 'bell', size: 16 }), h('span', {}, 'La cita quedará "Programada" y se enviará un recordatorio 48 h antes (RF-CIT-06).')),
+      h(
+        'p',
+        { class: 'wizard__note' },
+        Icon({ name: 'bell', size: 16 }),
+        h('span', {}, pendingConfirmation ? 'La solicitud quedará "Pendiente de confirmación" hasta que recepción la confirme (HU-06).' : 'La cita quedará "Programada" y se enviará un recordatorio 48 h antes (RF-CIT-06).'),
+      ),
     ];
   }
 
@@ -376,15 +386,15 @@ export function BookingWizard({ pacientes = [], especialistas = [], servicios = 
       id_servicio: Number(state.servicioId),
       fecha_hora: toSqlDateTime(state.date, state.start),
       motivo: state.motivo.trim(),
-      estado_cita: 'PROGRAMADA',
+      estado_cita: pendingConfirmation ? 'PENDIENTE_CONFIRMACION' : 'PROGRAMADA',
       recordatorio_enviado: 0,
     };
     setButtonLoading(nextBtn, true);
     backBtn.disabled = true;
     try {
-      await onComplete?.(cita);
-      data.citas.push(cita);
-      state.done = cita;
+      const saved = (await onComplete?.(cita)) ?? cita;
+      data.citas.push(saved);
+      state.done = saved;
       render();
     } catch (error) {
       setError(error?.message || 'No fue posible agendar la cita. Intenta de nuevo.');
@@ -395,7 +405,7 @@ export function BookingWizard({ pacientes = [], especialistas = [], servicios = 
   }
 
   function goTo(step) {
-    state.step = Math.max(0, Math.min(step, STEPS.length - 1));
+    state.step = Math.max(first, Math.min(step, STEPS.length - 1));
     setError(null);
     render();
     heading.focus();
@@ -406,10 +416,11 @@ export function BookingWizard({ pacientes = [], especialistas = [], servicios = 
     mount(
       stepper,
       STEPS.map((s, i) =>
+        i >= first &&
         h(
           'li',
           { class: cx('wizard__step', i < state.step && 'is-done', i === state.step && 'is-current'), 'aria-current': i === state.step ? 'step' : undefined },
-          h('span', { class: 'wizard__step-num', 'aria-hidden': 'true' }, i < state.step ? Icon({ name: 'check', size: 14 }) : i + 1),
+          h('span', { class: 'wizard__step-num', 'aria-hidden': 'true' }, i < state.step ? Icon({ name: 'check', size: 14 }) : i - first + 1),
           h('span', { class: 'wizard__step-label' }, s.label),
           i < state.step && h('span', { class: 'u-visually-hidden' }, ' (completado)'),
         ),
@@ -421,7 +432,7 @@ export function BookingWizard({ pacientes = [], especialistas = [], servicios = 
     const c = state.done;
     const p = data.pacientes.find((x) => x.id_paciente === c.id_paciente);
     mount(stepper);
-    heading.textContent = 'Cita agendada';
+    heading.textContent = c.estado_cita === 'PENDIENTE_CONFIRMACION' ? 'Solicitud enviada' : 'Cita agendada';
     mount(
       content,
       h(
@@ -429,7 +440,7 @@ export function BookingWizard({ pacientes = [], especialistas = [], servicios = 
         { class: 'wizard__done' },
         h('span', { class: 'wizard__done-icon', 'aria-hidden': 'true' }, Icon({ name: 'check-circle', size: 32 })),
         h('p', {}, `${fullName(p)} tiene cita con ${especialista().nombre} el ${formatLongDate(state.date).toLowerCase()} a las ${state.start}.`),
-        h('p', { class: 'wizard__note' }, `Cita #${c.id_cita} · estado Programada.`),
+        h('p', { class: 'wizard__note' }, `Cita #${c.id_cita} · estado ${(ESTADOS[c.estado_cita]?.label ?? c.estado_cita).toLowerCase()}.`),
       ),
     );
     mount(
@@ -453,10 +464,10 @@ export function BookingWizard({ pacientes = [], especialistas = [], servicios = 
       return;
     }
     renderStepper();
-    heading.textContent = `Paso ${state.step + 1} de ${STEPS.length}: ${STEPS[state.step].label}`;
+    heading.textContent = `Paso ${state.step - first + 1} de ${STEPS.length - first}: ${STEPS[state.step].label}`;
     const views = [stepPaciente, stepTratamiento, stepHorario, stepConfirmar];
     mount(content, views[state.step]());
-    backBtn.hidden = state.step === 0;
+    backBtn.hidden = state.step === first;
     setButtonLabel(nextBtn, state.step === STEPS.length - 1 ? 'Agendar cita' : 'Siguiente');
   }
 

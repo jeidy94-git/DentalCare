@@ -48,6 +48,7 @@ const VIEWS = [
  * @param {boolean} [props.readonly=false]           RN-01: solo el doctor asignado o el admin editan.
  * @param {string} [props.readonlyReason]
  * @param {(event: {type: 'save'|'remove'|'ausente', fdi: number, record?: object, records: object[]}) => void} [props.onChange]
+ *        En 'save' y 'remove', `record` es el hallazgo guardado o quitado.
  * @returns {HTMLElement}  Expone getRecords() y getAusentes().
  */
 export function Odontogram({ records = [], ausentes = [], denticion = 'PERMANENTE', readonly = false, readonlyReason, onChange, className } = {}) {
@@ -303,12 +304,13 @@ export function Odontogram({ records = [], ausentes = [], denticion = 'PERMANENT
   }
 
   function removeFinding(fdi, face) {
+    const record = findings.get(`${fdi}|${face}`);
     findings.delete(`${fdi}|${face}`);
     setToothFace(teeth.get(fdi), face, null);
     renderSummary();
     renderPanel();
     toast.info(`Se quitó el hallazgo de la cara ${FACE_LABELS[face].toLowerCase()}.`, `Diente ${fdi}`);
-    emit('remove', fdi);
+    emit('remove', fdi, record); // el registro quitado (con su id_odontograma, si venía de la BD)
   }
 
   function toggleMissing(fdi, value) {

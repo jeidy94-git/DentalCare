@@ -196,7 +196,7 @@ export function nombrePacienteDb(db, idPaciente) {
 export function especialistaConNombre(db, especialista) {
   const p = db.personal.find((x) => x.id_personal === especialista.id_personal);
   const usuario = db.usuario.find((u) => u.id_usuario === p?.id_usuario);
-  return { ...especialista, nombre: p ? `${p.nombres} ${p.apellidos}` : '—', telefono: p?.telefono ?? null, estado: usuario?.estado ?? 'ACTIVO' };
+  return { ...especialista, nombre: p ? `${p.nombres} ${p.apellidos}` : '—', nombres: p?.nombres ?? null, apellidos: p?.apellidos ?? null, telefono: p?.telefono ?? null, estado: usuario?.estado ?? 'ACTIVO' };
 }
 
 export function nombreEspecialistaDb(db, idEspecialista) {

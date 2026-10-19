@@ -198,7 +198,16 @@ try {
   clearSession();
   check('El especialista nuevo puede ingresar', (await login('dra.paula@dentalcare.com', 'Paula2026*')).id_especialista === esp.id_especialista);
 
-  /* ---------- Reset ---------- */
+  /* ---------- Ocupación anónima (fase A6: BookingWizard del paciente) ---------- */
+  clearSession();
+  await login('andres.galvis@gmail.com', 'AndresG2026*');
+  const hoyIso = toISODate(new Date());
+  const ocupacion = await S.citasService.ocupacion({ desde: hoyIso });
+  const activasDb = getDb().cita.filter((c) => ['PROGRAMADA', 'PENDIENTE_CONFIRMACION'].includes(c.estado_cita) && c.fecha_hora.slice(0, 10) >= hoyIso);
+  check('Ocupación: el paciente puede consultarla', ocupacion.length === activasDb.length && ocupacion.length > 0, `${ocupacion.length} citas`);
+  check('Ocupación: no expone pacientes ni ids', ocupacion.every((c) => Object.keys(c).sort().join() === 'estado_cita,fecha_hora,id_especialista'));
+  clearSession();
+
   await login('admin@dentalcare.com', 'NuevaClave2026*');
   S.resetDemoData();
   check('resetDemoData vuelve al seed', getDb().paciente.length === 40 && getDb().log_auditoria.length === 0 && getDb().cita.length === CITAS.length);

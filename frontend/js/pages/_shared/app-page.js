@@ -1,10 +1,9 @@
 import { h } from '../../core/dom.js';
 import { guard } from '../../core/guard.js';
-import { authService, isApiError } from '../../services/index.js';
+import { authService, isApiError, demoNotifications } from '../../services/index.js';
 import { Button } from '../../components/atoms/index.js';
 import { toast } from '../../components/molecules/index.js';
 import { DashboardLayout } from '../../components/templates/index.js';
-import { NOTIFICACIONES_DEMO } from '../../data/mock/usuarios.js';
 
 /**
  * Arranque común de TODAS las pantallas internas (fase A6 en adelante):
@@ -13,13 +12,16 @@ import { NOTIFICACIONES_DEMO } from '../../data/mock/usuarios.js';
  *   if (!page) return;                      // sin sesión o sin permiso: el guard ya redirigió
  *   const pacientes = await loadInto(page.layout, () => pacientesService.list(), 'Cargando pacientes…');
  *
- * 1. guard(role) → valida sesión y rol ANTES de dibujar nada.
+ * 1. guard(role) → valida sesión y rol ANTES de dibujar nada. Si no se indica `role`, se toma de
+ *    <body data-role="…"> (así un mismo controlador sirve a varias carpetas: admin, asistente…).
  * 2. DashboardLayout con el usuario de la sesión (menú según SU rol).
  * 3. "Cerrar sesión" → authService.logout(); el guard detecta el cambio y lleva al login.
  *
  * @returns {{ user: object, layout: HTMLElement } | null}
  */
-export function createAppPage({ role, activeId, title, subtitle, breadcrumbs, actions, content } = {}) {
+export function createAppPage({ role = document.body.dataset.role, activeId, title, subtitle, breadcrumbs, actions, content } = {}) {
+  // Sin rol, guard() dejaría entrar a cualquier usuario con sesión: es un error de la página, no del usuario.
+  if (!role) throw new Error('createAppPage: falta el rol (prop `role` o <body data-role>).');
   const user = guard(role);
   if (!user) return null;
 
@@ -32,9 +34,9 @@ export function createAppPage({ role, activeId, title, subtitle, breadcrumbs, ac
     breadcrumbs,
     actions,
     content,
-    notifications: NOTIFICACIONES_DEMO,
+    notifications: demoNotifications(),
     onLogout: () => authService.logout(),
-    onProfileAction: () => toast.info('El perfil y la configuración se construyen en la fase A6.'),
+    onProfileAction: () => toast.info(`${user.email} · ${user.cargo ?? user.rol}`, user.nombre),
   });
   document.body.append(layout);
   return { user, layout };

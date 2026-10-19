@@ -25,6 +25,7 @@ import {
  *   list({ desde, hasta, id_especialista, id_paciente, estado })  → citas con nombres unidos (JOIN)
  *   get(id)
  *   disponibilidad({ id_especialista, fecha })  → franjas del día (sin datos de otros pacientes)
+ *   ocupacion({ desde, hasta })   → citas activas SIN datos del paciente (para calcular franjas libres)
  *   alternativas({ id_especialista, fecha })    → RF-CIT-03
  *   create(data)        → RN-02 + franja libre; el PACIENTE crea en PENDIENTE_CONFIRMACION (HU-06)
  *   update(id, data)    → reprogramar / cambiar motivo (vuelve a validar RN-02)
@@ -143,6 +144,15 @@ const mock = {
       getDaySlots({ especialistaId: Number(id_especialista), date: fecha, horarios: db.horario, citas: db.cita }).map(({ start, end, status }) => ({ start, end, status })),
     ),
 
+  // Lo que el BookingWizard necesita para calcular franjas (RN-02) sin exponer quién tiene cada cita:
+  // así también el PACIENTE puede agendar sin ver las citas de otros pacientes.
+  ocupacion: ({ desde, hasta } = {}) =>
+    mockRequest(({ db }) =>
+      db.cita
+        .filter((c) => ESTADOS_ACTIVOS.includes(c.estado_cita) && (!desde || c.fecha_hora.slice(0, 10) >= desde) && (!hasta || c.fecha_hora.slice(0, 10) <= hasta))
+        .map(({ id_especialista, fecha_hora, estado_cita }) => ({ id_especialista, fecha_hora, estado_cita })),
+    ),
+
   alternativas: ({ id_especialista, fecha }) =>
     mockRequest(({ db }) =>
       suggestAlternatives({
@@ -208,6 +218,7 @@ const remote = {
   get: (id) => http.get(`/citas/${id}`),
   disponibilidad: (params) => http.get('/citas/disponibilidad', params),
   alternativas: (params) => http.get('/citas/alternativas', params),
+  ocupacion: (params) => http.get('/citas/ocupacion', params),
   create: (data) => http.post('/citas', data),
   update: (id, data) => http.put(`/citas/${id}`, data),
   confirmar: (id) => http.patch(`/citas/${id}/estado`, { estado: 'PROGRAMADA' }),
