@@ -1,4 +1,4 @@
-# Documento de sustentación — DentalCare (Frontend, fases A0 a A6 + APIs externas)
+# Documento de sustentación — DentalCare (Frontend A0 a A6, APIs externas y Fase B: base de datos)
 
 > Guía de estudio para la sustentación individual. Explica **qué** se construyó, **por qué** se
 > tomó cada decisión y **cómo** defenderla ante el docente. Cada concepto apunta al archivo real del
@@ -25,9 +25,10 @@
 12. [Fase A5: capa de servicios, sesión y guards](#12-fase-a5-capa-de-servicios-sesión-y-guards)
 13. [Fase A6: pantallas definitivas por rol](#13-fase-a6-pantallas-definitivas-por-rol)
 14. [Integración de APIs externas (servicios web de terceros)](#14-integración-de-apis-externas-servicios-web-de-terceros)
-15. [Cómo se verificó la calidad](#15-cómo-se-verificó-la-calidad)
-16. [Simulacro de preguntas del docente](#16-simulacro-de-preguntas-del-docente)
-17. [Glosario](#17-glosario)
+15. [Fase B: base de datos v2](#15-fase-b-base-de-datos-v2)
+16. [Cómo se verificó la calidad](#16-cómo-se-verificó-la-calidad)
+17. [Simulacro de preguntas del docente](#17-simulacro-de-preguntas-del-docente)
+18. [Glosario](#18-glosario)
 
 ---
 
@@ -43,11 +44,13 @@
 | **A5** Servicios y sesión | Capa de servicios (9 servicios con la misma interfaz para mock y API), base de datos simulada en `localStorage`, login con contraseñas PBKDF2, sesión con vencimiento, *guard* de páginas por rol, matriz de permisos y auditoría | `frontend/js/services/`, `frontend/js/core/` (`config`, `storage`, `session`, `guard`, `permissions`) |
 | **A6** Pantallas | 25 pantallas HTML: entrada (`index`, `login`, `403`) y las de cada rol, con 14 controladores compartidos que solo consumen la capa de servicios | `frontend/*.html`, `frontend/pages/<rol>/`, `frontend/js/pages/` |
 | **APIs externas** | Dos servicios web públicos y reales consumidos con `fetch()`: departamentos y municipios de Colombia (Datos Abiertos, DIVIPOLA) en el registro de pacientes y la TRM del dólar en pagos, con tiempo límite, caché y respaldo sin internet | `frontend/js/services/colombia.service.js`, `trm.service.js`, `externo.js` |
+| **B** Base de datos v2 | Corrección de la base antes del backend: contraseñas con bcrypt, matriz de permisos según RN-01, `rol.estado`, ubicación DIVIPOLA, estado de venta calculado, tratamiento en la cita, tokens de recuperación y 14 restricciones `CHECK`. Incluye migración, instalación completa y 38 pruebas SQL | `database/` (`CAMBIOS.md`, `dentalcare_bd_v2.sql`, `migrations.sql`), `tests/db/` |
 
 **Stack del proyecto:** HTML5 + CSS3 + JavaScript puro (ES Modules) en el frontend; Node.js + Express +
 MySQL (mysql2/promise, sin ORM) en el backend (fases C y D). Mientras no existe el backend, las
 pantallas usan **datos mock** copiados del seed de `dentalcare_bd.sql`, servidos por la capa de
-servicios de la fase A5.
+servicios de la fase A5. La base real que usará el backend es la **v2** (§15), que ya tiene las
+mismas correcciones que el mock.
 
 ---
 
@@ -754,7 +757,7 @@ try {
   (`GET /citas`, `PATCH /citas/:id/estado`…). El mock **es** la especificación del backend.
 - **Errores uniformes:** mock y API lanzan el mismo `ApiError` (`status`, `message`, `fields`, `code`),
   así la página maneja los errores de una sola forma.
-- **Comprobable:** los servicios se prueban en Node sin navegador (67 pruebas, §15).
+- **Comprobable:** los servicios se prueban en Node sin navegador (67 pruebas, §16).
 
 | `status` de `ApiError` | Significado | Ejemplo |
 |---|---|---|
@@ -941,7 +944,7 @@ pbkdf2_sha256 $ 100000 $ yT9xLHL20S3LAzUF0UBkUg== $ 54958FCbp12A0aHhkyyINljIvceU
 
 | | PBKDF2-SHA256 (mock, fase A5) | bcrypt (backend, fase C) |
 |---|---|---|
-| Dónde corre | Navegador, con **Web Crypto** (`crypto.subtle`), nativo | Node.js, librería `bcrypt` |
+| Dónde corre | Navegador, con **Web Crypto** (`crypto.subtle`), nativo | Node.js, librería `bcryptjs` (bcrypt en JavaScript puro: no necesita compilar nada en Windows) |
 | Por qué ahí | bcrypt **no existe** nativo en el navegador y la regla es no usar librerías externas | Es el estándar en Node y lo pide el proyecto |
 | Costo | Iteraciones (100 000) | Factor de costo (p. ej. 10 → 2¹⁰ rondas) |
 | Sal | Aparte, 16 bytes | Incluida automáticamente en el hash |
@@ -984,9 +987,10 @@ Son las del seed (`dentalcare_bd.sql`); en el mock se verifican contra su hash P
 
 Para volver a los datos iniciales: `resetDemoData()` (exportado por `services/index.js`).
 
-### 12.11 Diferencias con la base de datos (para documentar en la fase B)
+### 12.11 Diferencias con la base de datos (resueltas en la fase B)
 
-Detectadas al construir el mock; irán a `database/CAMBIOS.md`:
+Detectadas al construir el mock. **Ya están aplicadas** en la base v2 y explicadas en
+`database/CAMBIOS.md` (§15):
 1. `usuario.password_hash` en texto plano → hash (bcrypt en el backend).
 2. `rol.estado` no existe y lo pide RF-ROL-06.
 3. `rol_permiso` contradice el SRS (ver §12.7) y faltan 5 permisos.
@@ -995,6 +999,10 @@ Detectadas al construir el mock; irán a `database/CAMBIOS.md`:
    abonados); el mock recalcula el estado desde el saldo.
 6. `paciente.departamento` y `paciente.municipio` (nuevas, opcionales): ubicación elegida de la
    lista DIVIPOLA de Datos Abiertos (§14.6).
+
+Al revisar la base en la fase B aparecieron más: `cita.id_servicio` y los horarios que el mock ya
+usaba, la tabla `paciente_venta` duplicada y la sección de prácticas CRUD dentro del script de
+instalación. La lista completa (B-00 a B-10) está en §15.1.
 
 ### 12.12 Punto de partida de la fase A6 (pantallas HTML definitivas)
 
@@ -1437,7 +1445,7 @@ registrando en pesos. Cuando se muestra una TRM vieja, se indica la fecha de vig
 - **Solo HTTPS.** Ambas APIs se consultan por `https://`. Una página servida con HTTPS no puede
   pedir recursos por HTTP (contenido mixto).
 
-### 14.6 Cambios en los datos del paciente (para `database/CAMBIOS.md`, fase B)
+### 14.6 Cambios en los datos del paciente (aplicados en la fase B como B-04)
 
 El formulario guarda dos campos nuevos y opcionales en el paciente:
 
@@ -1524,7 +1532,193 @@ Además, es imposible **provocar** a voluntad un error 500 del gobierno. Soluci�
 
 ---
 
-## 15. Cómo se verificó la calidad
+## 15. Fase B: base de datos v2
+
+El frontend se construyó contra los datos de `dentalcare_bd.sql`, pasados al mock. En ese proceso
+aparecieron diferencias entre la base, el SRS y lo que la aplicación necesita, anotadas en §12.11 y
+§14.6. Antes de escribir el backend (fase C), la base real tiene que quedar igual a la que ya usaba
+el mock. Si no, la API heredaría los mismos errores.
+
+| Archivo | Para qué |
+|---|---|
+| `database/CAMBIOS.md` | Cada cambio explicado: problema, evidencia, requisito, SQL e impacto en el backend |
+| `database/dentalcare_bd_v2.sql` | Instalación completa nueva: estructura y datos de demo |
+| `database/migrations.sql` | Migración v1 → v2 para quien ya tiene la v1 con datos |
+| `tests/db/pruebas_bd_v2.sql` | 38 pruebas autoevaluables de las restricciones |
+| `dentalcare_bd.sql` (raíz) | La v1 original, intacta como referencia |
+
+### 15.1 Los cambios en una tabla
+
+| # | Problema en la v1 | Cambio en la v2 |
+|---|---|---|
+| B-00 | Las prácticas CRUD estaban pegadas al script de instalación (28 errores al importarlo) | La v2 solo crea la base |
+| B-01 | `password_hash` guardaba `Admin2026*` en claro (incumple RNF-SEG-01) | Hash **bcrypt** y un `CHECK` que rechaza cualquier cosa que no lo sea |
+| B-02 | No había dónde guardar si un rol está activo (RF-ROL-06) | `rol.estado` |
+| B-03 | La recepcionista podía **editar historias** (viola **RN-01**) y el especialista cobraba pero no veía historias | 5 permisos nuevos y matriz corregida, igual a `permissions.js` |
+| B-04 | Sin ubicación del paciente | `departamento` y `municipio` (DIVIPOLA) |
+| B-05 | La venta #2 decía `PAGADO` con 200.000 de saldo | `estado_venta` pasa a **columna generada** |
+| B-06 | `paciente_venta` repetía `venta.id_paciente` | Se elimina |
+| B-07 | La cita no guardaba el tratamiento (RF-CIT-01) | `cita.id_servicio` (FK) y estados válidos |
+| B-08 | Sin tabla para los enlaces de "olvidé mi contraseña" | `password_reset` con el token **hasheado** |
+| B-09 | Un día de atención por odontólogo: casi sin cupos | 11 franjas más |
+| B-10 | Cualquier texto valía como género o tipo de documento | `CHECK` con los mismos valores del formulario |
+
+### 15.2 Dos caminos: instalación nueva o migración
+
+```
+   ¿Ya tienes dentalcare_bd con datos que quieres conservar?
+          │
+     no ──┴── sí
+     │         │
+     ▼         ▼
+ dentalcare_bd_v2.sql      1. mysqldump (copia)  2. migrations.sql
+ (crea todo desde cero)     (ALTER/UPDATE sobre lo que ya existe)
+```
+
+- **`migrations.sql`** transforma una base existente: `ALTER TABLE`, `UPDATE`, `INSERT`. Es lo que se
+  hace en un sistema en producción, porque ahí no se pueden borrar los datos reales.
+- **`dentalcare_bd_v2.sql`** se **generó** a partir de la migración: se aplicó sobre la v1 y se
+  exportó con `mysqldump`. Así los dos caminos dan **el mismo resultado**, y se comprobó (§15.6).
+- La v2 **no trae `DROP TABLE`**, a diferencia de muchos volcados. Si se importa por error sobre una
+  base con datos, se detiene en la primera tabla (*Table 'cita' already exists*) en vez de
+  borrarla. Es una decisión de seguridad.
+- **Las migraciones no se pueden deshacer con `ROLLBACK`.** En MySQL, `ALTER TABLE`, `CREATE` y
+  `DROP` son DDL y hacen *commit implícito*: se confirman en el acto. Por eso la migración empieza
+  con "haz una copia con `mysqldump`". La copia es el único "deshacer" real.
+
+### 15.3 Reglas que ahora cumple la propia base
+
+La idea central de esta fase es la **defensa en profundidad**: la misma regla se valida en tres
+capas.
+
+```
+  Formulario (frontend)  →  API (backend, fase C)  →  Base de datos (CHECK / FK / NOT NULL)
+  ayuda al usuario          decide quién puede         última línea: nada inválido
+  (se puede saltar)          hacer qué                   entra, venga de donde venga
+```
+
+El frontend se salta con Postman o editando el JavaScript en el navegador. La API puede tener un
+error. Un script de mantenimiento puede escribir directo en la base. Solo la base ve **todas** las
+escrituras. Por eso se agregaron 14 restricciones `CHECK`, una llave foránea nueva y varios
+`NOT NULL`.
+
+**Los valores son idénticos en las tres capas.** Por ejemplo, tipo de documento CC, TI, CE o PA. Al
+principio el `CHECK` incluía también `RC` (registro civil) y se quitó: si la base acepta **más**
+que el formulario no pasa nada grave, pero si acepta **menos**, el usuario llena bien el formulario
+y recibe un error 500 que no entiende. La regla es: misma lista en las tres capas.
+
+**Un `CHECK` contra las contraseñas en claro.**
+
+```sql
+CHECK (password_hash REGEXP '^[$]2[aby][$][0-9]{2}[$][./A-Za-z0-9]{53}$')
+```
+
+Un hash bcrypt tiene una forma fija: `$2a$` (versión) + `10$` (costo) + 22 caracteres de sal +
+31 de hash = 60 caracteres. Si algún día el backend tiene un error y trata de guardar `Clave123*`
+tal cual, el `INSERT` falla. Se usa `[$]` en vez de `\$` porque dentro de corchetes el `$` es
+literal, y así no hay que pensar en dobles escapes entre SQL y la expresión regular.
+
+**Lo que un `CHECK` no puede hacer.** Un `CHECK` solo ve **la fila que se está guardando**. Las
+reglas que miran otras filas o tablas quedan en la API:
+
+| Regla | ¿Quién la hace cumplir? | Por qué |
+|---|---|---|
+| Un horario termina después de empezar | Base (`CHECK`) | Solo mira la misma fila |
+| La cita apunta a un tratamiento que existe | Base (FK) | Es una relación entre tablas, justo lo que hace una llave foránea |
+| **RN-01**: solo el doctor **asignado** edita la historia | **API** | Hay que buscar si existe una cita entre ese doctor y ese paciente |
+| **RN-03**: no inactivar un rol con usuarios activos | **API** | Hay que contar filas de `usuario` |
+| **RN-02**: la cita cae dentro del horario del doctor | **API** | Cruza `cita` con `horario` y con el día de la semana |
+
+(Se podrían escribir *triggers* para algunas, pero esconden lógica de negocio en la base y son
+difíciles de probar y depurar. Se prefirió la API, donde esa lógica ya existe en el mock.)
+
+### 15.4 La columna generada: datos que no se pueden contradecir
+
+La venta #2 estaba así:
+
+| monto_total | monto_pagado | saldo_pendiente | estado_venta |
+|---|---|---|---|
+| 350.000 | 150.000 | 200.000 *(calculado)* | **PAGADO** *(escrito a mano)* |
+
+`saldo_pendiente` ya era una **columna generada** en la v1: MySQL la calcula sola con
+`monto_total − monto_pagado`, así que nunca se equivoca. `estado_venta`, en cambio, se escribía a
+mano, aunque se deduce de los mismos montos. Y lo que se guarda dos veces termina diciendo cosas
+distintas. La solución fue tratarlo igual:
+
+```sql
+estado_venta varchar(20) GENERATED ALWAYS AS
+  (CASE WHEN monto_pagado >= monto_total THEN 'PAGADO' ELSE 'PENDIENTE' END) STORED
+```
+
+- Ahora es **imposible** que mienta: al registrar el abono de 200.000, la venta #2 pasa sola a
+  `PAGADO`. Hay una prueba de eso.
+- `STORED` guarda el valor en disco. Se puede indexar y filtrar (`WHERE estado_venta = 'PENDIENTE'`)
+  como cualquier columna.
+- Consecuencia para el backend: los `INSERT` y `UPDATE` **no** deben mencionar `estado_venta` ni
+  `saldo_pendiente`. MySQL 8 los rechaza (error 3105). MariaDB solo advierte (1906) o los rechaza
+  en modo estricto.
+- Es el mismo principio que el mock (`ventas.service.js`), que ya recalculaba el estado desde el
+  saldo. La diferencia es que ahora lo garantiza la base y no depende de que el código se acuerde.
+
+### 15.5 Normalización: por qué desaparece `paciente_venta`
+
+`venta.id_paciente` ya dice de quién es cada venta. `paciente_venta` decía **lo mismo** otra vez:
+se comprobó que sus 40 filas coincidían exactamente. Eso es **redundancia**. Cuando la API cree una
+venta nueva y no inserte la segunda fila, que es lo que pasaría porque nadie la necesita, las dos
+fuentes empezarían a contradecirse.
+
+Si el negocio necesitara una venta compartida por varios pacientes, por ejemplo un plan familiar,
+la tabla intermedia sería lo correcto y habría que quitar `venta.id_paciente`. Lo que nunca es
+correcto es tener las dos.
+
+### 15.6 Cómo se verificó
+
+Las pruebas no se hicieron sobre las bases instaladas en el equipo. Se levantaron servidores
+**desechables**, con su carpeta de datos temporal, en puertos aparte (3307 y 3308), con los mismos
+motores del proyecto: **MariaDB 10.4.32** (XAMPP) y **MySQL 8.0.36**.
+
+1. **Primero se probó la v1.** Al importarla completa salieron 28 errores, todos en la sección de
+   prácticas CRUD del final. Así se descubrió B-00.
+2. **v1 + `migrations.sql`** se aplica sin errores en los dos motores.
+3. **Equivalencia.** Se comparó la base creada con la v2 contra "v1 + migración": estructura
+   (`SHOW CREATE TABLE`) y datos (`CHECKSUM TABLE … EXTENDED`) de las 20 tablas, en dos rondas.
+   Resultado: idénticas.
+4. **`tests/db/pruebas_bd_v2.sql`**: 38 pruebas en tres grupos.
+   - **Datos corregidos:** no queda ninguna contraseña en claro, RN-01 en la matriz, la venta #2…
+   - **Lo inválido se rechaza:** contraseña en claro, pagar más que el total, cita sin tratamiento,
+     horario al revés, día en inglés…
+   - **Lo válido se acepta:** el abono que salda la venta, una cita `PENDIENTE_CONFIRMACION`, el
+     token de recuperación…
+
+   Todo corre dentro de una transacción con `ROLLBACK` al final: la base queda como estaba.
+5. **Se probó la prueba.** Se agregaron cuatro casos saboteados a propósito: una columna que no
+   existe, un error de sintaxis, un dato válido marcado como "debe fallar" y un dato inválido
+   marcado como "debe funcionar". Los cuatro salieron como FALLA. Así se sabe que un 38/38 significa
+   algo (§16, hallazgos 21 y 22).
+
+```bash
+mysql -u root < database/dentalcare_bd_v2.sql
+mysql -u root dentalcare_bd < tests/db/pruebas_bd_v2.sql   # última línea: fallidas = 0
+```
+
+### 15.7 Lo que queda listo para la fase C (backend)
+
+| La API deberá… | Por el cambio |
+|---|---|
+| Comparar con `bcrypt.compare()`, nunca con `=` en SQL, y hacer una comparación falsa si el correo no existe | B-01 |
+| Verificar RN-01 (doctor asignado) y RN-03 (rol sin usuarios activos) antes de escribir | B-02, B-03 |
+| Poner `municipio = NULL` si cambia el departamento sin municipio | B-04 |
+| Registrar un abono en una **transacción** (`INSERT pago_venta` + `UPDATE venta`), sin tocar `estado_venta` | B-05 |
+| Exigir `id_servicio` al crear una cita | B-07 |
+| Guardar `SHA2(token)` y nunca el token; marcar `usado_en` | B-08 |
+| Usar **consultas parametrizadas** (`?` con `mysql2`), nunca concatenar valores en el SQL | Todas |
+
+**Cuentas de demostración.** Son las mismas de §12.10. En la base ya no se pueden leer, pero siguen
+sirviendo para entrar.
+
+---
+
+## 16. Cómo se verificó la calidad
 
 Se escribieron **pruebas automatizadas** que abren el styleguide en un navegador real (Edge sin
 interfaz), simulan clics, teclado y envío de formularios, y comprueban el resultado:
@@ -1544,6 +1738,8 @@ interfaz), simulan clics, teclado y envío de formularios, y comprueban el resul
 | **APIs externas (Node)** — `tests/apis-externas.test.mjs`: `fetch` falso (éxito, 500, sin red, tiempo límite, JSON inválido, inyección SoQL, caché, TRM de respaldo, sin TRM) | 37 | 37 ✅ |
 | **APIs externas reales** — `tests/apis-externas.test.mjs --live`: datos.gov.co (DIVIPOLA y TRM) y ExchangeRate-API responden con el formato esperado | 4 | 4 ✅ (2026-10-19) |
 | **APIs externas E2E** en Edge real — `tests/e2e/apis.test.mjs`: departamento → municipio, guardar y editar, tarjeta TRM y conversor; luego con las APIs **bloqueadas** (respaldo local y aviso de TRM) | 22 | 22 ✅ a 1366 px y a 375 px |
+| **Base de datos v2 (fase B)** — `tests/db/pruebas_bd_v2.sql`: datos corregidos, 18 escrituras inválidas rechazadas por la base y 8 válidas aceptadas | 38 | 38 ✅ en MariaDB 10.4 y en MySQL 8.0 |
+| **Equivalencia v2 = v1 + migración**: estructura y `CHECKSUM … EXTENDED` de las 20 tablas | 20 tablas | idénticas ✅ (2 rondas, 2 motores) |
 
 Al terminar A4 se **volvieron a correr** las suites de A2 y A3 (pruebas de regresión): siguen en
 74/74 y 73/73, así que lo nuevo no dañó nada de lo anterior.
@@ -1556,6 +1752,13 @@ node tests/services.test.mjs
 node tests/guard.test.mjs
 node tests/apis-externas.test.mjs          # sin internet (fetch falso)
 node tests/apis-externas.test.mjs --live   # además consulta las APIs reales
+```
+
+**Pruebas de la base de datos** (necesitan MySQL o MariaDB encendido, con la v2 importada):
+
+```bash
+mysql -u root < database/dentalcare_bd_v2.sql
+mysql -u root dentalcare_bd < tests/db/pruebas_bd_v2.sql   # la última línea debe decir fallidas = 0
 ```
 
 **Cómo correr las pruebas en navegador (A6)** — necesitan Microsoft Edge (o Chrome con
@@ -1638,6 +1841,30 @@ JavaScript** que aparezca en la consola: una página que "se ve bien" pero lanza
     bien; se corrigió la prueba. Las pruebas E2E con APIs bloqueadas también tuvieron que aceptar
     los errores de red **esperados** en la consola (`ignoreErrors` en el arnés).
 
+**Hallazgos de la fase B (base de datos):**
+20. **El script original no se importaba limpio.** Importar `dentalcare_bd.sql` completo en un
+    MariaDB vacío dio 28 errores, todos en las prácticas CRUD del final. Es fácil no notarlo:
+    el primer error está en la línea 1271, cuando las tablas y los datos ya se crearon, así que la
+    base parece estar bien (B-00).
+21. **La prueba podía dar falsos positivos.** En la primera versión de `debe_fallar`, *cualquier*
+    error contaba como acierto, incluso un error de sintaxis o una columna mal escrita en la propia
+    prueba. Se descubrió **saboteando la prueba a propósito**. Ahora los errores 1064 (sintaxis),
+    1054 (columna) y 1146 (tabla) cuentan como "prueba mal escrita".
+22. **MySQL y MariaDB no se comportan igual.** La prueba funcionaba en MariaDB y en MySQL 8 daba
+    19 fallas. En MySQL, cualquier sentencia dentro de un *handler* (incluso un `IF`) vacía el
+    área de diagnóstico, así que `GET DIAGNOSTICS` tiene que ir primero. Por eso se prueba en los
+    dos motores.
+23. **`mysqldump` exportaba las columnas generadas.** Con `--complete-insert`, el `INSERT` de
+    `venta` incluía `saldo_pendiente` y `estado_venta`. MariaDB lo acepta con una advertencia y
+    MySQL 8 lo rechaza. El script que arma la v2 quita esas dos columnas del `INSERT`.
+24. **Una restricción más estricta que el formulario.** El primer `CHECK` de tipo de documento
+    aceptaba `RC`, que el formulario no ofrece. Se alineó la lista con el frontend.
+25. **Una tabla de resultados que se borraba sola.** La tabla temporal de resultados de las pruebas
+    era InnoDB, así que el `ROLLBACK` final también habría borrado los resultados. Se cambió a
+    `ENGINE=MEMORY`, que no participa en transacciones. Además, una comparación de checksums dio una
+    diferencia en `venta` que no se repitió: se compararon las 40 filas una a una (idénticas) y se
+    pasó a `CHECKSUM … EXTENDED`, que lee los datos de verdad. Dos rondas seguidas dieron idéntico.
+
 **Las pruebas también se equivocan:** la prueba del *skip link* falló la primera vez porque leía
 el estilo **durante** la transición de 120 ms (el enlace todavía se estaba moviendo). El código
 estaba bien; se corrigió la prueba para esperar a que la transición terminara. En A5 pasó algo
@@ -1656,7 +1883,7 @@ errores que un usuario habría encontrado primero."*
 
 ---
 
-## 16. Simulacro de preguntas del docente
+## 17. Simulacro de preguntas del docente
 
 **P1. ¿Qué es Atomic Design y por qué lo usaron?**
 R: Una metodología que divide la interfaz en átomos, moléculas, organismos, templates y páginas. La
@@ -1758,14 +1985,15 @@ hace reutilizable en cualquier página o modal.
 R: Con 468 pruebas automatizadas en un navegador real y en Node: interacciones, teclado, ARIA,
 validaciones, reglas de negocio, permisos, sesión, diseño responsive y, desde A6, recorridos
 completos de usuario por las 25 pantallas. Encontraron errores reales
-que se corrigieron (sección 14). Las de Node están en `tests/` y cualquiera las puede repetir con
-`node tests/<suite>.test.mjs`.
+que se corrigieron (§16). Las de Node están en `tests/` y cualquiera las puede repetir con
+`node tests/<suite>.test.mjs`. Desde la fase B hay además 38 pruebas de la base de datos
+(`tests/db/pruebas_bd_v2.sql`), que verifican que la propia base rechace los datos inválidos.
 
 **P20. ¿Qué cambios necesita la base de datos y por qué?**
-R: Se documentarán en `database/CAMBIOS.md` (fase B). Por ejemplo: `cita.id_servicio` (RF-CIT-01
-pide elegir tratamiento), `rol.estado` (RF-ROL-06), el estado `PENDIENTE_CONFIRMACION` (HU-06),
-contraseñas con bcrypt (el seed las tiene en texto plano, lo que incumple RNF-SEG-01) y más
-horarios (el seed solo trae un día por odontólogo).
+R: Están aplicados en la base v2 y explicados en `database/CAMBIOS.md` (§15). Por ejemplo:
+`cita.id_servicio` (RF-CIT-01 pide elegir tratamiento), `rol.estado` (RF-ROL-06), el estado
+`PENDIENTE_CONFIRMACION` (HU-06), contraseñas con bcrypt (el seed las tenía en texto plano, lo que
+incumple RNF-SEG-01) y más horarios (el seed solo traía un día por odontólogo).
 
 **P21. ¿Qué es un template y en qué se diferencia de una página?**
 R: El template es la estructura de la pantalla sin datos: dónde van el sidebar, la topbar, las
@@ -1919,8 +2147,8 @@ permitidas: todo lo demás se ignora.
 **P46. ¿Qué cambios a la base de datos encontraron al construir los servicios?**
 R: Contraseñas en texto plano en el seed, falta `rol.estado` (RF-ROL-06), la tabla `rol_permiso`
 contradice el SRS (la recepcionista podía editar historias, contra RN-01), falta una tabla para los
-tokens de recuperación y hay ventas `PAGADO` con saldo pendiente. Se documentarán en
-`database/CAMBIOS.md` en la fase B; mientras tanto el mock ya trabaja con la versión corregida.
+tokens de recuperación y hay ventas `PAGADO` con saldo pendiente. El mock trabajó desde el principio
+con la versión corregida, y en la fase B se aplicaron a la base real (v2, §15).
 
 **P47. ¿Qué le falta al frontend para estar completo y cómo se conecta con lo que ya hicieron?**
 R: La fase A6: los HTML de cada pantalla. Cada uno solo declara su rol (`<body data-role>`), carga
@@ -2085,9 +2313,108 @@ sin una consulta extra, y no hay reportes por región en el alcance actual. Si m
 estadísticas por municipio, lo correcto es guardar el código DANE (`CHAR(5)`) con una llave foránea
 a una tabla `municipio`. La migración sería sencilla porque los nombres vienen de la lista oficial.
 
+### Fase B: base de datos
+
+**P72. ¿Por qué no basta con guardar la contraseña en la base si la base tiene usuario y clave?**
+R: Porque los datos salen de la base por muchos caminos: un respaldo olvidado en un correo, un
+volcado en un repositorio, un empleado con permiso de lectura o una inyección SQL. Si la tabla
+tiene `Admin2026*`, quien la vea entra al sistema y probablemente a otras cuentas de esa persona,
+porque la gente repite contraseñas. Con bcrypt, quien ve la tabla solo ve
+`$2a$10$QUOB1imQ…`, que no se puede revertir. Para probar contraseñas tendría que calcular bcrypt
+una por una, y bcrypt es lento a propósito. RNF-SEG-01 lo exige.
+
+**P73. ¿Qué significa cada parte de `$2a$10$QUOB1imQipamM.ht3H2rV.Jw4ywM8z81947SjJHnnBAsjwtppK80.`?**
+R: `2a` es la versión del algoritmo. `10` es el costo: 2¹⁰ = 1.024 rondas, y cada +1 duplica el
+tiempo. Los 22 caracteres siguientes son la **sal** y los últimos 31 son el hash. Como la sal va
+dentro del mismo texto, no hace falta otra columna, y `bcrypt.compare()` la extrae sola. Dos
+usuarios con la misma contraseña tienen hashes distintos porque su sal es distinta.
+
+**P74. ¿Para qué un `CHECK` sobre `password_hash` si el backend ya hashea?**
+R: Es defensa en profundidad. Si mañana alguien escribe un endpoint nuevo y olvida hashear, o
+inserta un usuario a mano en phpMyAdmin, la base rechaza el dato en vez de guardarlo en claro en
+silencio. La regla vive en el único lugar por donde pasan **todas** las escrituras. Lo probamos:
+`INSERT … 'Clave123*'` falla con `chk_usuario_password_bcrypt`.
+
+**P75. ¿Por qué validan lo mismo en el formulario, en la API y en la base? ¿No es repetir?**
+R: Cada capa protege de algo distinto. El formulario **ayuda** al usuario, que ve el error en el
+campo, pero se puede saltar con Postman. La API **decide** con reglas que necesitan contexto, como
+"¿este doctor atiende a este paciente?" (RN-01). La base **garantiza** que nada inválido se guarde,
+venga de donde venga. Lo que sí sería un error es que las listas no coincidan: si la base acepta
+menos que el formulario, el usuario recibe un error 500 sin entender por qué. Por eso CC, TI, CE y
+PA son exactamente los mismos en las tres capas.
+
+**P76. ¿Qué arreglaron en `rol_permiso` y qué tiene que ver con RN-01?**
+R: RN-01 dice que solo el doctor asignado o el administrador editan la historia clínica. En la v1
+la RECEPCIONISTA tenía `EDITAR_HISTORIA_CLINICA`, una violación directa de esa regla. Además, el
+ESPECIALISTA podía registrar pagos pero **no ver** historias, que es justo su trabajo. Se rehízo la
+matriz y quedó igual a la del frontend (`permissions.js`). Ojo: la tabla solo dice qué **rol**
+puede editar. "Solo el doctor **asignado**" depende de los datos, y eso lo valida la API en cada
+petición.
+
+**P77. ¿Por qué una regla de negocio como RN-03 no está en la base con un `CHECK`?**
+R: Porque un `CHECK` solo ve la fila que se guarda. RN-03 ("no inactivar un rol con usuarios
+activos") necesita **contar filas de otra tabla**. Eso se podría hacer con un *trigger*, pero
+esconde lógica de negocio en la base, es difícil de probar y el error que devuelve es poco claro.
+Lo pusimos en la API, que además puede responder un mensaje entendible ("reasigne o inactive a los
+3 usuarios primero").
+
+**P78. ¿Qué es una columna generada y por qué `estado_venta` pasó a serlo?**
+R: Es una columna que la base **calcula** con una fórmula sobre otras columnas de la fila. No se
+escribe. `saldo_pendiente` ya era una (`monto_total − monto_pagado`). `estado_venta` se escribía a
+mano y por eso la venta #2 decía PAGADO debiendo 200.000. Si un dato se puede deducir de otros,
+guardarlo aparte es invitar a la contradicción. Ahora es
+`CASE WHEN monto_pagado >= monto_total THEN 'PAGADO' ELSE 'PENDIENTE' END` y no puede mentir: al
+pagar, cambia sola. `STORED` significa que se guarda en disco y se puede filtrar e indexar.
+
+**P79. ¿Por qué eliminaron una tabla (`paciente_venta`)? ¿No se pierde información?**
+R: No, porque no tenía información propia: sus 40 filas eran exactamente las mismas parejas que
+`venta.id_paciente`. Lo verificamos con una consulta antes de borrarla. Tener el mismo hecho en dos
+lugares es redundancia, lo que la normalización busca evitar. Cuando la API cree ventas nuevas,
+nadie iba a llenar esa segunda tabla, y las dos fuentes se contradirían.
+
+**P80. ¿Cuál es la diferencia entre `dentalcare_bd_v2.sql` y `migrations.sql`?**
+R: La v2 crea la base **desde cero**, para una instalación nueva. La migración **transforma** una
+base v1 que ya existe con `ALTER` y `UPDATE`, sin perder sus datos, que es lo que se hace en un
+sistema en producción. La v2 se generó aplicando la migración y exportando, y comprobamos con
+checksums que los dos caminos dan exactamente la misma base.
+
+**P81. ¿Por qué hay que hacer una copia antes de la migración si existe `ROLLBACK`?**
+R: Porque en MySQL las sentencias DDL (`ALTER TABLE`, `CREATE`, `DROP`) hacen un **commit
+implícito**: se confirman en el acto y `ROLLBACK` no las deshace. Si la migración falla a mitad, la
+base queda medio migrada. La copia con `mysqldump` es el único "deshacer" real. Por eso la v2
+tampoco trae `DROP TABLE`: si se importa sobre una base con datos, se detiene en vez de borrar.
+
+**P82. ¿Cómo agregaron una columna obligatoria (`cita.id_servicio`) a una tabla que ya tenía filas?**
+R: En tres pasos, porque no se puede crear una columna `NOT NULL` sin valor en las filas que ya
+existen. (1) Se crea admitiendo `NULL`. (2) Se llena: la cita 3 (dolor de muela) con calza, la 4
+con endodoncia y el resto con valoración. (3) Se cambia a `NOT NULL` y se agrega la llave foránea.
+La FK no lleva `ON DELETE CASCADE`: borrar un tratamiento no puede borrar el historial de citas.
+Los tratamientos se inactivan.
+
+**P83. En `password_reset`, ¿por qué guardan el hash del token y por qué SHA-256 y no bcrypt?**
+R: El hash, por la misma razón que con las contraseñas: quien lea la tabla no puede usar los
+enlaces pendientes. SHA-256 basta porque el token es **aleatorio y largo** (32 bytes = 2²⁵⁶
+posibilidades): no se puede adivinar probando. bcrypt es lento a propósito para proteger
+contraseñas **humanas**, que son cortas y predecibles. Con un token aleatorio esa lentitud no
+aporta nada y además impediría buscar el token con un índice.
+
+**P84. ¿Cómo probaron la base de datos?**
+R: Con servidores desechables (MariaDB 10.4 y MySQL 8.0, en otros puertos) para no tocar las bases
+del equipo. Hay 38 pruebas en `tests/db/pruebas_bd_v2.sql`: comprueban los datos corregidos,
+intentan 18 escrituras inválidas que **deben** fallar y 8 válidas que deben funcionar. Corren
+dentro de una transacción con `ROLLBACK`, así que no dejan rastro. También probamos **la prueba**:
+le metimos casos saboteados, como una columna inexistente o un dato válido marcado como inválido, y
+los detectó. Así un 38/38 significa algo.
+
+**P85. ¿Encontraron algo que no esperaban?**
+R: Sí, varias cosas (§16, hallazgos 20 a 25). La más útil fue que la primera versión de la prueba
+daba **falsos positivos**: un error de sintaxis en la prueba contaba como "la base lo rechazó". La
+otra fue que MySQL y MariaDB se comportan distinto con `GET DIAGNOSTICS`: la prueba pasaba en uno y
+fallaba en el otro. Por eso probamos en los dos.
+
 ---
 
-## 17. Glosario
+## 18. Glosario
 
 | Término | Definición breve |
 |---|---|
@@ -2153,3 +2480,13 @@ a una tabla `municipio`. La migración sería sencilla porque los nombres vienen
 | **Timeout (tiempo límite)** | Tiempo máximo de espera de una petición antes de cancelarla |
 | **TRM** | Tasa Representativa del Mercado: pesos colombianos por 1 dólar, certificada a diario por la Superintendencia Financiera |
 | **TTL** | *Time To Live*: cuánto tiempo se considera vigente un dato en caché |
+| **CHECK (restricción)** | Condición que la base exige a cada fila antes de guardarla; si no se cumple, rechaza el `INSERT`/`UPDATE` (MySQL ≥ 8.0.16, MariaDB ≥ 10.2) |
+| **Columna generada** | Columna que la base calcula con una fórmula sobre otras de la misma fila (`GENERATED ALWAYS AS … STORED`); no se escribe a mano |
+| **Commit implícito** | Las sentencias DDL (`ALTER`, `CREATE`, `DROP`) se confirman solas en MySQL: `ROLLBACK` no las deshace |
+| **DDL / DML** | *Data Definition Language* (cambia la estructura: `CREATE`, `ALTER`) / *Data Manipulation Language* (cambia los datos: `INSERT`, `UPDATE`, `DELETE`) |
+| **Falso positivo (en pruebas)** | Prueba que dice "pasó" cuando en realidad no comprobó nada; se detecta saboteando la prueba a propósito |
+| **Llave foránea (FK)** | Columna que debe apuntar a una fila existente de otra tabla; la base impide referencias rotas |
+| **Migración** | Script que lleva una base de una versión a otra **conservando sus datos** (`ALTER`, `UPDATE`) |
+| **mysqldump** | Herramienta que exporta una base (estructura y datos) a un archivo `.sql`; sirve de copia de seguridad |
+| **Normalización / redundancia** | Diseñar las tablas para que cada hecho se guarde **una sola vez**; guardarlo dos veces (redundancia) permite que se contradiga |
+| **Transacción** | Grupo de operaciones que se aplican todas o ninguna (`START TRANSACTION` … `COMMIT` / `ROLLBACK`) |
