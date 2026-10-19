@@ -10,10 +10,20 @@ Los ES Modules no funcionan abriendo el archivo con doble clic (`file://`). Usa 
 - Ábrelo por `127.0.0.1` o `localhost` (no por la IP de la red): el login usa Web Crypto, que solo existe en contextos seguros.
 
 ## Pruebas
-Desde la raíz del proyecto, sin instalar nada (Node 22+): `node tests/agenda.test.mjs`, `node tests/services.test.mjs`, `node tests/guard.test.mjs`.
+Desde la raíz del proyecto, sin instalar nada (Node 22+): `node tests/agenda.test.mjs`, `node tests/services.test.mjs`, `node tests/guard.test.mjs`,
+`node tests/apis-externas.test.mjs` (agrega `--live` para consultar también las APIs reales).
 
 En navegador real (Edge; otro navegador con `BROWSER_PATH`): `node tests/e2e/server.mjs` en una terminal y, en otra,
-`node tests/e2e/recorrido.test.mjs [ancho]` y `node tests/e2e/flujos.test.mjs [ancho]`.
+`node tests/e2e/recorrido.test.mjs [ancho]`, `node tests/e2e/flujos.test.mjs [ancho]` y `node tests/e2e/apis.test.mjs [ancho]` (necesita internet).
+
+## APIs externas (servicios web de terceros)
+| API | Servicio | Se usa en |
+|---|---|---|
+| Departamentos y municipios (DIVIPOLA, `datos.gov.co`) | `js/services/colombia.service.js` | Registro de pacientes |
+| TRM del dólar (`datos.gov.co`; respaldo `open.er-api.com`) | `js/services/trm.service.js` | Pagos (equivalencia en USD) |
+
+No dependen de `USE_MOCK`. Usan `fetch()` con tiempo límite y caché en `localStorage` (`dentalcare:ext:…`), sin enviar el token de la sesión.
+Sin internet, los municipios salen del respaldo `js/data/divipola.js` (import dinámico) y la TRM muestra la última consultada o un aviso.
 
 ## Pantallas (fase A6)
 ```
@@ -52,10 +62,11 @@ js/
     organisms/ Topbar, Sidebar, DataTable, openModalForm, Odontogram, Calendar,
                BarChart/DashboardCharts, BookingWizard  (barrel: index.js)
     templates/ DashboardLayout, AuthLayout, DetailLayout  (barrel: index.js)
+  data/divipola.js  respaldo local de departamentos y municipios (solo se carga si falla la API)
   data/mock/   pacientes, especialistas (+horarios), servicios, citas, odontograma, historias, consultas,
                ventas, novedades, seguridad (roles, permisos, usuarios con hash PBKDF2), usuarios
   services/    capa de servicios: auth, pacientes, citas, historias, odontograma, servicios, especialistas,
-               ventas, novedades (barrel: index.js) · http.js (API) · api-error.js · mock/db.js · mock/password.js
+               ventas, novedades, colombia y trm (APIs externas) (barrel: index.js) · http.js (API) · externo.js (fetch a terceros) · api-error.js · mock/db.js · mock/password.js
   pages/       un controlador por vista (compartido entre roles): home, pacientes, citas, pagos, novedades, historia,
                especialistas, servicios, reportes, agendar, mis-citas, login, forbidden (403), entry (index)
                _shared/ → app-page.js (createAppPage, loadInto) · ui.js (card, dataList, withFieldErrors…) · citas.js

@@ -17,3 +17,7 @@ export { especialistasService, DIAS_SEMANA } from './especialistas.service.js';
 export { ventasService } from './ventas.service.js';
 export { novedadesService, TIPOS_NOVEDAD } from './novedades.service.js';
 export { resetDb as resetDemoData } from './mock/db.js';
+
+// APIs públicas de terceros (servicios web reales; no dependen de USE_MOCK).
+export { colombiaService } from './colombia.service.js';
+export { trmService } from './trm.service.js';

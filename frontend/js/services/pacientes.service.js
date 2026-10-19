@@ -16,8 +16,8 @@ import { mockRequest, findOr404, nextId, nowSql, assertValid, pick, audit, asser
  *   remove(id)         → elimina si no tiene citas ni ventas (409 si las tiene)
  */
 
-const CAMPOS = ['tipo_documento', 'numero_documento', 'nombres', 'apellidos', 'fecha_nacimiento', 'genero', 'telefono', 'email', 'direccion', 'eps_aseguradora'];
-const CAMPOS_CONTACTO = ['telefono', 'email', 'direccion', 'eps_aseguradora'];
+const CAMPOS = ['tipo_documento', 'numero_documento', 'nombres', 'apellidos', 'fecha_nacimiento', 'genero', 'telefono', 'email', 'departamento', 'municipio', 'direccion', 'eps_aseguradora'];
+const CAMPOS_CONTACTO = ['telefono', 'email', 'departamento', 'municipio', 'direccion', 'eps_aseguradora'];
 const optional = (rule) => (value) => (value === undefined || value === null || String(value).trim() === '' ? null : rule(value));
 
 // Las MISMAS reglas que usa el formulario: el "servidor" no confía en lo que validó el navegador.
@@ -30,6 +30,9 @@ const REGLAS = {
   genero: compose(validators.required(), (v) => (['MASCULINO', 'FEMENINO', 'OTRO'].includes(v) ? null : 'Género no válido.')),
   telefono: compose(validators.required(), validators.telefono()),
   email: optional(validators.email()),
+  // Nombres DIVIPOLA elegidos de la lista de datos.gov.co (columnas nuevas: ver SUSTENTACION §14.6).
+  departamento: optional(validators.maxLength(60)),
+  municipio: optional(validators.maxLength(80)),
   direccion: optional(validators.maxLength(150)),
   eps_aseguradora: optional(validators.maxLength(100)),
 };
@@ -92,6 +95,8 @@ const mock = {
         if (!esPropio && !can(user, PERMISOS.GESTIONAR_PACIENTES)) throw forbidden();
         const paciente = findOr404(db.paciente, 'id_paciente', id, 'El paciente');
         const cambios = pick(data, esPropio ? CAMPOS_CONTACTO : CAMPOS);
+        // Cambió el departamento sin enviar municipio: el anterior ya no le corresponde.
+        if (cambios.departamento !== undefined && cambios.departamento !== paciente.departamento && cambios.municipio === undefined) cambios.municipio = null;
         const merged = { ...paciente, ...cambios };
         assertValid(merged, REGLAS);
         assertUnique(db, merged, paciente.id_paciente);

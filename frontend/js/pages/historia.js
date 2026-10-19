@@ -228,6 +228,7 @@ async function init() {
                 ['Género', GENERO[p.genero] ?? p.genero],
                 ['Teléfono', p.telefono],
                 ['Correo electrónico', p.email],
+                ['Municipio', p.municipio ? `${p.municipio} (${p.departamento})` : null],
                 ['Dirección', p.direccion],
                 ['EPS / aseguradora', p.eps_aseguradora],
               ]),

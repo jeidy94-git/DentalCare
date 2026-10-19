@@ -6,14 +6,14 @@
  * Los montos son pesos enteros: así se evitan errores de redondeo (0.1 + 0.2 !== 0.3).
  */
 import { h } from '../core/dom.js';
-import { formatCOP, formatDate } from '../core/format.js';
+import { formatCOP, formatCOPDecimal, formatDate, formatUSD } from '../core/format.js';
 import { can, PERMISOS } from '../core/permissions.js';
 import { Button, StatusBadge } from '../components/atoms/index.js';
 import { FormField, KpiCard, toast } from '../components/molecules/index.js';
 import { DataTable, openModalForm } from '../components/organisms/index.js';
-import { ventasService, pacientesService } from '../services/index.js';
+import { ventasService, pacientesService, trmService } from '../services/index.js';
 import { createAppPage, loadInto, errorMessage } from './_shared/app-page.js';
-import { card, crumbs, dataList, fechaHora, fullName, runAction, withFieldErrors } from './_shared/ui.js';
+import { card, crumbs, dataList, fechaHora, fullName, notice, runAction, withFieldErrors } from './_shared/ui.js';
 
 const CONFIG = {
   ADMINISTRADOR: { activeId: 'pagos', title: 'Pagos', subtitle: 'Ventas, abonos y saldos por cobrar.' },
@@ -31,6 +31,73 @@ const kpis = (r, esPaciente) => [
   KpiCard({ label: 'Ventas pendientes', value: r.ventas_pendientes, icon: 'credit-card', tone: 'info' }),
   KpiCard({ label: esPaciente ? 'Abonado hoy' : 'Recaudado hoy', value: formatCOP(r.recaudado_hoy), icon: 'check-circle', tone: 'success' }),
 ];
+
+/**
+ * Tarjeta "Equivalencia en dólares": TRM del día (trmService, API externa) + saldos en USD + conversor
+ * para presupuestos de pacientes internacionales. Se carga APARTE de los pagos: si la API externa falla,
+ * la página de pagos funciona igual y solo esta tarjeta muestra el aviso.
+ */
+function trmPanel(esPaciente) {
+  const body = h('div', { class: 'trm', 'aria-live': 'polite' }, h('p', { class: 'trm__meta' }, 'Consultando la TRM del día…'));
+  let trm = null;
+  let resumen = null;
+  let conversor = null; // se crea una sola vez: al recargar los saldos no se borra lo que el usuario escribió
+
+  const converter = () => {
+    const out = h('output', { class: 'trm__result', for: 'trm-cop' }, formatUSD(0));
+    const field = FormField({
+      label: 'Valor del presupuesto (COP)',
+      id: 'trm-cop',
+      name: 'trm_cop',
+      type: 'number',
+      inputmode: 'numeric',
+      min: 0,
+      step: 1000,
+      placeholder: 'Ej.: 1500000',
+      onInput: (e) => out.replaceChildren(formatUSD(trmService.aUSD(Math.max(0, Number(e.target.value) || 0), trm))),
+    });
+    return h('div', { class: 'trm__converter' }, field, h('p', { class: 'trm__equals' }, 'Equivale a ', out));
+  };
+
+  function paint() {
+    if (!trm) return;
+    const saldos = resumen && [
+      [esPaciente ? 'Saldo pendiente' : 'Saldo por cobrar', `${formatUSD(trmService.aUSD(resumen.saldo_pendiente, trm))}`],
+      [esPaciente ? 'Abonado hoy' : 'Recaudado hoy', `${formatUSD(trmService.aUSD(resumen.recaudado_hoy, trm))}`],
+    ];
+    conversor ??= converter();
+    // replaceChildren es del DOM (no de h()): un `false` se volvería el texto "false", por eso el filter.
+    const parts = [
+      trm.desactualizada && notice(`No se pudo actualizar la tasa: se muestra la última consultada (vigente desde ${formatDate(trm.vigenteDesde)}).`, 'warning'),
+      h('p', { class: 'trm__rate' }, '1 USD = ', h('strong', {}, formatCOPDecimal(trm.valor))),
+      h('p', { class: 'trm__meta' }, `${trm.vigenteDesde ? `Vigente desde ${formatDate(trm.vigenteDesde)} · ` : ''}Fuente: ${trm.fuente}`),
+      saldos && dataList(saldos),
+      conversor,
+    ];
+    body.replaceChildren(...parts.filter(Boolean));
+  }
+
+  function load() {
+    body.replaceChildren(h('p', { class: 'trm__meta' }, 'Consultando la TRM del día…'));
+    trmService
+      .actual()
+      .then((value) => ((trm = value), paint()))
+      .catch(() =>
+        body.replaceChildren(
+          notice('No fue posible consultar la TRM en este momento. Los pagos se siguen registrando en pesos.', 'warning'),
+          Button({ label: 'Reintentar', icon: 'activity', variant: 'outline', size: 'sm', onClick: load }),
+        ),
+      );
+  }
+  load();
+
+  return {
+    el: card({ title: 'Equivalencia en dólares (USD)', subtitle: 'Referencia para pacientes internacionales con la TRM del día. Los pagos se registran en pesos.' }, body),
+    setResumen: (r) => ((resumen = r), paint()),
+    /** Valor en USD como texto, o null si aún no hay TRM. */
+    usd: (cop) => (trm ? `${formatUSD(trmService.aUSD(cop, trm))} (TRM ${formatCOPDecimal(trm.valor)})` : null),
+  };
+}
 
 async function init() {
   const role = document.body.dataset.role;
@@ -53,10 +120,13 @@ async function init() {
   if (!data) return;
 
   const kpiRow = h('div', { class: 'page-kpis' }, kpis(data.resumen, esPaciente));
+  const trm = trmPanel(esPaciente);
+  trm.setResumen(data.resumen);
   async function reload() {
     const [ventas, resumen] = await Promise.all([ventasService.list(), ventasService.resumen()]);
     table.setRows(ventas);
     kpiRow.replaceChildren(...kpis(resumen, esPaciente));
+    trm.setResumen(resumen);
   }
 
   const metodoOptions = data.metodos.map((m) => ({ value: m.id_metodo, label: m.descripcion ? `${m.nombre_metodo.replace(/_/g, ' ').toLowerCase()} · ${m.descripcion}` : m.nombre_metodo }));
@@ -141,6 +211,7 @@ async function init() {
           ['Fecha', formatDate(venta.fecha_venta)],
           ['Modalidad', venta.modalidad_pago === 'CREDITO' ? `Crédito · ${venta.numero_cuotas} cuotas` : 'Contado'],
           ['Valor total', formatCOP(venta.monto_total)],
+          ['Equivale a', trm.usd(venta.monto_total)],
           ['Pagado', formatCOP(venta.monto_pagado)],
           ['Saldo', formatCOP(venta.saldo_pendiente)],
           ['Estado', StatusBadge(venta.estado_venta, { size: 'sm' })],
@@ -189,7 +260,7 @@ async function init() {
     emptyMessage: esPaciente ? 'No tienes ventas registradas.' : 'No hay ventas con esos filtros.',
   });
 
-  layout.setContent(kpiRow, card({ title: esPaciente ? 'Mis tratamientos y abonos' : 'Ventas registradas' }, table));
+  layout.setContent(kpiRow, trm.el, card({ title: esPaciente ? 'Mis tratamientos y abonos' : 'Ventas registradas' }, table));
 }
 
 init();

@@ -103,9 +103,13 @@ export async function startBrowser(width = 1366) {
     fs.writeFileSync(file, Buffer.from(data, 'base64'));
   }
 
+  // "Receiving end…" lo emite una extensión interna de Edge, no la aplicación.
+  const ignored = [/Receiving end does not exist/];
+  /** Errores de consola ESPERADOS en una prueba (p. ej. peticiones bloqueadas a propósito). */
+  const ignoreErrors = (pattern) => ignored.push(pattern);
+
   function finish() {
-    // Este mensaje lo emite una extensión interna de Edge, no la aplicación.
-    const unique = [...new Set(errors)].filter((e) => !e.includes('Receiving end does not exist'));
+    const unique = [...new Set(errors)].filter((e) => !ignored.some((re) => re.test(e)));
     check('Sin errores de JavaScript en la consola', unique.length === 0, unique.slice(0, 5).join(' || '));
     console.log(results.join('\n'));
     const fails = results.filter((r) => r.startsWith('FAIL')).length;
@@ -115,5 +119,5 @@ export async function startBrowser(width = 1366) {
     process.exitCode = fails ? 1 : 0;
   }
 
-  return { send, evaluate, go, waitReady, login, here, check, screenshot, finish };
+  return { send, evaluate, go, waitReady, login, here, check, screenshot, ignoreErrors, finish };
 }

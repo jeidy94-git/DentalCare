@@ -1,4 +1,4 @@
-# Documento de sustentación — DentalCare (Frontend, fases A0 a A6)
+# Documento de sustentación — DentalCare (Frontend, fases A0 a A6 + APIs externas)
 
 > Guía de estudio para la sustentación individual. Explica **qué** se construyó, **por qué** se
 > tomó cada decisión y **cómo** defenderla ante el docente. Cada concepto apunta al archivo real del
@@ -24,9 +24,10 @@
 11. [Fase A4: templates](#11-fase-a4-templates)
 12. [Fase A5: capa de servicios, sesión y guards](#12-fase-a5-capa-de-servicios-sesión-y-guards)
 13. [Fase A6: pantallas definitivas por rol](#13-fase-a6-pantallas-definitivas-por-rol)
-14. [Cómo se verificó la calidad](#14-cómo-se-verificó-la-calidad)
-15. [Simulacro de preguntas del docente](#15-simulacro-de-preguntas-del-docente)
-16. [Glosario](#16-glosario)
+14. [Integración de APIs externas (servicios web de terceros)](#14-integración-de-apis-externas-servicios-web-de-terceros)
+15. [Cómo se verificó la calidad](#15-cómo-se-verificó-la-calidad)
+16. [Simulacro de preguntas del docente](#16-simulacro-de-preguntas-del-docente)
+17. [Glosario](#17-glosario)
 
 ---
 
@@ -41,6 +42,7 @@
 | **A4** Templates | Esqueletos de pantalla: `DashboardLayout` (marco con skip-link, sidebar, topbar y migas), `AuthLayout` (login y contraseña), `DetailLayout` (ficha del paciente) + molécula `Breadcrumbs` | `frontend/js/components/templates/` |
 | **A5** Servicios y sesión | Capa de servicios (9 servicios con la misma interfaz para mock y API), base de datos simulada en `localStorage`, login con contraseñas PBKDF2, sesión con vencimiento, *guard* de páginas por rol, matriz de permisos y auditoría | `frontend/js/services/`, `frontend/js/core/` (`config`, `storage`, `session`, `guard`, `permissions`) |
 | **A6** Pantallas | 25 pantallas HTML: entrada (`index`, `login`, `403`) y las de cada rol, con 14 controladores compartidos que solo consumen la capa de servicios | `frontend/*.html`, `frontend/pages/<rol>/`, `frontend/js/pages/` |
+| **APIs externas** | Dos servicios web públicos y reales consumidos con `fetch()`: departamentos y municipios de Colombia (Datos Abiertos, DIVIPOLA) en el registro de pacientes y la TRM del dólar en pagos, con tiempo límite, caché y respaldo sin internet | `frontend/js/services/colombia.service.js`, `trm.service.js`, `externo.js` |
 
 **Stack del proyecto:** HTML5 + CSS3 + JavaScript puro (ES Modules) en el frontend; Node.js + Express +
 MySQL (mysql2/promise, sin ORM) en el backend (fases C y D). Mientras no existe el backend, las
@@ -752,7 +754,7 @@ try {
   (`GET /citas`, `PATCH /citas/:id/estado`…). El mock **es** la especificación del backend.
 - **Errores uniformes:** mock y API lanzan el mismo `ApiError` (`status`, `message`, `fields`, `code`),
   así la página maneja los errores de una sola forma.
-- **Comprobable:** los servicios se prueban en Node sin navegador (67 pruebas, §14).
+- **Comprobable:** los servicios se prueban en Node sin navegador (67 pruebas, §15).
 
 | `status` de `ApiError` | Significado | Ejemplo |
 |---|---|---|
@@ -991,6 +993,8 @@ Detectadas al construir el mock; irán a `database/CAMBIOS.md`:
 4. Falta una tabla de tokens de recuperación de contraseña (`password_reset`, HU-01).
 5. Ventas del seed marcadas `PAGADO` con saldo pendiente (p. ej. la #2: 350.000 con 150.000
    abonados); el mock recalcula el estado desde el saldo.
+6. `paciente.departamento` y `paciente.municipio` (nuevas, opcionales): ubicación elegida de la
+   lista DIVIPOLA de Datos Abiertos (§14.6).
 
 ### 12.12 Punto de partida de la fase A6 (pantallas HTML definitivas)
 
@@ -1230,7 +1234,297 @@ se abre su resumen con un selector de las acciones permitidas.
 
 ---
 
-## 14. Cómo se verificó la calidad
+## 14. Integración de APIs externas (servicios web de terceros)
+
+Hasta A6, todos los datos venían de **nuestra** capa de servicios (mock hoy, backend propio
+mañana). Esta parte agrega dos **servicios web reales, públicos y de terceros**, que se consultan
+desde el navegador con `fetch()`:
+
+| | API 1: Departamentos y municipios | API 2: TRM (dólar en pesos) |
+|---|---|---|
+| **Proveedor** | Datos Abiertos de Colombia (`datos.gov.co`, plataforma **Socrata**). Datos del DANE | Datos Abiertos (Superintendencia Financiera) y, de respaldo, ExchangeRate-API |
+| **Endpoint** | `GET https://www.datos.gov.co/resource/vcjz-niiq.json` (departamentos) y `…/gdxc-w37w.json` (municipios) | `GET https://www.datos.gov.co/resource/32sa-8pi3.json` y `GET https://open.er-api.com/v6/latest/USD` |
+| **Formato** | JSON (arreglo de objetos) | JSON |
+| **Autenticación** | Ninguna (datos públicos) | Ninguna |
+| **Servicio** | `js/services/colombia.service.js` | `js/services/trm.service.js` |
+| **Dónde se usa** | Registro y edición de pacientes (`pages/pacientes.js`): departamento → municipio | Pagos (`pages/pagos.js`): tarjeta "Equivalencia en dólares" |
+| **Si no hay internet** | Copia en caché o **respaldo local** con los 33 departamentos y 1.122 municipios | Última TRM en caché (con aviso). Si no hay ninguna, avisa: **no inventa** una tasa |
+
+> **¿Por qué estas dos?** Resuelven necesidades reales del consultorio. La ubicación del paciente
+> se elige de la **lista oficial DIVIPOLA** (codificación del DANE), en vez de texto libre con
+> errores como "medellin", "Medellín" o "MDE". La TRM permite dar a un **paciente internacional** el
+> valor de su presupuesto en dólares, con la tasa oficial del día.
+
+Antes de escribir código se **verificó cada endpoint** con peticiones reales. El conjunto de
+municipios que suele citarse en tutoriales (`xdk5-pm3f`) **ya no existe**: responde
+`"dataset.missing"`. Por eso se usan los conjuntos oficiales DIVIPOLA del DANE. También se confirmó
+que `datos.gov.co` responde con el encabezado `Access-Control-Allow-Origin: *` (CORS, §14.5).
+
+### 14.1 Dónde encajan en la arquitectura
+
+```
+pages/pacientes.js ──► services/index.js ──► colombia.service.js ──► externo.js ──► fetch() ──► datos.gov.co
+pages/pagos.js     ──►                   ──► trm.service.js      ──►            ──►         ──► datos.gov.co / open.er-api.com
+                                                                                  └──► storage.js (caché "dentalcare:ext:…")
+```
+
+- Las páginas siguen importando **solo** desde `services/index.js` (la regla de A6 no cambia).
+- **No dependen de `USE_MOCK`.** Son servicios de terceros: el mismo código funciona con el mock o
+  con el backend propio. `USE_MOCK` solo decide de dónde salen **nuestros** datos.
+- `externo.js` reúne lo que comparten: `fetchJson()` (petición con tiempo límite) y `createCache()`
+  (caché con fecha de guardado).
+
+### 14.2 Anatomía de una consulta con `fetch()` (`services/externo.js`)
+
+```js
+export async function fetchJson(url, { fetch: fetchImpl = (...a) => globalThis.fetch(...a), timeout = 6000 } = {}) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeout);      // 1. tiempo límite
+  let response;
+  try {
+    response = await fetchImpl(String(url), {                        // 2. la petición
+      headers: { Accept: 'application/json' },                       //    solo Accept: sin token
+      signal: controller.signal,
+    });
+  } catch (error) {                                                  // 3. no hubo respuesta
+    const isTimeout = error?.name === 'AbortError';
+    throw new ApiError(0, isTimeout ? '…tardó demasiado…' : '…no hay conexión…', { code: isTimeout ? 'TIMEOUT' : 'NETWORK' });
+  } finally {
+    clearTimeout(timer);
+  }
+  if (!response.ok) throw new ApiError(response.status, '…', { code: 'EXTERNAL' });  // 4. 404, 500…
+  try {
+    return await response.json();                                    // 5. el cuerpo, como objeto
+  } catch {
+    throw new ApiError(response.status, '…no es JSON…', { code: 'EXTERNAL' });       // 6. HTML de error, etc.
+  }
+}
+```
+
+Lo que hay que saber explicar:
+
+1. **`fetch()` devuelve una promesa** y por eso se usa `await`. La página no se congela mientras
+   llega la respuesta.
+2. **`fetch()` NO falla con un 404 o un 500.** La promesa solo se rechaza si **no hubo respuesta**
+   (sin internet, DNS, CORS, cancelación). Un 500 llega como respuesta "exitosa" con `response.ok`
+   en `false`. Por eso hay que revisar `response.ok`. Es una pregunta clásica de sustentación.
+3. **`fetch()` no tiene tiempo límite propio.** Si el servidor no contesta, la petición puede quedar
+   esperando mucho tiempo. `AbortController` la cancela a los 6 s, menos que los 15 s del backend
+   propio, porque un tercero lento no debe frenar al consultorio.
+4. **`response.json()` también es asíncrono** y puede fallar: un proxy o un error del servidor
+   pueden devolver HTML en vez de JSON.
+5. **Todo error se convierte en `ApiError`,** el mismo formato de la fase A5 (`status`, `code`,
+   `message`). Quien llama no necesita saber si el problema fue la red, el tiempo o el servidor.
+6. **El parámetro `fetch` se puede reemplazar** (inyección de dependencias). En la app se usa el
+   `fetch` real. Las pruebas pasan uno falso que simula éxito, error 500, falta de red o lentitud
+   (§14.8).
+
+**Construcción de la URL.** Los parámetros no se pegan a mano en el texto: se agregan con
+`URLSearchParams`, que codifica los caracteres especiales (espacios, `'`, `&`).
+
+```js
+const url = new URL('https://www.datos.gov.co/resource/gdxc-w37w.json');
+url.searchParams.set('$select', 'cod_mpio,nom_mpio');
+url.searchParams.set('$where', "cod_dpto='05'");
+url.searchParams.set('$order', 'nom_mpio');
+// → …/gdxc-w37w.json?%24select=cod_mpio%2Cnom_mpio&%24where=cod_dpto%3D%2705%27&%24order=nom_mpio
+```
+
+### 14.3 Consultar una API Socrata: SoQL (`colombia.service.js`)
+
+`datos.gov.co` usa **Socrata**, que permite filtrar desde la URL con un lenguaje parecido a SQL
+llamado **SoQL**:
+
+| Parámetro | Equivale en SQL a | Uso en DentalCare |
+|---|---|---|
+| `$select` | `SELECT columnas` | Solo código y nombre (no se descargan latitud, longitud ni tipo) |
+| `$where` | `WHERE` | `cod_dpto='05'`: solo los municipios del departamento elegido |
+| `$order` | `ORDER BY` | Ordenados por nombre (y la TRM por fecha, la más reciente primero) |
+| `$limit` | `LIMIT` | Tope de filas. Socrata devuelve **1.000** si no se indica |
+
+**Cargar bajo demanda.** No se descargan los 1.122 municipios al abrir el formulario. Primero se
+traen los 33 departamentos y, cuando el usuario elige uno, solo **sus** municipios (Antioquia tiene
+125). Así viaja menos información y la respuesta es más rápida.
+
+**Inyección SoQL.** El código del departamento va **dentro** de un filtro `$where`. Si alguien
+pasara `05' OR '1'='1`, cambiaría la consulta, igual que una inyección SQL. Por eso el servicio
+valida el código con `/^\d{2}$/` (exactamente dos dígitos) **antes** de construir la URL, y si no
+cumple ni siquiera llama a la API (error 400). Una prueba lo verifica.
+
+**Los datos de un tercero no son confiables.** La API podría cambiar de formato, devolver filas
+incompletas o un objeto de error. `normalizar()`:
+
+- comprueba que la respuesta sea un arreglo;
+- descarta las filas cuyo código no tenga el formato DANE (2 dígitos para el departamento, 5 para el
+  municipio);
+- convierte "SAN JOSÉ DE CÚCUTA" en "San José de Cúcuta" (`nombrePropio()`, sin tocar siglas como
+  "D.C.");
+- ordena con `localeCompare(…, 'es')`, que ubica bien las tildes y la ñ;
+- si no queda ninguna fila válida, lo trata como un error y usa el respaldo.
+
+Además, los nombres se pintan con `h()` (`textContent`), nunca con `innerHTML`. Aunque la API fuera
+manipulada, un nombre con `<script>` se mostraría como texto (§5).
+
+### 14.4 Resiliencia: qué pasa cuando la API falla
+
+Una API externa **va a fallar** algún día: no hay internet en el consultorio, el servidor del
+gobierno está en mantenimiento o responde lento. El sistema no puede dejar de registrar pacientes
+ni pagos por eso. Se aplican capas, de la más rápida a la de último recurso:
+
+| Capa | DIVIPOLA (departamentos y municipios) | TRM |
+|---|---|---|
+| 1. Caché vigente (`localStorage`) | 30 días (la división territorial casi no cambia) | 1 hora (la TRM cambia una vez al día) |
+| 2. Red, con tiempo límite de 6 s | `datos.gov.co` | `datos.gov.co` (oficial) → si falla, ExchangeRate-API |
+| 3. Caché **vencida** | Se usa la lista guardada | Se usa la última TRM **con aviso** ("desactualizada") |
+| 4. Último recurso | **Respaldo local** `js/data/divipola.js` (33 dptos., 1.122 mpios.) | **Error explicado al usuario** y botón "Reintentar" |
+
+```js
+async function consultar(key, { url, map, local }) {
+  const cached = cache.read(key);
+  if (cached?.fresh) return { items: cached.value, origen: 'cache' };       // 1
+  try {
+    const items = map(await fetchJson(url, { fetch, timeout }));             // 2 (map = validar)
+    cache.write(key, items);
+    return { items, origen: 'api' };
+  } catch {
+    if (cached) return { items: cached.value, origen: 'cache' };             // 3
+    return { items: await local(), origen: 'local' };                        // 4
+  }
+}
+```
+
+**¿Por qué la TRM no tiene "respaldo local" como los municipios?** Porque la lista de municipios
+de hace un mes sigue siendo correcta, pero una tasa de cambio guardada en el código sería **falsa**.
+Con dinero no se inventa un valor: si no hay TRM, la tarjeta lo dice y los pagos se siguen
+registrando en pesos. Cuando se muestra una TRM vieja, se indica la fecha de vigencia y el aviso
+"no se pudo actualizar".
+
+**Otras decisiones de resiliencia:**
+
+- **`origen` en la respuesta.** El servicio dice de dónde salió el dato (`api`, `cache` o `local`).
+  Con eso el formulario muestra "Sin conexión con datos.gov.co: se usa la lista guardada en la
+  aplicación". El usuario sabe qué está viendo.
+- **Respaldo con `import()` dinámico.** `divipola.js` pesa unos 26 KB y **solo se descarga si hace
+  falta**. Con la API funcionando, el navegador nunca lo pide. Es una copia de las mismas consultas,
+  tomada el 2026-10-19, con la misma forma que la respuesta de la API, así que pasa por la misma
+  `normalizar()`.
+- **Peticiones compartidas.** Si dos partes de la pantalla piden la misma lista al mismo tiempo,
+  comparten **una** sola petición: se guarda la promesa en curso en un `Map`.
+- **Degradación elegante en pagos.** La TRM **no** se carga con `loadInto()` junto a las ventas,
+  sino aparte. Si la API externa falla, la página de pagos funciona completa y solo esa tarjeta
+  muestra el aviso. Una dependencia **opcional** nunca debe tumbar una función **esencial**.
+- **Caché con fecha.** `createCache()` guarda `{ savedAt, value }` sobre `storage.js` (§12.4), con
+  el prefijo `dentalcare:ext:…` y respaldo en memoria si `localStorage` no está disponible. Si el
+  almacenamiento está lleno, no se guarda la copia, pero la consulta funcionó igual.
+
+### 14.5 Seguridad y privacidad al hablar con terceros
+
+- **No se usa `http.js` (§12.9) a propósito.** Ese cliente agrega
+  `Authorization: Bearer <token de la sesión>` y cierra la sesión ante un 401. Enviar el token del
+  consultorio a un servidor ajeno sería **filtrarlo**. Además, un 401 de un tercero no significa
+  que nuestra sesión venció. Una prueba verifica que la petición lleve **solo** el encabezado
+  `Accept`.
+- **No sale ningún dato de pacientes.** A la API solo viaja el **código del departamento** (un dato
+  público). El nombre, el documento o la dirección del paciente nunca salen del sistema. Es
+  importante porque son datos de salud (Ley 1581 de 2012, habeas data).
+- **CORS.** El navegador bloquea, por defecto, que una página lea respuestas de **otro origen**. Las
+  dos APIs responden `Access-Control-Allow-Origin: *`, es decir, "cualquier página puede leerme".
+  Por eso funcionan desde el navegador sin un servidor intermedio. La petición es **simple** (GET y
+  solo `Accept`), así que el navegador no necesita la consulta previa `OPTIONS` (*preflight*). Si
+  se agregara `Authorization` o `Content-Type: application/json`, sí la haría.
+- **Validación de rango en la TRM.** Un valor fuera de 1.000–20.000 pesos por dólar se descarta
+  (por ejemplo, 0, negativo u otra moneda) y se intenta la siguiente fuente.
+- **Solo HTTPS.** Ambas APIs se consultan por `https://`. Una página servida con HTTPS no puede
+  pedir recursos por HTTP (contenido mixto).
+
+### 14.6 Cambios en los datos del paciente (para `database/CAMBIOS.md`, fase B)
+
+El formulario guarda dos campos nuevos y opcionales en el paciente:
+
+```sql
+ALTER TABLE paciente
+  ADD COLUMN departamento VARCHAR(60) NULL AFTER email,
+  ADD COLUMN municipio    VARCHAR(80) NULL AFTER departamento;
+```
+
+- El servicio de pacientes los valida igual que el formulario (largo máximo). El paciente también
+  puede cambiarlos, porque son datos de contacto.
+- **Regla de coherencia:** si cambia el departamento y no llega un municipio, el municipio anterior
+  se borra. Así no queda "Medellín (Caldas)".
+- La ficha clínica muestra "Municipio: Medellín (Antioquia)".
+- **Alternativa más normalizada (para discutir):** guardar el **código DANE** (`CHAR(5)`) con una
+  llave foránea a una tabla `municipio`. Es más correcto si se van a hacer reportes por región.
+  Se eligió guardar el nombre porque la ficha lo muestra sin una consulta adicional y porque no
+  hay reportes por municipio en el alcance actual.
+
+Se agrega a la lista de §12.11 como el punto 6.
+
+### 14.7 Detalles de la interfaz
+
+**Departamento → municipio (`pacientes.js → ubicacionFields`).**
+1. Al abrir el modal, el select de departamento dice "Cargando departamentos…" y está
+   **deshabilitado**. El de municipio, "Primero elija el departamento".
+2. Llegan los departamentos: se habilita el select y la ayuda indica la fuente (DIVIPOLA o lista
+   local).
+3. Al elegir un departamento se consultan **sus** municipios. Mientras llegan, el select queda
+   deshabilitado.
+4. Al **editar**, se preseleccionan el departamento y el municipio guardados.
+
+- **Condición de carrera:** si el usuario cambia de departamento rápido (Antioquia → Caldas), la
+  respuesta de Antioquia podría llegar **después** y mostrar municipios equivocados. Cada consulta
+  lleva un número de `turno` y solo se pinta la respuesta del último (la misma idea de §11.6).
+- **Un select deshabilitado no viaja en el formulario** (`FormData` lo omite). Si la lista no carga,
+  el campo no se envía y el dato que ya estaba guardado no se pierde.
+- Si el paciente tiene guardado un nombre que ya no está en la lista, se agrega como opción para no
+  borrarlo sin querer.
+
+**Tarjeta TRM (`pagos.js → trmPanel`).**
+- Muestra "1 USD = $ 3.174,67", la fecha de vigencia y la fuente, los saldos del resumen en
+  dólares y un **conversor** para presupuestos: se escribe un valor en pesos y aparece en dólares.
+- El resultado va en un `<output>` dentro de una región `aria-live`, para que el lector de pantalla
+  lo anuncie.
+- El conversor se crea **una sola vez**. Al registrar un abono se recalculan los saldos, pero no se
+  borra el valor que el usuario escribió.
+- El detalle de una venta muestra "Equivale a US$ … (TRM …)" cuando hay TRM.
+- **Montos:** los pesos siguen siendo enteros. La conversión `aUSD()` redondea a **centavos**
+  (`Math.round(x * 100) / 100`). La TRM se muestra con dos decimales (`formatCOPDecimal`), el dólar
+  con `formatUSD` (`Intl.NumberFormat` con `currency: 'USD'`).
+
+### 14.8 Cómo se probó una API que no controlamos
+
+El reto: si la prueba depende de internet, falla cuando la red falla, aunque el código esté bien.
+Además, es imposible **provocar** a voluntad un error 500 del gobierno. Solución en tres niveles:
+
+1. **Pruebas unitarias con `fetch` falso** — `tests/apis-externas.test.mjs` (37 pruebas, sin
+   internet). Gracias a las fábricas `createColombiaService({ fetch, store, now, timeout })` y
+   `createTrmService(…)`, la prueba controla la red, el almacenamiento y **el reloj**. Por ejemplo,
+   "avanza" 31 días para probar la caché vencida, sin esperar 31 días. Cubre:
+   - éxito;
+   - caché;
+   - caché vencida sin red;
+   - HTTP 500;
+   - respuesta que no es JSON;
+   - formato inesperado;
+   - tiempo límite (un `fetch` que nunca responde, cortado a los 50 ms);
+   - inyección SoQL;
+   - peticiones simultáneas;
+   - TRM con fuente de respaldo;
+   - TRM absurda;
+   - TRM sin red ni caché (error, no inventa).
+2. **Pruebas de integración contra las APIs reales**: `node tests/apis-externas.test.mjs --live`
+   (4 pruebas más). Verifican que los endpoints siguen vivos y con el formato esperado:
+   33 departamentos, 125 municipios de Antioquia, TRM en rango.
+3. **E2E en Edge real**: `tests/e2e/apis.test.mjs` (22 pruebas).
+   - Con internet: registra una paciente en Medellín, verifica lo guardado y la preselección al
+     editar, y prueba la TRM y el conversor.
+   - Luego **bloquea** las dos APIs con `Network.setBlockedURLs` del protocolo DevTools, como si
+     no hubiera internet: aparece la lista local con su aviso y la TRM muestra "no fue posible
+     consultar" sin inventar un valor, mientras la tabla de pagos sigue funcionando.
+   - Por último desbloquea y "Reintentar" recupera la TRM.
+
+---
+
+## 15. Cómo se verificó la calidad
 
 Se escribieron **pruebas automatizadas** que abren el styleguide en un navegador real (Edge sin
 interfaz), simulan clics, teclado y envío de formularios, y comprueban el resultado:
@@ -1247,6 +1541,9 @@ interfaz), simulan clics, teclado y envío de formularios, y comprueban el resul
 | Prueba de humo A5 en Edge real (1366 px y 375 px): login con Web Crypto, `localStorage`, inicio del administrador | 11 | 11 ✅ |
 | **Recorrido A6** en Edge real — `tests/e2e/recorrido.test.mjs`: las 25 pantallas con los 4 roles, un solo `<h1>`, sin errores de carga, sin desborde, guards y redirecciones | 59 | 59 ✅ a 1366 px y a 375 px |
 | **Flujos A6** en Edge real — `tests/e2e/flujos.test.mjs`: registrar paciente, pedir cita, cancelar, confirmar, registrar consulta, RN-01 en solo lectura, abono, cerrar sesión | 17 | 17 ✅ a 1366 px y a 375 px |
+| **APIs externas (Node)** — `tests/apis-externas.test.mjs`: `fetch` falso (éxito, 500, sin red, tiempo límite, JSON inválido, inyección SoQL, caché, TRM de respaldo, sin TRM) | 37 | 37 ✅ |
+| **APIs externas reales** — `tests/apis-externas.test.mjs --live`: datos.gov.co (DIVIPOLA y TRM) y ExchangeRate-API responden con el formato esperado | 4 | 4 ✅ (2026-10-19) |
+| **APIs externas E2E** en Edge real — `tests/e2e/apis.test.mjs`: departamento → municipio, guardar y editar, tarjeta TRM y conversor; luego con las APIs **bloqueadas** (respaldo local y aviso de TRM) | 22 | 22 ✅ a 1366 px y a 375 px |
 
 Al terminar A4 se **volvieron a correr** las suites de A2 y A3 (pruebas de regresión): siguen en
 74/74 y 73/73, así que lo nuevo no dañó nada de lo anterior.
@@ -1257,6 +1554,8 @@ Al terminar A4 se **volvieron a correr** las suites de A2 y A3 (pruebas de regre
 node tests/agenda.test.mjs
 node tests/services.test.mjs
 node tests/guard.test.mjs
+node tests/apis-externas.test.mjs          # sin internet (fetch falso)
+node tests/apis-externas.test.mjs --live   # además consulta las APIs reales
 ```
 
 **Cómo correr las pruebas en navegador (A6)** — necesitan Microsoft Edge (o Chrome con
@@ -1266,6 +1565,7 @@ node tests/guard.test.mjs
 node tests/e2e/server.mjs                 # terminal 1: sirve frontend/ en http://127.0.0.1:5600
 node tests/e2e/recorrido.test.mjs 1366    # terminal 2 (375 para móvil)
 node tests/e2e/flujos.test.mjs 1366
+node tests/e2e/apis.test.mjs 1366         # APIs externas: necesita internet
 ```
 
 Usan el **protocolo DevTools (CDP)** directamente desde Node, sin librerías: abren el navegador sin
@@ -1324,6 +1624,20 @@ JavaScript** que aparezca en la consola: una página que "se ve bien" pero lanza
     `createAppPage()` ahora lo impide (§13.1).
 15. Faltaba el **favicon** (error 404 en la consola de todas las páginas) → `favicon.svg`.
 
+**Hallazgos de la integración de APIs externas:**
+16. **El conjunto de datos de los tutoriales ya no existe.** El identificador de municipios que
+    suele citarse (`xdk5-pm3f`) responde `dataset.missing`. Se descubrió **probando el endpoint
+    antes de programar** y se cambió a los conjuntos oficiales DIVIPOLA del DANE.
+17. **La API devuelve los nombres en MAYÚSCULAS** ("SAN JOSÉ DE CÚCUTA"). Se normalizan con
+    `nombrePropio()`, cuidando las siglas ("Bogotá, D.C.").
+18. **`replaceChildren` no es `h()`.** Al pintar la tarjeta TRM, una condición `false` dentro de
+    `replaceChildren(...)` se habría mostrado como el texto "false" (`h()` sí ignora `false`). Se
+    filtran los valores vacíos antes de pintar.
+19. **La prueba suponía datos equivocados.** Dos pruebas fallaron la primera vez: el nombre oficial
+    es "Santiago de Cali" (no "Cali") y el código 99 **sí existe** (Vichada). El código estaba
+    bien; se corrigió la prueba. Las pruebas E2E con APIs bloqueadas también tuvieron que aceptar
+    los errores de red **esperados** en la consola (`ignoreErrors` en el arnés).
+
 **Las pruebas también se equivocan:** la prueba del *skip link* falló la primera vez porque leía
 el estilo **durante** la transición de 120 ms (el enlace todavía se estaba moviendo). El código
 estaba bien; se corrigió la prueba para esperar a que la transición terminara. En A5 pasó algo
@@ -1342,7 +1656,7 @@ errores que un usuario habría encontrado primero."*
 
 ---
 
-## 15. Simulacro de preguntas del docente
+## 16. Simulacro de preguntas del docente
 
 **P1. ¿Qué es Atomic Design y por qué lo usaron?**
 R: Una metodología que divide la interfaz en átomos, moléculas, organismos, templates y páginas. La
@@ -1441,7 +1755,7 @@ odontograma decide si el panel va al lado o debajo según el espacio que realmen
 hace reutilizable en cualquier página o modal.
 
 **P19. ¿Cómo prueban que todo funciona?**
-R: Con 405 pruebas automatizadas en un navegador real y en Node: interacciones, teclado, ARIA,
+R: Con 468 pruebas automatizadas en un navegador real y en Node: interacciones, teclado, ARIA,
 validaciones, reglas de negocio, permisos, sesión, diseño responsive y, desde A6, recorridos
 completos de usuario por las 25 pantallas. Encontraron errores reales
 que se corrigieron (sección 14). Las de Node están en `tests/` y cualquiera las puede repetir con
@@ -1676,9 +1990,104 @@ mientras el navegador todavía mostraba la página anterior. No la ignoramos: co
 (hasta que la URL sea la nueva) y la corrimos varias veces seguidas hasta que fue estable. Una
 prueba intermitente que se ignora termina escondiendo errores reales.
 
+**P58. ¿Qué APIs externas consume el sistema y para qué?**
+R: Dos, públicas y reales. La primera es la de **Datos Abiertos de Colombia** (`datos.gov.co`),
+con los departamentos y municipios oficiales del DANE (DIVIPOLA). La usamos en el registro de
+pacientes: al elegir el departamento se cargan sus municipios. La segunda es la **TRM** oficial de
+la Superintendencia Financiera, también en `datos.gov.co`, con ExchangeRate-API de respaldo. La
+usamos en pagos para mostrar en dólares los saldos y los presupuestos de pacientes internacionales.
+
+**P59. ¿Cómo se consume una API REST desde JavaScript sin librerías?**
+R: Con `fetch()`, que es nativo. Se arma la URL con `URL` y `URLSearchParams` (codifican los
+caracteres especiales) y se hace `await fetch(url, { headers, signal })`. Luego se revisa
+`response.ok` y se lee el cuerpo con `await response.json()`. Todo está en `fetchJson()` de
+`services/externo.js`, para no repetirlo en cada servicio.
+
+**P60. Si la API responde 500, ¿`fetch` lanza un error?**
+R: No. `fetch` solo rechaza la promesa cuando **no hay respuesta**: sin red, DNS, CORS o
+cancelación. Un 404 o un 500 llegan como respuesta normal con `response.ok === false`. Por eso
+`fetchJson()` revisa `response.ok` y, si es falso, lanza un `ApiError` con el código HTTP. Si no se
+revisa, el código trataría una página de error como si fueran datos.
+
+**P61. ¿Qué pasa si la API tarda un minuto en responder?**
+R: `fetch` no tiene tiempo límite propio. Usamos un `AbortController`: a los 6 segundos se llama
+`controller.abort()`, la petición se cancela y se lanza un `ApiError` con código `TIMEOUT`. Luego
+entra la resiliencia: caché o respaldo local. Una prueba simula una API que nunca responde y
+verifica que se corta a tiempo.
+
+**P62. ¿Y si no hay internet en el consultorio?**
+R: Depende del dato. Para los municipios: primero la caché (vigente 30 días); si no hay, la copia
+local de DIVIPOLA incluida en la aplicación (33 departamentos y 1.122 municipios), y el formulario
+avisa "se usa la lista guardada". Para la TRM: la última consultada con su fecha y el aviso de que
+no se pudo actualizar. Si nunca se consultó, se dice que no está disponible. Los pagos se siguen
+registrando en pesos, porque una tasa inventada sería un dato falso de dinero. Lo probamos en el
+navegador bloqueando las APIs con el protocolo DevTools.
+
+**P63. ¿Qué es CORS y por qué la página puede leer `datos.gov.co`?**
+R: Es una regla del navegador: por defecto, una página no puede leer respuestas de **otro origen**
+(otro dominio, puerto o protocolo). El servidor ajeno da permiso con el encabezado
+`Access-Control-Allow-Origin`. `datos.gov.co` y ExchangeRate-API responden `*`, o sea, "cualquiera
+puede leerme". Lo verificamos antes de programar. Además, nuestra petición es "simple" (GET con
+solo `Accept`), así que el navegador no hace la consulta previa `OPTIONS` (*preflight*). CORS **no**
+es seguridad del servidor: protege al usuario del navegador. Desde Node o Postman la API se lee
+igual.
+
+**P64. ¿Por qué no usaron `http.js`, el cliente HTTP que ya tenían?**
+R: Porque `http.js` agrega el token de **nuestra** sesión (`Authorization: Bearer …`). Mandarlo a
+un servidor ajeno sería filtrar la credencial. Además, ante un 401 cierra la sesión, y un 401 de
+un tercero no significa que nuestra sesión venció. Las APIs externas tienen su propio cliente sin
+token, y una prueba verifica que la petición lleva solo el encabezado `Accept`.
+
+**P65. ¿Hay riesgo de inyección al consultar la API?**
+R: Sí: el código del departamento va dentro del filtro `$where` de SoQL (el "SQL" de Socrata). Si
+alguien manipulara el valor a `05' OR '1'='1`, cambiaría la consulta. Por eso el servicio exige
+exactamente dos dígitos (`/^\d{2}$/`) **antes** de construir la URL; si no cumple, responde 400 sin
+llamar a la API. Además, `URLSearchParams` codifica el valor. Es el mismo principio que las
+consultas parametrizadas del backend: nunca confiar en un valor que va dentro de una consulta.
+
+**P66. ¿Confían en lo que devuelve la API?**
+R: No. Es un tercero: puede cambiar de formato, devolver filas incompletas o un mensaje de error en
+JSON. `normalizar()` comprueba que sea un arreglo y descarta los códigos que no cumplen el formato
+DANE. Si no queda nada válido, lo trata como un fallo y usa el respaldo. En la TRM se descarta
+cualquier valor fuera de 1.000–20.000 pesos por dólar. Y todo se pinta con `textContent` (a través
+de `h()`), así que un nombre con HTML se muestra como texto.
+
+**P67. ¿Cómo probaron un servicio que depende de internet?**
+R: En tres niveles. (1) Pruebas unitarias con un `fetch` **falso** inyectado en la fábrica del
+servicio: simulamos 500, falta de red, lentitud, JSON inválido y datos absurdos sin depender de
+internet; también inyectamos el reloj para "adelantar" 31 días y probar la caché vencida. (2)
+Pruebas `--live` contra las APIs reales, para detectar si cambiaron. (3) E2E en Edge con internet
+y con las APIs bloqueadas. Sin la inyección de dependencias, los casos de error no se podrían
+probar a voluntad.
+
+**P68. ¿Para qué sirve la caché y cómo saben si está vencida?**
+R: Evita repetir consultas, hace la pantalla más rápida y sirve de respaldo sin internet. Se guarda
+`{ savedAt, value }` en `localStorage` (prefijo `dentalcare:ext:`) y es vigente si
+`ahora − savedAt < TTL`. El TTL depende del dato: 30 días para municipios (casi no cambian) y 1 hora
+para la TRM (cambia a diario). Una caché vencida no se borra: se usa si la red falla, avisando que
+puede estar desactualizada.
+
+**P69. ¿Por qué el respaldo de municipios se carga con `import()` dinámico?**
+R: Porque son unos 26 KB que **casi nunca** se necesitan. Con `import` estático se descargarían
+siempre. Con `import('../data/divipola.js')` el navegador solo lo pide cuando falla la API y no hay
+caché. Es carga perezosa (*lazy loading*), parte de la misma idea de no gastar recursos que no se
+usan.
+
+**P70. Si la API de la TRM se cae, ¿se cae la página de pagos?**
+R: No. La TRM se carga **aparte** de las ventas (no dentro de `loadInto()`). Si falla, la tabla, los
+indicadores, el registro de ventas y los abonos siguen funcionando; solo la tarjeta de dólares
+muestra el aviso y un botón "Reintentar". Es degradación elegante: una función opcional no debe
+romper una esencial.
+
+**P71. ¿Por qué guardan el nombre del municipio y no el código DANE?**
+R: Es una decisión discutible y está documentada (§14.6). El nombre se muestra directo en la ficha
+sin una consulta extra, y no hay reportes por región en el alcance actual. Si mañana se piden
+estadísticas por municipio, lo correcto es guardar el código DANE (`CHAR(5)`) con una llave foránea
+a una tabla `municipio`. La migración sería sencilla porque los nombres vienen de la lista oficial.
+
 ---
 
-## 16. Glosario
+## 17. Glosario
 
 | Término | Definición breve |
 |---|---|
@@ -1732,3 +2141,15 @@ prueba intermitente que se ignora termina escondiendo errores reales.
 | **WAI-ARIA** | Especificación del W3C de roles y atributos para accesibilidad |
 | **Web Crypto** | API criptográfica nativa del navegador (`crypto.subtle`, `crypto.getRandomValues`) |
 | **XSS** | Cross-Site Scripting: inyección de scripts maliciosos |
+| **API REST pública** | Servicio web que cualquiera puede consultar por HTTP y devuelve datos (aquí, JSON) |
+| **CORS** | Regla del navegador que impide leer respuestas de otro origen salvo que el servidor lo permita (`Access-Control-Allow-Origin`) |
+| **Degradación elegante** | Si falla una función opcional (la TRM), el resto de la página sigue funcionando |
+| **DIVIPOLA** | Codificación oficial del DANE de departamentos (2 dígitos) y municipios (5 dígitos) |
+| **Import dinámico** | `import('ruta')` dentro del código: descarga el módulo solo cuando se necesita |
+| **Inyección de dependencias** | Pasar desde fuera lo que una función usa (`fetch`, reloj, almacenamiento) para poder reemplazarlo en las pruebas |
+| **Preflight** | Petición `OPTIONS` que el navegador hace antes de una petición CORS "no simple" |
+| **Respaldo (fallback)** | Fuente alternativa cuando la principal falla: caché, otra API o datos locales |
+| **Socrata / SoQL** | Plataforma de datos abiertos de `datos.gov.co` y su lenguaje de consulta parecido a SQL (`$select`, `$where`…) |
+| **Timeout (tiempo límite)** | Tiempo máximo de espera de una petición antes de cancelarla |
+| **TRM** | Tasa Representativa del Mercado: pesos colombianos por 1 dólar, certificada a diario por la Superintendencia Financiera |
+| **TTL** | *Time To Live*: cuánto tiempo se considera vigente un dato en caché |

@@ -8,18 +8,81 @@ import { h } from '../core/dom.js';
 import { validators } from '../core/validators.js';
 import { formatDate } from '../core/format.js';
 import { can, PERMISOS } from '../core/permissions.js';
-import { Avatar, Button } from '../components/atoms/index.js';
+import { Avatar, Button, getControl } from '../components/atoms/index.js';
 import { FormField, confirmDialog } from '../components/molecules/index.js';
 import { DataTable, openModalForm, patientQuickFields } from '../components/organisms/index.js';
-import { pacientesService } from '../services/index.js';
+import { pacientesService, colombiaService } from '../services/index.js';
 import { createAppPage, loadInto } from './_shared/app-page.js';
 import { crumbs, fullName, runAction, withFieldErrors } from './_shared/ui.js';
 import { fichaUrl } from './_shared/citas.js';
 
-/** Formulario completo: los campos del alta rápida + dirección y EPS. */
+const FUENTE_DIVIPOLA = 'Lista oficial DIVIPOLA (DANE) consultada en datos.gov.co.';
+const FUENTE_LOCAL = 'Sin conexión con datos.gov.co: se usa la lista guardada en la aplicación.';
+
+/** Reemplaza las opciones de un select; conserva `selected` aunque no venga en la lista (dato ya guardado). */
+function setOptions(select, items, placeholder, selected = '') {
+  const nombres = items.map((it) => it.nombre);
+  if (selected && !nombres.includes(selected)) nombres.unshift(selected);
+  select.replaceChildren(h('option', { value: '' }, placeholder), ...nombres.map((nombre) => h('option', { value: nombre }, nombre)));
+  select.value = selected;
+}
+
+/**
+ * Departamento → municipio con la API de Datos Abiertos (colombiaService). Al elegir el departamento se
+ * consultan SUS municipios. El servicio nunca deja la lista vacía: usa caché o el respaldo local.
+ */
+function ubicacionFields(initial = {}) {
+  const deptoField = FormField({ label: 'Departamento', name: 'departamento', as: 'select', optional: true, disabled: true, options: [{ value: '', label: 'Cargando departamentos…' }], hint: FUENTE_DIVIPOLA });
+  const mpioField = FormField({ label: 'Municipio', name: 'municipio', as: 'select', optional: true, disabled: true, options: [{ value: '', label: 'Primero elija el departamento' }] });
+  const depto = getControl(deptoField);
+  const mpio = getControl(mpioField);
+  const hint = deptoField.querySelector('.field__hint');
+  const codigos = new Map(); // nombre del departamento → código DANE (para pedir sus municipios)
+  let turno = 0; // si el usuario cambia rápido de departamento, solo vale la ÚLTIMA respuesta
+
+  const avisarOrigen = (origen) => (hint.textContent = origen === 'local' ? FUENTE_LOCAL : FUENTE_DIVIPOLA);
+
+  async function cargarMunicipios(selected = '') {
+    const mio = ++turno;
+    const codigo = codigos.get(depto.value);
+    mpio.disabled = true;
+    if (!codigo) return setOptions(mpio, [], depto.value ? 'Municipio no disponible' : 'Primero elija el departamento', selected);
+    setOptions(mpio, [], 'Cargando municipios…');
+    try {
+      const { items, origen } = await colombiaService.municipios(codigo);
+      if (mio !== turno) return;
+      setOptions(mpio, items, 'Seleccione el municipio…', selected);
+      mpio.disabled = false;
+      avisarOrigen(origen);
+    } catch {
+      if (mio === turno) setOptions(mpio, [], 'No se pudo cargar la lista', selected);
+    }
+  }
+
+  depto.addEventListener('change', () => cargarMunicipios());
+
+  colombiaService
+    .departamentos()
+    .then(({ items, origen }) => {
+      for (const it of items) codigos.set(it.nombre, it.codigo);
+      setOptions(depto, items, 'Seleccione el departamento…', initial.departamento ?? '');
+      depto.disabled = false;
+      avisarOrigen(origen);
+      if (initial.departamento) cargarMunicipios(initial.municipio ?? '');
+    })
+    .catch(() => {
+      // Mientras el select siga deshabilitado no viaja en el formulario: el dato guardado no se pierde.
+      hint.textContent = 'No se pudo cargar la lista de departamentos.';
+    });
+
+  return [deptoField, mpioField];
+}
+
+/** Formulario completo: los campos del alta rápida + ubicación (API DIVIPOLA), dirección y EPS. */
 function pacienteFields(initial = {}) {
   const grid = patientQuickFields(initial);
   grid.append(
+    ...ubicacionFields(initial),
     FormField({ label: 'Dirección', name: 'direccion', optional: true, value: initial.direccion, validate: validators.maxLength(150) }),
     FormField({ label: 'EPS / aseguradora', name: 'eps_aseguradora', optional: true, value: initial.eps_aseguradora, validate: validators.maxLength(100) }),
   );

@@ -11,6 +11,15 @@ export const formatNumber = (value) => numberFmt.format(Number(value) || 0);
 /** 1500000 → "$ 1.500.000" */
 export const formatCOP = (value) => copFmt.format(Number(value) || 0);
 
+const copDecimalFmt = new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const usdFmt = new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'USD', minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+/** Tasas de cambio (llevan centavos): 3174.67 → "$ 3.174,67" */
+export const formatCOPDecimal = (value) => copDecimalFmt.format(Number(value) || 0);
+
+/** 472.49 → "US$ 472,49" */
+export const formatUSD = (value) => usdFmt.format(Number(value) || 0);
+
 /**
  * Convierte "YYYY-MM-DD" o "YYYY-MM-DD HH:mm:ss" (formato MySQL) en Date local,
  * evitando el desfase de un día que produce `new Date('2026-09-01')` (lo toma como UTC).
