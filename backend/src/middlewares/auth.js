@@ -1,7 +1,8 @@
 import jwt from 'jsonwebtoken';
 import { env } from '../config/env.js';
 import { ApiError, unauthorized, forbidden } from '../utils/api-error.js';
-import * as usuarioModel from '../models/usuario.model.js';
+import { puede } from '../utils/permisos.js';
+import * as authService from '../services/auth.service.js';
 
 /**
  * verifyToken: protege una ruta. Exige `Authorization: Bearer <token>` (lo envía frontend/js/services/http.js).
@@ -26,7 +27,7 @@ export async function verifyToken(req, res, next) {
     throw unauthorized('La sesión no es válida. Ingresa de nuevo.', 'INVALID_TOKEN');
   }
 
-  const sesion = await usuarioModel.buscarSesion(Number(payload.sub));
+  const sesion = await authService.sesion(Number(payload.sub));
   if (!sesion) throw unauthorized('La sesión no es válida. Ingresa de nuevo.', 'INVALID_TOKEN');
   if (!sesion.activo) throw new ApiError(401, 'Tu cuenta está inactiva. Comunícate con el centro odontológico.', { code: 'INACTIVE' });
 
@@ -35,8 +36,11 @@ export async function verifyToken(req, res, next) {
   next();
 }
 
-/** ¿El usuario de la petición tiene ALGUNO de estos permisos? */
-export const tienePermiso = (req, ...permisos) => permisos.some((permiso) => req.permisos?.includes(permiso));
+/**
+ * La sesión de la petición, { user, permisos }, que los controladores pasan a los servicios.
+ * Los servicios no reciben `req`: así no dependen de Express y se pueden reutilizar o probar solos.
+ */
+export const sesionDe = (req) => ({ user: req.user, permisos: req.permisos });
 
 /**
  * requirePermission: autoriza (403) después de verifyToken (401). Va en la ruta:
@@ -46,6 +50,6 @@ export const tienePermiso = (req, ...permisos) => permisos.some((permiso) => req
 export const requirePermission =
   (...permisos) =>
   (req, res, next) => {
-    if (!tienePermiso(req, ...permisos)) throw forbidden();
+    if (!puede(sesionDe(req), ...permisos)) throw forbidden();
     next();
   };

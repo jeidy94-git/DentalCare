@@ -1,5 +1,7 @@
 import { pool } from '../config/db.js';
 
+/** Repositorio de `paciente`: solo SQL parametrizado (las reglas están en services/pacientes.service.js). */
+
 /** Columnas que el cliente puede enviar al crear (las demás las pone la base o el servidor). */
 export const CAMPOS = ['tipo_documento', 'numero_documento', 'nombres', 'apellidos', 'fecha_nacimiento', 'genero', 'telefono', 'email', 'departamento', 'municipio', 'direccion', 'eps_aseguradora'];
 
@@ -33,6 +35,7 @@ export async function listar({ q, idPaciente } = {}) {
   return rows;
 }
 
+/** `db` es el pool o la conexión de una transacción (`conn`), para leer lo que esa transacción escribió. */
 export async function buscarPorId(idPaciente, db = pool) {
   const [rows] = await db.query(`SELECT ${COLUMNAS} FROM paciente WHERE id_paciente = ?`, [idPaciente]);
   return rows[0] ?? null;
@@ -49,8 +52,8 @@ export async function duplicados({ numero_documento, email }) {
 }
 
 /**
- * Inserta el paciente y abre su historia clínica vacía. Debe correr dentro de una transacción
- * (`conn`): un paciente sin historia sería un dato a medias.
+ * Inserta el paciente y abre su historia clínica vacía. El servicio lo llama dentro de una
+ * transacción (`conn`): un paciente sin historia sería un dato a medias.
  * @returns {Promise<number>} id_paciente nuevo
  */
 export async function crear(conn, datos) {
@@ -60,4 +63,12 @@ export async function crear(conn, datos) {
   );
   await conn.query(`INSERT INTO historia_clinica (id_paciente, observaciones) VALUES (?, 'Historia clínica aperturada en sistema')`, [result.insertId]);
   return result.insertId;
+}
+
+/**
+ * Bloquea la fila del paciente hasta el fin de la transacción (SELECT … FOR UPDATE).
+ * Lo usa el agendamiento para que dos citas simultáneas del MISMO paciente se revisen en fila.
+ */
+export async function bloquear(conn, idPaciente) {
+  await conn.query('SELECT id_paciente FROM paciente WHERE id_paciente = ? FOR UPDATE', [idPaciente]);
 }

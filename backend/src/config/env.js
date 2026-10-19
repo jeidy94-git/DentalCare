@@ -14,6 +14,13 @@ import { fileURLToPath } from 'node:url';
 // Las variables ya definidas en el sistema tienen prioridad (así las pruebas apuntan a otra base sin editar .env).
 dotenv.config({ path: fileURLToPath(new URL('../../.env', import.meta.url)), quiet: true });
 
+/*
+ * Zona horaria del consultorio. La agenda decide qué franjas "ya pasaron" con la hora del servidor:
+ * si el servidor estuviera en UTC (lo normal en la nube), a las 7 p. m. de Bogotá ya sería "mañana"
+ * y se bloquearían citas válidas. Node aplica el cambio de TZ apenas se asigna.
+ */
+process.env.TZ = process.env.TZ?.trim() || 'America/Bogota';
+
 function required(name) {
   const value = process.env[name];
   if (value === undefined || value.trim() === '') throw new Error(`Falta la variable de entorno ${name}. Copia backend/.env.example como backend/.env y complétala.`);
@@ -34,6 +41,7 @@ if (jwtSecret.length < 32) throw new Error('JWT_SECRET debe tener al menos 32 ca
 
 export const env = Object.freeze({
   port: integer('PORT', 3000),
+  timeZone: process.env.TZ,
   db: Object.freeze({
     host: process.env.DB_HOST?.trim() || '127.0.0.1',
     port: integer('DB_PORT', 3306),

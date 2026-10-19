@@ -1,7 +1,7 @@
 import { pool } from '../config/db.js';
 
 /**
- * Registro en `log_auditoria` (RNF-SEG-02): quién hizo qué, sobre qué tabla y cuándo.
+ * Repositorio de `log_auditoria` (RNF-SEG-02): quién hizo qué, sobre qué tabla y cuándo.
  *
  * `db` es el pool o la conexión de una transacción: si la operación se deshace (ROLLBACK), su
  * registro de auditoría también, y el log nunca cuenta algo que no pasó.

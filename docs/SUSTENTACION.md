@@ -1,4 +1,4 @@
-# Documento de sustentación — DentalCare (Frontend A0 a A6, APIs externas, Fase B: base de datos y Fase C: backend)
+# Documento de sustentación — DentalCare (Frontend A0 a A6, APIs externas, Fase B: base de datos, Fase C: backend y Evidencia 2: API por capas)
 
 > Guía de estudio para la sustentación individual. Explica **qué** se construyó, **por qué** se
 > tomó cada decisión y **cómo** defenderla ante el docente. Cada concepto apunta al archivo real del
@@ -6,7 +6,7 @@
 >
 > Para ver todo funcionando: abrir `frontend/index.html` con **Live Server** (VS Code) e ingresar con
 > una cuenta de demostración (§12.10). El catálogo de componentes sigue en `frontend/styleguide.html`.
-> Para usar el backend real (fase C): §16.8.
+> Para usar el backend real (fase C): §16.8. Arquitectura en 4 capas y módulo de citas (Evidencia 2): §17.
 
 ---
 
@@ -28,9 +28,10 @@
 14. [Integración de APIs externas (servicios web de terceros)](#14-integración-de-apis-externas-servicios-web-de-terceros)
 15. [Fase B: base de datos v2](#15-fase-b-base-de-datos-v2)
 16. [Fase C: backend (Node.js + Express + MySQL)](#16-fase-c-backend-nodejs--express--mysql)
-17. [Cómo se verificó la calidad](#17-cómo-se-verificó-la-calidad)
-18. [Simulacro de preguntas del docente](#18-simulacro-de-preguntas-del-docente)
-19. [Glosario](#19-glosario)
+17. [Evidencia 2: API REST en 4 capas y módulo de citas](#17-evidencia-2-api-rest-en-4-capas-y-módulo-de-citas)
+18. [Cómo se verificó la calidad](#18-cómo-se-verificó-la-calidad)
+19. [Simulacro de preguntas del docente](#19-simulacro-de-preguntas-del-docente)
+20. [Glosario](#20-glosario)
 
 ---
 
@@ -48,12 +49,13 @@
 | **APIs externas** | Dos servicios web públicos y reales consumidos con `fetch()`: departamentos y municipios de Colombia (Datos Abiertos, DIVIPOLA) en el registro de pacientes y la TRM del dólar en pagos, con tiempo límite, caché y respaldo sin internet | `frontend/js/services/colombia.service.js`, `trm.service.js`, `externo.js` |
 | **B** Base de datos v2 | Corrección de la base antes del backend: contraseñas con bcrypt, matriz de permisos según RN-01, `rol.estado`, ubicación DIVIPOLA, estado de venta calculado, tratamiento en la cita, tokens de recuperación y 14 restricciones `CHECK`. Incluye migración, instalación completa y 38 pruebas SQL | `database/` (`CAMBIOS.md`, `dentalcare_bd_v2.sql`, `migrations.sql`), `tests/db/` |
 | **C** Backend | API REST en Node.js + Express 5 + `mysql2/promise` (sin ORM): configuración con `.env`, pool de conexiones, errores centralizados, login con bcrypt y JWT, `verifyToken`/`requirePermission`, listado y registro de pacientes con validación DIVIPOLA. El frontend la usa con `USE_MOCK = false` sin cambiar ninguna página. 79 pruebas de la API y 19 E2E | `backend/`, `tests/backend/`, `tests/e2e/backend.test.mjs` |
+| **Evidencia 2** API por capas y citas | El backend pasa a 4 capas (`routes` → `controllers` → `services` → `repositories`). Módulo de citas: listado con filtros, ocupación sin datos personales (Ley 1581), agendamiento con RN-02 y bloqueo `FOR UPDATE` contra la doble reserva, y cambios de estado con auditoría. Más las consultas de odontólogos y tratamientos que necesita la agenda. 84 pruebas de la API y 20 E2E | `backend/src/services/`, `backend/src/repositories/`, `tests/backend/citas.test.mjs`, `tests/e2e/citas-backend.test.mjs` |
 
 **Stack del proyecto:** HTML5 + CSS3 + JavaScript puro (ES Modules) en el frontend; Node.js + Express +
 MySQL (mysql2/promise, sin ORM) en el backend. Con `USE_MOCK = true` (valor por defecto) las pantallas
 usan **datos mock** copiados del seed, servidos por la capa de servicios de la fase A5. Con
-`USE_MOCK = false` usan la API real de la fase C (§16) sobre la base **v2** (§15). Por ahora responden
-autenticación y pacientes; los demás módulos llegan en la fase D.
+`USE_MOCK = false` usan la API real (§16 y §17) sobre la base **v2** (§15). Por ahora responden
+autenticación, pacientes, citas y las consultas de la agenda; los demás módulos llegan después.
 
 ---
 
@@ -760,7 +762,7 @@ try {
   (`GET /citas`, `PATCH /citas/:id/estado`…). El mock **es** la especificación del backend.
 - **Errores uniformes:** mock y API lanzan el mismo `ApiError` (`status`, `message`, `fields`, `code`),
   así la página maneja los errores de una sola forma.
-- **Comprobable:** los servicios se prueban en Node sin navegador (67 pruebas, §17).
+- **Comprobable:** los servicios se prueban en Node sin navegador (67 pruebas, §18).
 
 | `status` de `ApiError` | Significado | Ejemplo |
 |---|---|---|
@@ -1697,7 +1699,7 @@ motores del proyecto: **MariaDB 10.4.32** (XAMPP) y **MySQL 8.0.36**.
 5. **Se probó la prueba.** Se agregaron cuatro casos saboteados a propósito: una columna que no
    existe, un error de sintaxis, un dato válido marcado como "debe fallar" y un dato inválido
    marcado como "debe funcionar". Los cuatro salieron como FALLA. Así se sabe que un 38/38 significa
-   algo (§17, hallazgos 21 y 22).
+   algo (§18, hallazgos 21 y 22).
 
 ```bash
 mysql -u root < database/dentalcare_bd_v2.sql
@@ -1729,7 +1731,7 @@ responde lo mismo que respondía el mock, con el mismo formato. Por eso el front
 poner `USE_MOCK = false` en `frontend/js/core/config.js`.
 
 En esta fase se construyeron los dos primeros módulos. Los demás (citas, historias, ventas…) son la
-fase D.
+fase D. Citas llegó en la Evidencia 2 (§17).
 
 | Método y ruta | Qué hace | Quién puede |
 |---|---|---|
@@ -1764,6 +1766,9 @@ backend/
 Es el patrón **MVC sin la V**: la vista es el frontend. Cada carpeta responde una sola pregunta.
 Si una consulta está mal, el error está en `models/`. Si un rol entra donde no debe, en `routes/`
 o en el controlador. Así se encuentra rápido dónde tocar.
+
+> **Actualización (Evidencia 2):** `models/` ahora se llama `repositories/`, y la lógica de los
+> controladores pasó a una capa nueva, `services/`. La estructura vigente está en §17.1.
 
 **¿Por qué sin ORM (Sequelize, Prisma…)?** Porque el SQL se escribe a mano con `mysql2/promise`.
 En la sustentación se puede mostrar la consulta exacta que corre, y se aprovecha lo construido en
@@ -2000,7 +2005,7 @@ mensaje en vez de "sin conexión". `GET /api/health` lo confirma.
 
 | Pendiente | Nota |
 |---|---|
-| Módulos citas, historias, odontograma, servicios, especialistas, ventas, novedades | Con `USE_MOCK = false`, esas pantallas responden 404 por ahora |
+| Módulos historias, odontograma, ventas, novedades y el CRUD de servicios y especialistas | Citas y las consultas que usa la agenda ya están (§17). Con `USE_MOCK = false`, las demás pantallas responden 404 por ahora |
 | `PUT`/`DELETE` de pacientes, `GET /pacientes/:id` | El servicio del frontend ya los llama así |
 | Recuperación de contraseña (`/auth/forgot-password`, `/auth/reset-password`) | La tabla `password_reset` ya existe (B-08) |
 | Límite de intentos de login (*rate limiting*) | Hoy cada intento cuesta ~80 ms de bcrypt, pero no hay bloqueo |
@@ -2009,7 +2014,287 @@ mensaje en vez de "sin conexión". `GET /api/health` lo confirma.
 
 ---
 
-## 17. Cómo se verificó la calidad
+## 17. Evidencia 2: API REST en 4 capas y módulo de citas
+
+La rúbrica de la Evidencia 2 (criterio C3) pide una arquitectura **estricta por capas**. La fase C
+tenía tres (rutas, controladores y modelos) y los controladores hacían de todo: leían `req`,
+validaban, aplicaban las reglas, abrían transacciones y respondían. En esta entrega:
+
+1. El backend pasó a **cuatro capas**: `routes/` → `controllers/` → `services/` → `repositories/`.
+2. Se construyó el **núcleo de la agenda**: listar citas, consultar la ocupación, agendar con RN-02
+   y cambiar el estado, con auditoría.
+3. Se agregaron dos consultas de solo lectura que la agenda necesita para funcionar en pantalla:
+   odontólogos con sus horarios y tratamientos.
+
+| Método y ruta | Qué hace | Quién puede |
+|---|---|---|
+| `GET /api/citas?desde&hasta&id_especialista&id_paciente&estado` | Lista citas con los nombres unidos (JOIN) | Con sesión; el paciente solo ve las suyas |
+| `GET /api/citas/ocupacion?desde&hasta` | Franjas tomadas **sin datos del paciente** | `CREAR_CITA` (los 4 roles) |
+| `POST /api/citas` | Agenda validando RN-02 y disponibilidad | `CREAR_CITA`; el paciente, solo para sí y queda `PENDIENTE_CONFIRMACION` |
+| `PATCH /api/citas/:id/estado` `{ estado }` | Confirmar, completar o cancelar | Depende del estado pedido (§17.5) |
+| `GET /api/especialistas?soloActivos=true` | Odontólogos con `horarios: [...]` | Con sesión |
+| `GET /api/servicios?soloActivos=true` | Catálogo de tratamientos | Con sesión; el paciente solo ve los activos |
+
+### 17.1 De tres a cuatro capas
+
+```
+backend/src/
+├── routes/         ¿QUÉ URL y con qué protección?   citas.routes.js: verifyToken → requirePermission
+├── controllers/    ¿Qué llegó y qué respondo?        saca body/query/params, llama al servicio, elige 200/201
+├── services/       ¿Qué dicen las reglas?            RN-02, permisos por rol, máquina de estados, transacciones
+│   └── agenda.js   funciones puras de las franjas (sin base ni reloj propio)
+├── repositories/   ¿Qué SQL corre?                   solo consultas parametrizadas con `?`
+├── middlewares/    auth.js, error-handler.js
+└── utils/          ApiError, validadores, permisos, DIVIPOLA
+```
+
+| Capa | Sabe de… | NO sabe de… |
+|---|---|---|
+| Ruta | URLs y *middlewares* | Reglas, SQL |
+| Controlador | HTTP: `req`, `res`, códigos de estado, encabezado `Location` | Reglas, SQL |
+| Servicio | Reglas de negocio, quién puede qué, transacciones | HTTP (nunca ve `req` ni `res`) |
+| Repositorio | SQL y tablas | Reglas, permisos, HTTP |
+
+Las dependencias van **en un solo sentido**: una ruta llama a un controlador, el controlador a un
+servicio, el servicio a uno o varios repositorios. Nunca al revés. Así se ve, por ejemplo, el
+controlador completo de agendar:
+
+```js
+export async function agendar(req, res) {
+  const cita = await citasService.agendar(sesionDe(req), req.body);
+  res.status(201).location(`/api/citas/${cita.id_cita}`).json(cita);
+}
+```
+
+Toda la lógica está en `services/citas.service.js`, que recibe la **sesión** (`{ user, permisos }`)
+y los datos, pero no `req`. ¿Qué se gana?
+
+- **Se lee mejor.** Cada archivo tiene una sola razón para cambiar. Una regla nueva de agenda se
+  toca en el servicio y un cambio de URL, en la ruta.
+- **Se reutiliza.** El servicio no depende de Express. Una tarea programada (por ejemplo, los
+  recordatorios de 48 horas) podría llamar a `citasService` sin una petición HTTP.
+- **Se prueba solo.** `agenda.js` es puro: recibe la fecha, los horarios, las horas ocupadas y
+  `ahora`, y devuelve las franjas. Se prueba con cualquier fecha sin base de datos.
+
+**Cómo se hizo la transición sin romper nada.** `models/` se renombró a `repositories/` y los
+controladores de la fase C se movieron a `services/` con `git mv`, que **conserva el historial** de
+cada archivo. Luego se escribieron controladores nuevos y delgados. Lo que armaba el objeto `user`
+de la sesión (antes dentro del modelo) pasó a `auth.service.js`: el repositorio devuelve la fila
+tal cual y el servicio decide qué forma tiene.
+
+Eso es una **refactorización**: cambiar la estructura sin cambiar el comportamiento. ¿Cómo se
+demuestra? Las 79 pruebas de la fase C (`api.test.mjs`) se corrieron **sin modificar una línea**,
+antes y después, y siguen pasando 79/79 en los dos motores.
+
+### 17.2 Listar citas y filtros
+
+`GET /api/citas` devuelve las columnas de la tabla más `paciente_nombre`, `especialista_nombre` y
+`servicio_nombre`, que salen de un JOIN con `paciente`, `especialista` + `personal` y `servicio`.
+Es la misma forma que armaba el mock con `withNames`. Una **prueba de contrato** compara las 40
+citas del seed campo por campo con las del mock.
+
+| Filtro | Ejemplo | Detalle |
+|---|---|---|
+| `desde`, `hasta` | `?desde=2026-09-01&hasta=2026-09-10` | Incluyen los dos días completos: `fecha_hora < DATE_ADD(hasta, INTERVAL 1 DAY)` |
+| `id_especialista`, `id_paciente` | `?id_especialista=1` | Enteros positivos o 400 |
+| `estado` | `?estado=PROGRAMADA,PENDIENTE_CONFIRMACION` | Uno o varios. Llega con comas porque así envía `http.js` una lista, o repetido (`?estado=A&estado=B`). Cada valor debe ser uno de los 4 estados |
+
+Los filtros mal escritos dan **400 con un error por filtro**, igual que un formulario. Una fecha
+que no existe, `hasta` antes de `desde` o un estado inventado no llegan a la base. El estado viaja
+como `IN (?)`: `mysql2` convierte la lista en `('PROGRAMADA', 'PENDIENTE_CONFIRMACION')` y escapa
+cada valor. Una inyección en ese parámetro da 400 antes de tocar el SQL.
+
+**El rol PACIENTE** solo ve sus citas: el servicio reemplaza `id_paciente` por el **del token**.
+Aunque pida `?id_paciente=12`, recibe las suyas.
+
+### 17.3 RN-02 en el servidor: las franjas
+
+> **RN-02:** una cita no puede agendarse si el odontólogo no tiene horario configurado en ese rango.
+
+El asistente del frontend ya muestra solo las franjas libres, pero **el servidor vuelve a
+calcularlas**. Una petición puede llegar sin pasar por el asistente: desde Postman, o desde una
+pestaña abierta hace una hora con datos viejos. El frontend guía al usuario y el servidor tiene la
+última palabra.
+
+`services/agenda.js` replica la lógica de `frontend/js/core/agenda.js`:
+
+1. Se buscan los horarios del odontólogo **ese día de la semana**. `diaSemana('2026-10-21')` da
+   `'Miércoles'`, el mismo texto del `CHECK chk_horario_dia`. El día se calcula en UTC para que la
+   zona horaria no lo corra.
+2. Se arman franjas de **30 minutos**, porque la tabla `cita` no guarda duración, desde la primera
+   hora de atención hasta la última.
+3. Cada franja queda en uno de estos estados: `fuera_de_horario` (por ejemplo, el almuerzo de
+   12:00 a 14:00), `ocupada` (hay una cita no cancelada a esa hora), `pasada` o `disponible`.
+
+Al agendar, la hora pedida debe ser exactamente el inicio de una franja `disponible`:
+
+| Caso | Respuesta | Código |
+|---|---|---|
+| Domingo, almuerzo, antes de abrir, 18:00 (la franja terminaría 18:30) o 09:15 | 422 | `NO_SCHEDULE` (RN-02) |
+| Una hora que ya pasó | 422 | `PAST_SLOT` |
+| Otra cita (incluso una solicitud pendiente) en esa franja | 409 | `SLOT_TAKEN` |
+| El paciente ya tiene otra cita activa a esa hora, con cualquier odontólogo | 409 | `PATIENT_BUSY` |
+| Paciente, odontólogo o tratamiento que no existen | 404 | `NOT_FOUND` |
+| Tratamiento inactivo, u odontólogo con la cuenta inactiva | 422 | `INACTIVE_SERVICE` / `INACTIVE_SPECIALIST` |
+
+**¿Por qué 422 y no 400?** 400 es "la petición está mal escrita", por ejemplo una fecha que no
+existe o un campo vacío. 422 (*Unprocessable Content*) es "está bien escrita, pero las reglas del
+negocio no la permiten". 409 es "choca con el estado actual de los datos": otro ya tomó la franja.
+Los tres códigos son los mismos que lanzaba el mock, así que el asistente reacciona igual.
+
+**¿Cómo sabemos que el servidor y el frontend calculan lo mismo?** Una prueba de paridad toma 3
+odontólogos × 14 días y una hora `ahora` fija. Le pide las franjas a las dos implementaciones,
+`getDaySlots` del frontend y `franjasDelDia` del backend, y las compara: **42/42 iguales**.
+
+**La zona horaria.** "¿Ya pasó esta franja?" depende de la hora del servidor. Si el servidor
+estuviera en UTC, como pasa en muchos servicios en la nube, a las 7 p. m. de Bogotá ya sería
+"mañana" y se rechazarían citas válidas. `config/env.js` fija `TZ=America/Bogota` (se puede
+cambiar en el `.env`).
+
+### 17.4 La condición de carrera de la agenda y `SELECT … FOR UPDATE`
+
+Con pacientes, la carrera la frenaba una llave `UNIQUE` (§16.6). En citas **no se puede**: una
+cita cancelada deja libre su franja, así que en la tabla pueden convivir varias filas con el mismo
+odontólogo y la misma hora (una cancelada y otra vigente). La base no tiene cómo saber cuál cuenta.
+
+Sin protección, esto es lo que pasa:
+
+```
+ Petición A (paciente 14)                Petición B (paciente 15)
+ ¿hay cita a las 11:00? → no
+                                         ¿hay cita a las 11:00? → no
+ INSERT cita 11:00 → 201
+                                         INSERT cita 11:00 → 201      ← dos citas en la misma franja
+```
+
+La solución es **bloquear la fila del odontólogo** dentro de la transacción, antes de revisar:
+
+```js
+await withTransaction(async (conn) => {
+  await especialistaRepo.bloquear(conn, id_especialista); // SELECT … FROM especialista WHERE … FOR UPDATE
+  await pacienteRepo.bloquear(conn, id_paciente);          // SELECT … FROM paciente WHERE … FOR UPDATE
+  await verificarFranja(conn, cita);                       // RN-02 + ocupada + paciente ocupado
+  const id = await citaRepo.crear(conn, cita);             // INSERT
+  await auditoria.registrar({ … }, conn);                  // en la MISMA transacción
+});
+```
+
+`FOR UPDATE` le dice a InnoDB: "esta fila es mía hasta el `COMMIT`". La petición B se queda
+esperando en su propio `FOR UPDATE` y, cuando A termina, revisa y ya **ve** la cita de A: 409.
+Solo se bloquea a **ese** odontólogo. Las citas con otros odontólogos siguen en paralelo.
+
+Tres detalles que se cuidaron:
+
+- **El bloqueo va primero.** En MySQL, la primera lectura normal de una transacción toma una
+  "foto" de los datos. Si la revisión de franjas leyera antes del bloqueo, B podría trabajar con la
+  foto vieja. Por eso los dos `FOR UPDATE` son las primeras sentencias.
+- **Siempre el mismo orden.** Primero el odontólogo y luego el paciente, en todas las peticiones.
+  Si una bloqueara A→B y otra B→A, cada una podría esperar a la otra para siempre: un
+  **deadlock**. InnoDB lo detecta y deshace una de las dos. Si aun así pasa, el manejador de
+  errores lo convierte en 409 `CONFLICT` ("intenta de nuevo"), no en un 500.
+- **¿Por qué también el paciente?** Para que dos solicitudes del mismo paciente a la misma hora,
+  con odontólogos distintos, no pasen las dos la regla `PATIENT_BUSY`.
+
+**¿Cómo sabemos que el bloqueo sirve? Con una prueba de mutación.** La prueba envía **5**
+peticiones simultáneas por la misma franja y espera un 201 y cuatro 409. Para confirmar que la
+prueba de verdad detecta el error, se **quitaron los `FOR UPDATE`** a propósito y se corrió de
+nuevo. Resultado: `201/201/201/201/201`, cinco citas en la misma franja. La prueba falló, como
+debía. Con los bloqueos de vuelta: `201/409/409/409/409` y una sola fila en la base. Lo mismo pasó
+con el cambio de estado: sin el bloqueo, dos cancelaciones simultáneas daban `200/200` y la
+auditoría registraba dos cancelaciones de la misma cita.
+
+### 17.5 Cambios de estado: una máquina de estados
+
+```
+ PENDIENTE_CONFIRMACION ──confirmar──► PROGRAMADA ──completar──► COMPLETADA
+          │                                │
+          └──────────cancelar──────────────┴──cancelar──► CANCELADA
+```
+
+`PATCH /api/citas/:id/estado` con `{ "estado": "PROGRAMADA" | "COMPLETADA" | "CANCELADA" }`:
+
+| Pasar a | Quién | Si la transición no existe |
+|---|---|---|
+| `PROGRAMADA` (confirmar) | Administrador o recepción | 409 `INVALID_TRANSITION` |
+| `COMPLETADA` | Administrador, o el odontólogo **de esa cita** | 409 |
+| `CANCELADA` | Quien tenga `CANCELAR_CITA`; el paciente, solo **sus** citas | 409 |
+
+El orden de las revisiones es el del mock: si la cita no existe, 404. Si es de otro paciente, 403.
+Si el rol no puede pasarla a ese estado, 403. Si la transición no existe (por ejemplo, de
+completada a cancelada), 409 con el mensaje "Una cita completada no puede pasar a cancelada.".
+
+Todo corre en una transacción que primero **bloquea la cita** (`FOR UPDATE`). Ahí mismo se
+escribe la auditoría, con el antes y el después: `CITA_CANCELADA` · "Cita #41:
+PENDIENTE_CONFIRMACION → CANCELADA". Si la actualización falla, el registro de auditoría también
+se deshace, así que el log nunca cuenta algo que no pasó.
+
+**Las citas no se borran: se cancelan.** No existe `DELETE /api/citas`. Una cita cancelada sigue
+en la base con su traza, lo que sirve para estadísticas de inasistencia, para reclamos y para la
+auditoría. Y una cancelación no se revierte: para volver, se agenda una cita nueva.
+
+### 17.6 Minimización de datos: `/citas/ocupacion` (Ley 1581 de 2012)
+
+El paciente necesita saber qué horas están tomadas para elegir una libre. Pero no debe saber **por
+quién**: el nombre de otro paciente y su motivo de consulta ("dolor agudo en pieza molar") son
+datos personales, y además de salud. La Ley 1581 de 2012 pide tratar solo los datos necesarios
+para la finalidad.
+
+Por eso existe un endpoint aparte que devuelve **solo tres campos**:
+
+```json
+[{ "id_especialista": 1, "fecha_hora": "2026-10-20 08:00:00", "estado_cita": "PROGRAMADA" }]
+```
+
+La prueba revisa que cada objeto tenga exactamente esas tres llaves: sin `id_paciente`, sin
+`motivo`, sin `servicio`. `GET /api/citas`, que sí trae nombres, al paciente solo le devuelve sus
+propias citas.
+
+### 17.7 Lo que la agenda necesita para funcionar en pantalla
+
+Al probar con `USE_MOCK = false` apareció algo que la lista de endpoints no decía: **todas** las
+pantallas de agenda (citas del administrador, agenda de recepción y del odontólogo, solicitar cita
+del paciente) cargan también la lista de odontólogos con sus horarios y el catálogo de
+tratamientos. Sin ellos, el asistente no puede calcular franjas y la página muestra un error. Por
+eso se agregaron dos consultas de **solo lectura**, con la misma forma que el mock (lo comprueba
+una prueba de contrato): `GET /api/especialistas` y `GET /api/servicios`. Crear, editar e
+inactivar odontólogos y tratamientos queda para su propio módulo.
+
+Ese router se monta en `/api`, y eso trajo una trampa: con `router.use(verifyToken)` se exigiría
+token **a cualquier ruta** bajo `/api`, incluso a las que no existen. Una URL mal escrita daría
+401 en vez de 404. Por eso aquí `verifyToken` va en cada ruta, y una prueba confirma que una ruta
+inexistente sigue dando 404.
+
+### 17.8 Cómo se probó
+
+| Prueba | Casos | Resultado |
+|---|---|---|
+| `tests/backend/citas.test.mjs`: paridad RN-02, filtros, contrato con el mock, ocupación sin datos personales, validación, RN-02, creación, carreras (5 simultáneas), máquina de estados, permisos por rol, auditoría, catálogos | 84 | 84 ✅ en MariaDB 10.4 y MySQL 8.0 |
+| `tests/backend/api.test.mjs` (fase C, **sin cambios**) después de pasar a 4 capas | 79 | 79 ✅ en los dos motores |
+| `tests/e2e/citas-backend.test.mjs` en Edge con `USE_MOCK = false`: el paciente solicita en el asistente, cancela en "Mis citas" y recepción confirma en la agenda, cada paso comprobado en MySQL y en `log_auditoria` | 20 | 20 ✅ a 1366 px y a 375 px |
+| `tests/e2e/backend.test.mjs` (fase C) | 19 | 19 ✅ |
+
+Las pruebas nuevas comparten `tests/backend/helpers.mjs`, que levanta la app en un puerto libre y
+trae `api()`, `loginAs()` y `check()`. Todas dejan la base como estaba: borran lo que crean,
+restauran lo que cambian y regresan el `AUTO_INCREMENT`. Se verificó con `CHECKSUM TABLE …
+EXTENDED` antes y después de correrlas.
+
+```bash
+node tests/backend/citas.test.mjs                # o: cd backend && npm test (corre api y citas)
+node tests/e2e/citas-backend.test.mjs 1366       # con el backend en :3000 y server.mjs --api en :5600
+```
+
+### 17.9 Lo que sigue
+
+| Pendiente | Nota |
+|---|---|
+| Historia clínica y consultas (`GET /api/historias/:id_paciente`, `POST …/consultas`) con **RN-01** | Solo el odontólogo asignado (con cita no cancelada con el paciente) o el administrador editan. Con `USE_MOCK = false`, la ficha del paciente todavía responde 404 |
+| Odontograma (`GET /api/odontograma/:id_paciente`, `POST`, `DELETE /:id`) con RN-01 | Usa la tabla `diente` (numeración FDI, §9) |
+| Reprogramar (`PUT /api/citas/:id`), `GET /api/citas/:id`, disponibilidad y alternativas | El frontend actual no los llama desde ninguna pantalla |
+| Ventas, novedades, y el CRUD de odontólogos y tratamientos | Los inicios del administrador y de recepción piden `/ventas/resumen` |
+
+---
+
+## 18. Cómo se verificó la calidad
 
 Se escribieron **pruebas automatizadas** que abren el styleguide en un navegador real (Edge sin
 interfaz), simulan clics, teclado y envío de formularios, y comprueban el resultado:
@@ -2034,6 +2319,10 @@ interfaz), simulan clics, teclado y envío de formularios, y comprueban el resul
 | **API del backend (fase C)** — `tests/backend/api.test.mjs`: errores, CORS, login (tiempo constante, auditoría, JWT), ataques al token, cuenta y rol inactivos, contrato con el mock, búsqueda, permisos por rol, validación, DIVIPOLA, 409, carrera de duplicados, base caída → 503 | 79 | 79 ✅ en MariaDB 10.4 y en MySQL 8.0 |
 | **Integración frontend ↔ backend** en Edge real — `tests/e2e/backend.test.mjs` con `USE_MOCK = false`: login, listado, registro con 409 junto al campo, token alterado → login, cerrar sesión | 19 | 19 ✅ a 1366 px y a 375 px |
 | Regresión del modo mock después de la fase C (`services`, `guard`, `agenda`, `apis-externas`, `recorrido`, `flujos`) | 67 + 30 + 18 + 37 + 59 + 17 | todas ✅ |
+| **Citas (Evidencia 2)** — `tests/backend/citas.test.mjs`: paridad de franjas con el frontend, filtros, contrato con el mock, ocupación sin datos personales, validación, RN-02, carreras (5 agendamientos y 2 cancelaciones simultáneas), máquina de estados, permisos por rol, auditoría, catálogos de la agenda | 84 | 84 ✅ en MariaDB 10.4 y en MySQL 8.0 |
+| **Refactorización a 4 capas**: `api.test.mjs` de la fase C corrida **sin cambios** antes y después | 79 | 79 ✅ en los dos motores |
+| **Prueba de mutación**: se quitaron los `FOR UPDATE` a propósito | 4 casos de carrera | los 4 fallaron (5 citas en una franja, 2 cancelaciones) ✅: la prueba detecta el error |
+| **Citas en Edge real** — `tests/e2e/citas-backend.test.mjs` con `USE_MOCK = false`: el paciente solicita, cancela; recepción confirma; cada paso verificado en MySQL y en la auditoría | 20 | 20 ✅ a 1366 px y a 375 px |
 
 Al terminar A4 se **volvieron a correr** las suites de A2 y A3 (pruebas de regresión): siguen en
 74/74 y 73/73, así que lo nuevo no dañó nada de lo anterior.
@@ -2066,6 +2355,10 @@ DB_PORT=3307 node tests/backend/api.test.mjs    # otra base: las variables del s
 cd backend && npm start                         # 1. API en :3000
 node tests/e2e/server.mjs --api                 # 2. frontend con USE_MOCK = false en :5600
 node tests/e2e/backend.test.mjs 1366            # 3. la prueba (375 para móvil)
+node tests/e2e/citas-backend.test.mjs 1366      # 3b. agenda: solicitar, cancelar y confirmar
+
+# Evidencia 2: módulo de citas
+node tests/backend/citas.test.mjs               # o, en backend/: npm test (corre api y citas)
 ```
 
 **Cómo correr las pruebas en navegador (A6)** — necesitan Microsoft Edge (o Chrome con
@@ -2189,6 +2482,23 @@ JavaScript** que aparezca en la consola: una página que "se ve bien" pero lanza
     `performance` de la página de pacientes, cuando el login ocurrió en la página anterior. El
     código estaba bien. Ahora se comprueba "de 40 registros" y solo la petición de esta página.
 
+**Hallazgos de la Evidencia 2 (citas):**
+30. **Doble reserva sin el bloqueo.** La prueba de mutación lo dejó a la vista: sin `FOR UPDATE`,
+    5 agendamientos simultáneos crearon 5 citas en la misma franja, y 2 cancelaciones simultáneas
+    quedaron dos veces en la auditoría. Una consulta "¿está libre?" seguida de un `INSERT` **no
+    alcanza** cuando hay concurrencia (§17.4).
+31. **Lo que la lista de endpoints no decía.** Las pantallas de agenda también cargan odontólogos y
+    tratamientos. Sin esas dos consultas, el asistente no habría funcionado con la API aunque citas
+    estuviera completo. Se encontró al leer qué pide cada página y se confirmó en la prueba E2E
+    (§17.7).
+32. **Un router en `/api` con `router.use(verifyToken)`** habría convertido el 404 de cualquier
+    ruta inexistente en 401. Se puso `verifyToken` en cada ruta y una prueba lo vigila.
+33. **Una prueba que no limpiaba.** Al comparar `CHECKSUM` antes y después, la base difería: la
+    prueba E2E de la fase C borraba el paciente que creaba pero no su auditoría (logins, registro,
+    cierre de sesión). Ahora la borra y regresa el `AUTO_INCREMENT`. Y la prueba nueva de citas
+    tuvo su propio error: iba a `login.html` con la sesión abierta, el login la redirigía al
+    inicio, y el inicio pedía `/ventas/resumen` (404). Se corrigió cerrando la sesión primero.
+
 **Las pruebas también se equivocan:** la prueba del *skip link* falló la primera vez porque leía
 el estilo **durante** la transición de 120 ms (el enlace todavía se estaba moviendo). El código
 estaba bien; se corrigió la prueba para esperar a que la transición terminara. En A5 pasó algo
@@ -2207,7 +2517,7 @@ errores que un usuario habría encontrado primero."*
 
 ---
 
-## 18. Simulacro de preguntas del docente
+## 19. Simulacro de preguntas del docente
 
 **P1. ¿Qué es Atomic Design y por qué lo usaron?**
 R: Una metodología que divide la interfaz en átomos, moléculas, organismos, templates y páginas. La
@@ -2309,7 +2619,7 @@ hace reutilizable en cualquier página o modal.
 R: Con 468 pruebas automatizadas en un navegador real y en Node: interacciones, teclado, ARIA,
 validaciones, reglas de negocio, permisos, sesión, diseño responsive y, desde A6, recorridos
 completos de usuario por las 25 pantallas. Encontraron errores reales
-que se corrigieron (§17). Las de Node están en `tests/` y cualquiera las puede repetir con
+que se corrigieron (§18). Las de Node están en `tests/` y cualquiera las puede repetir con
 `node tests/<suite>.test.mjs`. Desde la fase B hay además 38 pruebas de la base de datos
 (`tests/db/pruebas_bd_v2.sql`), que verifican que la propia base rechace los datos inválidos.
 
@@ -2731,7 +3041,7 @@ le metimos casos saboteados, como una columna inexistente o un dato válido marc
 los detectó. Así un 38/38 significa algo.
 
 **P85. ¿Encontraron algo que no esperaban?**
-R: Sí, varias cosas (§17, hallazgos 20 a 25). La más útil fue que la primera versión de la prueba
+R: Sí, varias cosas (§18, hallazgos 20 a 25). La más útil fue que la primera versión de la prueba
 daba **falsos positivos**: un error de sintaxis en la prueba contaba como "la base lo rechazó". La
 otra fue que MySQL y MariaDB se comportan distinto con `GET DIAGNOSTICS`: la prueba pasaba en uno y
 fallaba en el otro. Por eso probamos en los dos.
@@ -2740,7 +3050,8 @@ fallaba en el otro. Por eso probamos en los dos.
 R: En capas: `routes/` dice qué URL atiende qué función y con qué protección, `controllers/` valida
 y decide, `models/` solo ejecuta SQL y `middlewares/` hace lo que se repite en muchas rutas (sesión,
 permisos, errores). Es MVC sin la vista, porque la vista es el frontend. Cada carpeta tiene una sola
-razón para cambiar: si cambia una consulta, se toca un modelo; si cambia quién puede entrar, una ruta.
+razón para cambiar: si cambia una consulta, se toca un modelo; si cambia quién puede entrar, una ruta. (En la Evidencia 2
+pasó a cuatro capas: P100.)
 
 **P87. ¿Qué es un pool de conexiones y por qué no abren una conexión por petición?**
 R: Abrir una conexión cuesta: TCP, autenticación, configuración. El pool mantiene unas pocas abiertas
@@ -2828,9 +3139,107 @@ vincular un paciente a otra cuenta, o `fecha_registro`. Si el controlador hicier
 y el `INSERT` usa una lista fija de columnas. Hay una prueba que envía esos campos y comprueba que
 se ignoran.
 
+**P100. ¿Cuáles son las cuatro capas del backend y qué hace cada una?**
+R: Ruta, controlador, servicio y repositorio.
+- La **ruta** (`routes/`) dice qué URL atiende qué función y con qué *middlewares* (sesión,
+  permiso).
+- El **controlador** (`controllers/`) traduce HTTP: saca los datos de `req`, llama al servicio y
+  elige el código y el JSON de respuesta.
+- El **servicio** (`services/`) tiene las reglas de negocio: RN-02, quién puede qué, la máquina de
+  estados y las transacciones.
+- El **repositorio** (`repositories/`) solo ejecuta SQL parametrizado.
+
+Las llamadas van en un solo sentido, de la ruta hacia el repositorio.
+
+**P101. Si el controlador ya recibe la petición, ¿para qué un servicio aparte?**
+R: Para que la lógica no dependa de HTTP. El servicio recibe `(sesion, datos)` y nunca ve `req` ni
+`res`. Así se puede llamar desde otro lugar, por ejemplo una tarea que envíe los recordatorios de
+48 horas, y se lee sin ruido. En nuestro caso el controlador de agendar tiene dos líneas: llamar
+al servicio y responder 201 con `Location`.
+
+**P102. ¿Dónde validan los datos: en el controlador, en el servicio o en el repositorio?**
+R: En el servicio, porque validar es parte de la regla de negocio: qué campos son obligatorios,
+que la fecha exista, que la franja esté libre. El repositorio confía en lo que recibe y solo usa
+`?`. La base, con sus `CHECK` y llaves, es la última línea de defensa (§15.3). El controlador no
+valida: solo pasa `req.body` al servicio.
+
+**P103. Pasaron de `models/` a `repositories/` y movieron la lógica. ¿Cómo saben que no dañaron nada?**
+R: Porque fue una **refactorización**: cambiar la estructura sin cambiar el comportamiento. Las 79
+pruebas de la fase C se corrieron **sin modificarlas**, antes y después, y siguen pasando en
+MariaDB y en MySQL. Si una prueba se hubiera tenido que cambiar, habríamos cambiado el
+comportamiento. Además, los archivos se movieron con `git mv`, así que el historial de cada uno se
+conserva.
+
+**P104. ¿Cómo valida el backend la regla RN-02?**
+R: Con `services/agenda.js`. Busca los horarios del odontólogo para ese día de la semana, arma
+franjas de 30 minutos y marca cada una como fuera de horario, ocupada, pasada o disponible. La
+hora pedida debe ser el inicio exacto de una franja disponible. Si cae fuera del horario, la
+respuesta es 422 `NO_SCHEDULE`. Si ya pasó, 422 `PAST_SLOT`. Si está tomada, 409 `SLOT_TAKEN`.
+Una prueba comprueba que el servidor calcula las mismas franjas que el asistente del frontend:
+42/42.
+
+**P105. Si el asistente ya muestra solo las horas libres, ¿por qué el servidor las vuelve a revisar?**
+R: Por dos razones:
+- **Cualquiera puede saltarse el asistente** con Postman o `curl`.
+- **Los datos cambian entre el clic y el guardado.** El asistente calculó con la ocupación de
+  hace un rato, y otra persona pudo tomar la franja en ese tiempo.
+
+El frontend guía y el servidor decide.
+
+**P106. ¿Qué pasa si dos personas agendan la misma franja al mismo tiempo?**
+R: Dentro de la transacción, lo primero es `SELECT … FROM especialista WHERE id = ? FOR UPDATE`.
+Eso bloquea la fila del odontólogo hasta el `COMMIT`. La segunda petición espera ahí y, cuando la
+primera termina, revisa la franja, ve la cita nueva y responde 409. No usamos una llave `UNIQUE`
+(odontólogo, fecha y hora) porque una cita cancelada libera su franja, y en la tabla pueden convivir
+la cancelada y la nueva.
+
+**P107. ¿Cómo comprobaron que ese bloqueo de verdad sirve?**
+R: Con una **prueba de mutación**. La prueba envía 5 agendamientos simultáneos y espera un 201 y
+cuatro 409. Quitamos a propósito los `FOR UPDATE` y la corrimos: dieron cinco 201, cinco citas en
+la misma franja, y la prueba falló como debía. Con el bloqueo de vuelta, pasa. Una prueba que
+nunca falla no demuestra nada; esta demostró que detecta el error.
+
+**P108. ¿Qué es un deadlock y cómo lo evitan?**
+R: Dos transacciones que se esperan mutuamente: A tiene bloqueado X y quiere Y, y B tiene Y y
+quiere X. Lo evitamos bloqueando **siempre en el mismo orden**: primero el odontólogo y luego el
+paciente. Si aun así ocurriera, InnoDB deshace una de las dos y el manejador de errores responde
+409 `CONFLICT` ("intenta de nuevo") en vez de un 500.
+
+**P109. ¿Por qué responden 422 en unos casos, 400 en otros y 409 en otros?**
+R: 400 es una petición mal escrita: falta el motivo, o la fecha 2027-02-30 no existe. 422 es una
+petición bien escrita que las reglas no permiten: fuera del horario (RN-02), una hora pasada o un
+tratamiento inactivo. 409 es un choque con el estado actual: la franja ya la tomó otro, o una cita
+completada no se puede cancelar. El frontend usa el código para saber qué mostrar.
+
+**P110. ¿Cómo funcionan los estados de una cita? ¿Se pueden borrar?**
+R: Es una máquina de estados. `PENDIENTE_CONFIRMACION` pasa a `PROGRAMADA` (la confirma recepción)
+o a `CANCELADA`. `PROGRAMADA` pasa a `COMPLETADA` (el administrador o el odontólogo de esa cita) o
+a `CANCELADA`. `COMPLETADA` y `CANCELADA` son finales. No se borran: una cita cancelada queda como
+traza para la auditoría, las estadísticas de inasistencia y los reclamos. Cada cambio se registra
+en `log_auditoria` con el estado anterior y el nuevo, dentro de la misma transacción.
+
+**P111. ¿Cómo aplica la Ley 1581 en la agenda?**
+R: Con la **minimización de datos**. Para elegir una hora, el paciente necesita saber qué franjas
+están tomadas, pero no por quién. `GET /api/citas/ocupacion` devuelve solo odontólogo, fecha y
+estado: sin nombre ni motivo, que además son datos de salud. Una prueba revisa que cada objeto
+tenga exactamente esas tres llaves. Y `GET /api/citas`, que sí trae nombres, al paciente solo le
+devuelve las suyas.
+
+**P112. ¿Un paciente puede agendar una cita a nombre de otro paciente?**
+R: No. Si el rol es PACIENTE, el servicio **reemplaza** el `id_paciente` del cuerpo por el del
+token. Lo que haya enviado se ignora. Además, su cita queda `PENDIENTE_CONFIRMACION` hasta que
+recepción la confirme (HU-06), y la del personal queda `PROGRAMADA`. Hay una prueba que envía
+`id_paciente: 12` con la sesión del paciente 11 y comprueba que la cita queda a nombre del 11.
+
+**P113. ¿Por qué el servidor fija una zona horaria?**
+R: Porque decide si una franja "ya pasó" con su propio reloj. En un servidor en UTC, a las 7 p. m.
+de Bogotá ya sería el día siguiente y se rechazarían citas válidas de esa noche. `config/env.js`
+fija `TZ=America/Bogota` y se puede cambiar en el `.env`. Las fechas de la base no se ven
+afectadas, porque llegan como texto (`dateStrings`, P96).
+
 ---
 
-## 19. Glosario
+## 20. Glosario
 
 | Término | Definición breve |
 |---|---|
@@ -2908,13 +3317,21 @@ se ignoran.
 | **Transacción** | Grupo de operaciones que se aplican todas o ninguna (`START TRANSACTION` … `COMMIT` / `ROLLBACK`) |
 | **API REST propia** | Servidor que expone recursos (`/api/pacientes`) con métodos HTTP (`GET` lee, `POST` crea…) y responde JSON |
 | **Consulta parametrizada** | SQL con `?` cuyos valores viajan aparte; impide la inyección SQL |
-| **Controlador** | Función que atiende una ruta: valida, decide y llama al modelo |
+| **Controlador** | Función que atiende una ruta: toma los datos de la petición, llama al servicio y elige la respuesta HTTP |
 | **Express** | *Framework* mínimo de Node.js para servidores HTTP: rutas y *middlewares* |
 | **HMAC** | Firma con una clave secreta; la del JWT (`HS256`) prueba que el contenido no se alteró |
 | **JWT (JSON Web Token)** | Token firmado `encabezado.contenido.firma`; se puede leer pero no modificar sin el secreto |
 | **Middleware** | Función que corre antes del controlador y puede dejar pasar (`next()`) o cortar la petición |
-| **Modelo** | Módulo que solo ejecuta SQL contra una tabla |
+| **Modelo** | Nombre que tenía el repositorio en la fase C (`models/`) |
 | **Pool de conexiones** | Conjunto de conexiones abiertas a la base que se prestan y devuelven entre peticiones |
 | **Prueba de contrato** | Comprueba que dos partes (mock y API) responden con la misma forma |
 | **Variable de entorno (`.env`)** | Configuración fuera del código (credenciales, secretos) que cambia por equipo y no va a git |
+| **Repositorio** | Capa que solo ejecuta SQL contra la base; no valida ni decide permisos |
+| **Servicio (capa del backend)** | Donde viven las reglas de negocio y las transacciones; no conoce `req` ni `res` |
+| **Refactorización** | Cambiar la estructura del código sin cambiar su comportamiento; las pruebas que ya existían lo demuestran |
+| **`SELECT … FOR UPDATE`** | Lectura que bloquea las filas hasta el `COMMIT`; las otras transacciones que las pidan esperan |
+| **Deadlock** | Dos transacciones que se esperan mutuamente; se evita bloqueando siempre en el mismo orden |
+| **Máquina de estados** | Estados posibles y transiciones permitidas entre ellos (una cita completada no se cancela) |
+| **Prueba de mutación** | Meter un error a propósito para comprobar que las pruebas lo detectan |
+| **422 Unprocessable Content** | Petición bien escrita que las reglas del negocio no permiten (p. ej. fuera del horario, RN-02) |
 | **201 / 401 / 403 / 409 / 503** | Creado · sin sesión válida · sin permiso · conflicto (duplicado) · servicio no disponible |

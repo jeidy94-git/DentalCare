@@ -18,3 +18,9 @@ export const PERMISOS = Object.freeze({
   REGISTRAR_NOVEDAD: 'REGISTRAR_NOVEDAD',
   GESTIONAR_NOVEDADES: 'GESTIONAR_NOVEDADES',
 });
+
+/**
+ * ¿La sesión tiene ALGUNO de estos permisos? `sesion` es { user, permisos }, lo que verifyToken
+ * dejó en la petición (los permisos vienen de rol_permiso, no del token).
+ */
+export const puede = (sesion, ...permisos) => permisos.some((permiso) => sesion.permisos?.includes(permiso));

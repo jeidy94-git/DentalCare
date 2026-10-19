@@ -6,7 +6,8 @@
 //   1. el backend:                      cd backend && npm start          (http://localhost:3000/api)
 //   2. el frontend con USE_MOCK = false: node tests/e2e/server.mjs --api  (http://127.0.0.1:5600/)
 // Uso: node tests/e2e/backend.test.mjs [ancho=1366]
-// La prueba borra al final el paciente que registra (lee backend/.env para conectarse a la MISMA base).
+// Al final borra el paciente que registra y la auditoría que generó (lee backend/.env, o DB_PORT=…, para
+// conectarse a la MISMA base).
 import { startBrowser, sleep } from './harness.mjs';
 
 const API = 'http://localhost:3000/api';
@@ -20,6 +21,7 @@ if (health?.status !== 'ok') {
 
 const backend = new URL('../../backend/', import.meta.url);
 const { pool } = await import(new URL('src/config/db.js', backend).href);
+const [[{ maxLog }]] = await pool.query('SELECT IFNULL(MAX(id_log), 0) AS maxLog FROM log_auditoria');
 
 const b = await startBrowser(Number(process.argv[2] ?? 1366));
 const { send, evaluate, go, waitReady, here, check, ignoreErrors, finish } = b;
@@ -143,6 +145,9 @@ try {
   check('EXCEPCIÓN', false, error.message);
 } finally {
   await pool.query('DELETE FROM paciente WHERE numero_documento = ?', [documento]);
+  // También la auditoría que generó (logins, registro, logout) y los AUTO_INCREMENT: la base queda como estaba.
+  await pool.query('DELETE FROM log_auditoria WHERE id_log > ?', [maxLog]);
+  for (const tabla of ['paciente', 'historia_clinica', 'log_auditoria']) await pool.query(`ALTER TABLE ${tabla} AUTO_INCREMENT = 1`);
   await pool.end();
 }
 

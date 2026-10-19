@@ -17,7 +17,8 @@ En navegador real (Edge; otro navegador con `BROWSER_PATH`): `node tests/e2e/ser
 `node tests/e2e/recorrido.test.mjs [ancho]`, `node tests/e2e/flujos.test.mjs [ancho]` y `node tests/e2e/apis.test.mjs [ancho]` (necesita internet).
 
 Con el backend real (`USE_MOCK = false`, ver `backend/README.md`): `node tests/e2e/server.mjs --api` sirve `config.js` con el
-interruptor apagado sin editar el archivo, y `node tests/e2e/backend.test.mjs [ancho]` prueba login, pacientes y errores contra la API.
+interruptor apagado sin editar el archivo, y `node tests/e2e/backend.test.mjs [ancho]` prueba login, pacientes y errores contra la API;
+`node tests/e2e/citas-backend.test.mjs [ancho]`, la agenda (solicitar, cancelar y confirmar citas).
 
 ## APIs externas (servicios web de terceros)
 | API | Servicio | Se usa en |

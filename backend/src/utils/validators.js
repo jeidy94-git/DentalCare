@@ -11,6 +11,7 @@ import { ApiError } from './api-error.js';
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 const FECHA_RE = /^(\d{4})-(\d{2})-(\d{2})$/;
+const FECHA_HORA_RE = /^(\d{4}-\d{2}-\d{2}) (\d{2}):(\d{2})(?::(\d{2}))?$/;
 
 export const vacio = (value) => value === undefined || value === null || (typeof value === 'string' && value.trim() === '');
 
@@ -19,6 +20,25 @@ const pad = (n) => String(n).padStart(2, '0');
 /** Fecha local de hoy como 'AAAA-MM-DD' (la del consultorio, no la UTC). */
 export function hoyIso(date = new Date()) {
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+}
+
+/** ¿'AAAA-MM-DD' existe en el calendario? (rechaza 2026-02-30 y años antes de 1900) */
+export function esFechaReal(texto) {
+  const match = FECHA_RE.exec(texto);
+  if (!match || +match[1] < 1900) return false;
+  const fecha = new Date(Date.UTC(+match[1], +match[2] - 1, +match[3]));
+  return fecha.getUTCMonth() === +match[2] - 1 && fecha.getUTCDate() === +match[3];
+}
+
+/**
+ * 'AAAA-MM-DD HH:MM' o 'AAAA-MM-DD HH:MM:SS' (el formato DATETIME de MySQL y del mock) →
+ * 'AAAA-MM-DD HH:MM:00', o null si la fecha o la hora no existen. Los segundos deben ser 00:
+ * las citas empiezan en minutos exactos.
+ */
+export function normalizarFechaHora(texto) {
+  const match = FECHA_HORA_RE.exec(typeof texto === 'string' ? texto.trim() : '');
+  if (!match || !esFechaReal(match[1]) || +match[2] > 23 || +match[3] > 59 || (match[4] ?? '00') !== '00') return null;
+  return `${match[1]} ${match[2]}:${match[3]}:00`;
 }
 
 export const reglas = {
@@ -45,12 +65,30 @@ export const reglas = {
   /** 'AAAA-MM-DD' que exista en el calendario (rechaza 2026-02-30) y no sea futura. */
   fechaPasada: (mensaje = 'La fecha no puede ser futura.') => (value) => {
     if (vacio(value)) return null;
-    const match = FECHA_RE.exec(value.trim());
-    const fecha = match && new Date(Date.UTC(+match[1], +match[2] - 1, +match[3]));
-    if (!fecha || fecha.getUTCMonth() !== +match[2] - 1 || fecha.getUTCDate() !== +match[3] || +match[1] < 1900) return 'Ingresa una fecha válida.';
+    if (!esFechaReal(value.trim())) return 'Ingresa una fecha válida.';
     return value.trim() > hoyIso() ? mensaje : null;
   },
+
+  /** 'AAAA-MM-DD' que exista (para filtros de fecha, pasada o futura). */
+  fecha: (mensaje = 'Ingresa una fecha válida (AAAA-MM-DD).') => (value) => (vacio(value) || esFechaReal(String(value).trim()) ? null : mensaje),
+
+  /** Fecha y hora de una cita: ver normalizarFechaHora. */
+  fechaHora: (mensaje = 'Fecha y hora no válidas.') => (value) => (vacio(value) || normalizarFechaHora(value) ? null : mensaje),
+
+  /**
+   * Identificador (llave foránea): entero positivo, como número (12) o como texto ('12'), que es como
+   * llega desde un <select> del formulario o desde la URL.
+   */
+  id: (mensaje = 'Identificador no válido.') => (value) => (vacio(value) || aId(value) ? null : mensaje),
 };
+
+/** 12 o '12' → 12; cualquier otra cosa (0, -1, 1.5, '12abc', [12]) → null. */
+export function aId(value) {
+  const texto = typeof value === 'number' ? String(value) : typeof value === 'string' ? value.trim() : '';
+  if (!/^\d{1,10}$/.test(texto)) return null;
+  const n = Number(texto);
+  return n > 0 && n <= 2147483647 ? n : null; // el máximo de un INT de MySQL
+}
 
 /**
  * Aplica las reglas campo por campo y lanza 400 con TODOS los errores a la vez (no solo el primero),

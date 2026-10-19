@@ -29,6 +29,9 @@ function translate(error) {
   if (error.code === 'ER_DUP_ENTRY') return new ApiError(409, 'Ese registro ya existe.', { code: 'DUPLICATE' });
   if (error.code === 'ER_NO_REFERENCED_ROW_2') return new ApiError(400, 'Se hace referencia a un registro que no existe.', { code: 'BAD_REFERENCE' });
   if (error.code === 'ER_ROW_IS_REFERENCED_2') return new ApiError(409, 'No se puede eliminar: hay registros que dependen de este.', { code: 'HAS_REFERENCES' });
+  // Dos transacciones se bloquearon entre sí (o una esperó demasiado un SELECT … FOR UPDATE): InnoDB
+  // deshizo una. Los datos quedan bien; basta con repetir la operación.
+  if (error.code === 'ER_LOCK_DEADLOCK' || error.code === 'ER_LOCK_WAIT_TIMEOUT') return new ApiError(409, 'Otra operación estaba usando los mismos datos. Intenta de nuevo.', { code: 'CONFLICT' });
   if (CHECK_VIOLATION.has(error.errno)) return new ApiError(400, 'Los datos no cumplen las reglas de la base de datos.', { code: 'CONSTRAINT' });
   if (DB_UNAVAILABLE.has(error.code)) return new ApiError(503, 'La base de datos no está disponible. Intenta de nuevo en unos minutos.', { code: 'DB_UNAVAILABLE' });
 

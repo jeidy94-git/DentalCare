@@ -5,13 +5,16 @@ import { pingDb } from './config/db.js';
 import { notFound, errorHandler } from './middlewares/error-handler.js';
 import authRoutes from './routes/auth.routes.js';
 import pacientesRoutes from './routes/pacientes.routes.js';
+import citasRoutes from './routes/citas.routes.js';
+import catalogosRoutes from './routes/catalogos.routes.js';
 
 /**
  * Aplicación Express. Está separada de server.js (que solo hace `listen`) para que las pruebas de
  * tests/backend/ la levanten en un puerto libre sin tocar el 3000.
  *
  * Orden del recorrido de una petición:
- *   CORS → JSON del cuerpo → ruta (verifyToken → requirePermission → controlador) → 404 → errores
+ *   CORS → JSON del cuerpo → ruta (verifyToken → requirePermission → controlador → servicio → repositorio)
+ *   → 404 → errores
  */
 const app = express();
 
@@ -34,6 +37,8 @@ app.get('/api/health', async (req, res) => {
 
 app.use('/api/auth', authRoutes);
 app.use('/api/pacientes', pacientesRoutes);
+app.use('/api/citas', citasRoutes);
+app.use('/api', catalogosRoutes); // /api/especialistas y /api/servicios
 
 app.use(notFound);
 app.use(errorHandler);
