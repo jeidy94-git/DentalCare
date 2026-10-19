@@ -9,6 +9,7 @@ export { Pagination, pageRange } from './pagination.js';
 export { toast } from './toast.js';
 export { confirmDialog } from './confirm-dialog.js';
 export { TimeSlot, setTimeSlotSelected } from './time-slot.js';
+export { Breadcrumbs } from './breadcrumbs.js';
 export {
   Tooth,
   ToothLegend,

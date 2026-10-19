@@ -26,6 +26,7 @@
 @import url("./molecules/feedback.css");
 @import url("./molecules/time-slot.css");
 @import url("./molecules/tooth.css");
+@import url("./molecules/breadcrumbs.css");
 
 /* Organismos */
 @import url("./organisms/topbar.css");
@@ -37,4 +38,7 @@
 @import url("./organisms/charts.css");
 @import url("./organisms/booking-wizard.css");
 
-/* Templates se agregan en la fase A4 */
+/* Templates */
+@import url("./templates/app-shell.css");
+@import url("./templates/auth-layout.css");
+@import url("./templates/detail-layout.css");

@@ -45,6 +45,7 @@ import {
   TOOTH_ESTADOS,
 } from '../components/molecules/index.js';
 import { renderOrganisms } from './styleguide-organisms.js';
+import { renderTemplates } from './styleguide-templates.js';
 
 const $ = (selector) => document.querySelector(selector);
 const rootStyles = getComputedStyle(document.documentElement);
@@ -935,6 +936,8 @@ function init() {
   renderSlotsDemo();
   // Organismos
   renderOrganisms();
+  // Templates
+  renderTemplates();
 }
 
 init();

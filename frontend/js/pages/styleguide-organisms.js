@@ -39,20 +39,20 @@ const servicioById = (id) => SERVICIOS.find((s) => s.id_servicio === id);
 let table;
 let calendar;
 
+// KPIs de ejemplo por rol: [etiqueta, ícono, tono, valor]. También los usa la demo de templates.
+export const KPIS_DEMO = {
+  ADMINISTRADOR: [['Citas de hoy', 'calendar', 'primary', 12], ['Pacientes registrados', 'users', 'info', 40], ['Pagos pendientes', 'dollar', 'warning', formatCOP(2350000)]],
+  RECEPCIONISTA: [['Próximas citas', 'calendar', 'primary', 9], ['Por confirmar', 'clock', 'warning', 4], ['Pagos del día', 'dollar', 'success', formatCOP(480000)]],
+  ESPECIALISTA: [['Mi agenda hoy', 'calendar', 'primary', 7], ['Pacientes atendidos (mes)', 'users', 'success', 86], ['Tratamientos en curso', 'tooth', 'info', 5]],
+  PACIENTE: [['Próxima cita', 'calendar', 'primary', '20 oct · 9:30'], ['Saldo pendiente', 'dollar', 'warning', formatCOP(90000)], ['Tratamientos', 'tooth', 'info', 2]],
+};
+
 /* ------------------------------------------------------------------ */
 /* Topbar + Sidebar                                                    */
 /* ------------------------------------------------------------------ */
 function renderShell() {
   const frame = h('div', { class: 'sg-frame' });
   const log = h('p', { class: 'sg-result' }, 'Navegación: —');
-
-  // [etiqueta, ícono, tono, valor de ejemplo]
-  const KPIS = {
-    ADMINISTRADOR: [['Citas de hoy', 'calendar', 'primary', 12], ['Pacientes registrados', 'users', 'info', 40], ['Pagos pendientes', 'dollar', 'warning', formatCOP(2350000)]],
-    RECEPCIONISTA: [['Próximas citas', 'calendar', 'primary', 9], ['Por confirmar', 'clock', 'warning', 4], ['Pagos del día', 'dollar', 'success', formatCOP(480000)]],
-    ESPECIALISTA: [['Mi agenda hoy', 'calendar', 'primary', 7], ['Pacientes atendidos (mes)', 'users', 'success', 86], ['Tratamientos en curso', 'tooth', 'info', 5]],
-    PACIENTE: [['Próxima cita', 'calendar', 'primary', '20 oct · 9:30'], ['Saldo pendiente', 'dollar', 'warning', formatCOP(90000)], ['Tratamientos', 'tooth', 'info', 2]],
-  };
 
   function build(role) {
     const user = USUARIOS_DEMO[role];
@@ -88,7 +88,7 @@ function renderShell() {
           { class: 'sg-frame__content' },
           h('h2', { style: { fontSize: 'var(--text-2xl)' } }, `Hola, ${user.nombre.split(' ').slice(0, 2).join(' ')}`),
           h('p', { class: 'text-secondary' }, `Vista de ${ROLES[role].label}. El menú lateral cambia según el rol.`),
-          h('div', { class: 'sg-kpis' }, KPIS[role].map(([label, icon, tone, value]) => KpiCard({ label, value, icon, tone }))),
+          h('div', { class: 'sg-kpis' }, KPIS_DEMO[role].map(([label, icon, tone, value]) => KpiCard({ label, value, icon, tone }))),
         ),
       ),
     );

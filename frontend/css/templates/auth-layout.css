@@ -1,0 +1,215 @@
+/* Template: AuthLayout (.auth) — login, recuperar y restablecer contraseña */
+
+.auth {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  min-height: 100vh;
+  min-height: 100dvh;
+  background: var(--color-bg-app);
+}
+
+@media (min-width: 960px) {
+  .auth { grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); }
+}
+
+/* ---------- Logo ---------- */
+.auth-logo {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--text-lg);
+  font-weight: var(--font-bold);
+  color: var(--color-brand);
+}
+
+.auth-logo__mark {
+  display: grid;
+  place-items: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  border-radius: var(--radius-md);
+  background: var(--color-brand);
+  color: var(--color-text-inverse);
+}
+
+.auth-logo--inverse {
+  color: var(--color-text-inverse);
+}
+
+.auth-logo--inverse .auth-logo__mark {
+  background: rgb(255 255 255 / 0.16);
+}
+
+/* ---------- Panel de marca (solo escritorio) ---------- */
+.auth__brand {
+  position: relative;
+  display: none;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: var(--space-10);
+  overflow: hidden;
+  padding: var(--space-10);
+  background: linear-gradient(160deg, var(--color-primary-700), var(--color-primary-900));
+  color: var(--color-text-inverse);
+}
+
+/* Círculo decorativo: solo CSS, sin imágenes. */
+.auth__brand::after {
+  content: "";
+  position: absolute;
+  right: -120px;
+  bottom: -120px;
+  width: 360px;
+  height: 360px;
+  border-radius: var(--radius-full);
+  background: rgb(255 255 255 / 0.06);
+  pointer-events: none;
+}
+
+@media (min-width: 960px) {
+  .auth__brand { display: flex; }
+}
+
+.auth__brand-copy {
+  max-width: 28rem;
+}
+
+.auth__tagline {
+  font-size: var(--text-3xl);
+  font-weight: var(--font-bold);
+  line-height: var(--leading-tight);
+}
+
+.auth__brand-text {
+  margin-top: var(--space-3);
+  color: var(--color-primary-100);
+}
+
+.auth__highlights {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  margin: var(--space-8) 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.auth__highlights li {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  font-size: var(--text-sm);
+}
+
+.auth__highlight-icon {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 2rem;
+  height: 2rem;
+  border-radius: var(--radius-full);
+  background: rgb(255 255 255 / 0.14);
+}
+
+.auth__legal {
+  font-size: var(--text-xs);
+  color: var(--color-primary-100);
+}
+
+/* ---------- Tarjeta del formulario ---------- */
+.auth__main {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-8) var(--layout-gutter);
+}
+
+.auth__card {
+  width: 100%;
+  max-width: 420px;
+  padding: var(--space-8) var(--space-6);
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius-xl);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-md);
+}
+
+@media (min-width: 640px) {
+  .auth__card { padding: var(--space-10) var(--space-8); }
+}
+
+/* En escritorio el logo ya está en el panel de marca. */
+.auth__home {
+  display: inline-flex;
+  margin-bottom: var(--space-6);
+  border-radius: var(--radius-md);
+  text-decoration: none;
+}
+
+@media (min-width: 960px) {
+  .auth__home { display: none; }
+}
+
+.auth__header {
+  margin-bottom: var(--space-6);
+}
+
+.auth__title {
+  font-size: var(--text-2xl);
+}
+
+/* Recibe foco por programa al cambiar de vista: sin anillo, el lector ya anuncia el título. */
+.auth__title:focus {
+  outline: none;
+}
+
+.auth__subtitle {
+  margin-top: var(--space-2);
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+}
+
+.auth__footer {
+  margin-top: var(--space-6);
+  padding-top: var(--space-5);
+  border-top: var(--border-width) solid var(--color-border);
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+  text-align: center;
+}
+
+/* ---------- Formularios de autenticación ---------- */
+.auth-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.auth-form__row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+/* Mensaje de confirmación ("revisa tu correo") */
+.auth-notice {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-3);
+  text-align: center;
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+}
+
+.auth-notice__icon {
+  display: grid;
+  place-items: center;
+  width: 3.5rem;
+  height: 3.5rem;
+  border-radius: var(--radius-full);
+  background: var(--color-success-50);
+  color: var(--color-success-700);
+}

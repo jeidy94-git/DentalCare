@@ -1,4 +1,4 @@
-# Documento de sustentación — DentalCare (Frontend, fases A0 a A3)
+# Documento de sustentación — DentalCare (Frontend, fases A0 a A4)
 
 > Guía de estudio para la sustentación individual. Explica **qué** se construyó, **por qué** se
 > tomó cada decisión y **cómo** defenderla ante el docente. Cada concepto apunta al archivo real del
@@ -20,9 +20,10 @@
 8. [Conceptos técnicos clave](#8-conceptos-técnicos-clave)
 9. [El odontograma y la numeración FDI](#9-el-odontograma-y-la-numeración-fdi)
 10. [Fase A3: organismos y reglas de negocio](#10-fase-a3-organismos-y-reglas-de-negocio)
-11. [Cómo se verificó la calidad](#11-cómo-se-verificó-la-calidad)
-12. [Simulacro de preguntas del docente](#12-simulacro-de-preguntas-del-docente)
-13. [Glosario](#13-glosario)
+11. [Fase A4: templates](#11-fase-a4-templates)
+12. [Cómo se verificó la calidad](#12-cómo-se-verificó-la-calidad)
+13. [Simulacro de preguntas del docente](#13-simulacro-de-preguntas-del-docente)
+14. [Glosario](#14-glosario)
 
 ---
 
@@ -34,6 +35,7 @@
 | **A1** Átomos | 13 componentes mínimos: `Button`, `Input`, `Select`, `Textarea`, `Checkbox`, `Radio`, `Switch`, `Badge`/`StatusBadge`, `Avatar`, `Icon`, `Label`, `Spinner`, `Link` | `frontend/js/components/atoms/` |
 | **A2** Moléculas | 10 combinaciones de átomos: `FormField`, `PasswordField`, `SearchBar`, `KpiCard`, `Tabs`, `Pagination`, `Toast`, `ConfirmDialog`, `TimeSlot`, `Tooth` | `frontend/js/components/molecules/` |
 | **A3** Organismos | Secciones completas: `Topbar`, `Sidebar`, `DataTable`, `ModalForm`, `Odontogram`, `Calendar`, `DashboardCharts`, `BookingWizard` | `frontend/js/components/organisms/` |
+| **A4** Templates | Esqueletos de pantalla: `DashboardLayout` (marco con skip-link, sidebar, topbar y migas), `AuthLayout` (login y contraseña), `DetailLayout` (ficha del paciente) + molécula `Breadcrumbs` | `frontend/js/components/templates/` |
 
 **Stack del proyecto:** HTML5 + CSS3 + JavaScript puro (ES Modules) en el frontend; Node.js + Express +
 MySQL (mysql2/promise, sin ORM) en el backend (fases C y D). Mientras no existe el backend, las
@@ -67,7 +69,7 @@ combinan en piezas más grandes.
 | **Átomo** | Elemento HTML con estilo; no tiene sentido dividirlo más | `Button`, `Input`, `Badge` |
 | **Molécula** | Grupo pequeño de átomos con **una** función | `FormField` = `Label` + `Input` + mensaje de error |
 | **Organismo** | Sección completa e independiente de la interfaz | `DataTable` = `SearchBar` + chips + tabla + `Pagination` |
-| **Template** | Esqueleto de la pantalla, sin datos (fase A4) | Layout con Topbar + Sidebar + contenido |
+| **Template** | Esqueleto de la pantalla, sin datos (fase A4) | `DashboardLayout` = Topbar + Sidebar + migas + hueco del contenido |
 | **Página** | Template con datos concretos (fase A6) | `pages/admin/dashboard.html` |
 
 ### 2.2 La regla de oro: las dependencias van en un solo sentido
@@ -82,6 +84,11 @@ import { Input, Select, Textarea, Label, Icon, Button } from '../atoms/index.js'
 // js/components/organisms/data-table.js  (organismo → importa átomos y moléculas)
 import { Icon, Button } from '../atoms/index.js';
 import { SearchBar, Pagination } from '../molecules/index.js';
+
+// js/components/templates/dashboard-layout.js  (template → importa los tres niveles inferiores)
+import { Spinner } from '../atoms/index.js';
+import { Breadcrumbs } from '../molecules/index.js';
+import { Topbar, Sidebar } from '../organisms/index.js';
 ```
 
 **¿Por qué importa?** Evita dependencias circulares y permite cambiar un átomo (por ejemplo, el
@@ -113,11 +120,11 @@ frontend/
 ├── styleguide.html              ← catálogo vivo (sirve también como prueba visual)
 ├── css/
 │   ├── base/                    tokens.css · reset.css · base.css
-│   ├── atoms/ molecules/ organisms/
+│   ├── atoms/ molecules/ organisms/ templates/
 │   └── main.css                 importa todo en orden de Atomic Design
 └── js/
     ├── core/                    utilidades sin interfaz: dom, validators, format, dates, agenda…
-    ├── components/atoms|molecules|organisms/
+    ├── components/atoms|molecules|organisms|templates/
     ├── data/mock/               datos de prueba copiados del SQL
     └── pages/                   un controlador por página
 ```
@@ -491,7 +498,188 @@ Si el odontólogo no atiende ese día o no tiene cupos, `suggestAlternatives()` 
 
 ---
 
-## 11. Cómo se verificó la calidad
+## 11. Fase A4: templates
+
+Un **template** es el esqueleto de una pantalla: decide **dónde** va cada organismo, pero no sabe
+**qué datos** se muestran. Deja huecos (*slots*) que la página (fase A6) llena con datos reales.
+
+| Pieza | Nivel | Requisito | Dónde está |
+|---|---|---|---|
+| `DashboardLayout` | Template | SRS 3.1 (sidebar por rol, topbar) | `js/components/templates/dashboard-layout.js` |
+| `AuthLayout` | Template | HU-01, HU-02, RF-ACC-01/02 | `js/components/templates/auth-layout.js` |
+| `DetailLayout` | Template | RF-PAC-02/03/04, HU-04 | `js/components/templates/detail-layout.js` |
+| `Breadcrumbs` | Molécula nueva (la necesitaba el template) | Navegación | `js/components/molecules/breadcrumbs.js` |
+| Estilos | — | — | `css/templates/` (`app-shell.css`, `auth-layout.css`, `detail-layout.css`) |
+
+### 11.1 Organismo vs. template vs. página
+
+- **Organismo:** una sección con sentido propio (`Sidebar`, `DataTable`). Se puede usar en
+  cualquier pantalla.
+- **Template:** la **distribución** de la pantalla. `DashboardLayout` dice: "sidebar a la
+  izquierda, topbar arriba, migas, título y contenido".
+- **Página:** template + datos. `pages/admin/pacientes.html` usará `DashboardLayout`, le pondrá
+  el título "Pacientes" y meterá un `DataTable` con los pacientes.
+
+```js
+// Así se verá una página en la fase A6: la página solo llena los huecos del template.
+const layout = DashboardLayout({
+  role: sesion.rol, user: sesion.usuario, activeId: 'pacientes',
+  title: 'Pacientes',
+  breadcrumbs: [{ label: 'Inicio', href: appUrl(ROLES[sesion.rol].home) }, { label: 'Pacientes' }],
+  actions: [Button({ label: 'Nuevo paciente', icon: 'plus', onClick: nuevo })],
+});
+document.body.append(layout);
+layout.setLoading(true, 'Cargando pacientes…');
+layout.setContent(DataTable({ ... }));
+```
+
+### 11.2 DashboardLayout: el marco de las pantallas internas
+
+```
+┌──────────┬───────────────────────────────────────┐
+│          │ Topbar                                │  <header>  (landmark "banner")
+│ Sidebar  ├───────────────────────────────────────┤
+│ (por     │ Inicio › Pacientes                    │  <nav aria-label="Ruta de navegación">
+│  rol)    │ Pacientes ................ [+ Nuevo]  │  <h1> + acciones
+│ <nav>    │ [ contenido de la página ]            │  <main id="contenido-principal">
+└──────────┴───────────────────────────────────────┘
+```
+
+Métodos que expone el template (las páginas no tocan su HTML interno):
+
+| Método | Para qué |
+|---|---|
+| `update({ title, subtitle, breadcrumbs, actions })` | Cambia **solo** las partes indicadas del encabezado |
+| `setContent(...nodos)` | Reemplaza el contenido (slot principal) |
+| `setLoading(true, 'Cargando…')` | Muestra un spinner y marca `<main aria-busy="true">` |
+| `focusMain()` | Mueve el foco al contenido (útil tras una acción) |
+| `.main`, `.topbar`, `.sidebar` | Acceso a los organismos (p. ej. `layout.sidebar.setActive('citas')`) |
+
+### 11.3 El *skip link* (WCAG 2.4.1 "Evitar bloques")
+
+Un usuario de teclado tendría que pulsar <kbd>Tab</kbd> unas 15 veces (todo el menú lateral)
+antes de llegar al contenido **en cada página**. El *skip link* es el **primer** elemento
+tabulable: un enlace "Saltar al contenido principal" que lleva al `<main>`.
+
+- **No se oculta con `display: none`**: eso lo sacaría del orden de tabulación y no serviría.
+  Se mueve fuera de la vista con `transform` y aparece cuando recibe foco (`.skip-link:focus`).
+- El `<main>` tiene `tabindex="-1"`: puede recibir foco **por programa** (el enlace), pero no
+  entra en el orden normal de <kbd>Tab</kbd>.
+- `scroll-margin-top: var(--layout-topbar-h)`: al saltar, el inicio del contenido no queda
+  escondido debajo de la topbar fija.
+
+### 11.4 Un solo `<h1>` y el título de la pestaña
+
+- Cada pantalla tiene **un** `<h1>`: los lectores de pantalla lo usan para saber "dónde estoy" y
+  navegar por encabezados (WCAG 1.3.1).
+- `update({ title })` también cambia el `<title>` del documento ("Pacientes · DentalCare"), que es
+  lo primero que anuncia el lector al cargar la página (WCAG 2.4.2 "Página titulada").
+- En la ficha del paciente el `<h1>` es **el nombre del paciente** (lo pone `DetailLayout`), así
+  que el marco se usa sin `title` y su encabezado queda oculto (`hidden`: no se ve ni se lee).
+
+### 11.5 Breadcrumbs (patrón WAI-ARIA "Breadcrumb")
+
+```html
+<nav aria-label="Ruta de navegación">
+  <ol>
+    <li><a href="…/dashboard.html">Inicio</a></li>
+    <li><svg aria-hidden="true">›</svg><a href="…/pacientes.html">Pacientes</a></li>
+    <li><svg aria-hidden="true">›</svg><span aria-current="page">Andrés Galvis</span></li>
+  </ol>
+</nav>
+```
+
+- `<nav>` con nombre propio: hay dos navegaciones en la página (menú y migas) y el lector las
+  distingue por su `aria-label`.
+- `<ol>` (lista **ordenada**) porque el orden importa: es una jerarquía.
+- El último elemento es la página actual: **no es enlace** (no tiene sentido enlazar a donde ya
+  estás) y lleva `aria-current="page"`.
+- Los separadores `›` son decorativos: `aria-hidden="true"` evita que el lector los lea.
+
+### 11.6 `setLoading` y la condición de carrera
+
+Cuando los datos lleguen de la API (fase D), cargar tomará tiempo. Si el usuario hace clic en
+"Citas" y, antes de que termine, en "Pagos", la respuesta de "Citas" puede llegar **después** y
+pintar la página equivocada. A eso se le llama **condición de carrera**. La solución es un
+contador ("token") de navegación: solo se pinta la respuesta de la **última** petición.
+
+```js
+let navToken = 0;
+async function irA(item) {
+  const token = ++navToken;               // esta navegación es la #n
+  layout.setLoading(true, `Cargando ${item.label}…`);
+  const datos = await servicio.listar();  // tarda…
+  if (token !== navToken) return;         // el usuario ya navegó a otra parte: descartar
+  layout.setContent(render(datos));
+}
+```
+
+Mientras carga, `<main aria-busy="true">` le dice al lector de pantalla que el contenido está
+cambiando, y el `Spinner` tiene `role="status"` con el texto "Cargando pacientes…".
+
+### 11.7 AuthLayout: vistas y manejo del foco
+
+- Un solo template para **iniciar sesión**, **recuperar** y **restablecer** contraseña.
+  `setView({ title, subtitle, content, footer })` cambia de vista **sin recargar**.
+- **Al cambiar de vista, el foco va al `<h1>`** (`tabindex="-1"`). Si no, tras pulsar "Enviar
+  enlace" el formulario desaparece y el foco queda "en ninguna parte": el usuario de lector de
+  pantalla no sabe qué pasó. Al enfocar el título, el lector anuncia "Revisa tu correo".
+- **Mensajes que no revelan información (RF-ACC-02):** el login dice "Correo o contraseña
+  incorrectos" (no cuál de los dos) y la recuperación dice "*Si* el correo está registrado,
+  recibirás un enlace". Así un atacante no puede averiguar qué correos existen en el sistema
+  (ataque de **enumeración de usuarios**).
+- El panel de marca (izquierda) **no tiene encabezados**: el `<h1>` debe ser el de la tarjeta.
+  En pantallas de menos de 960 px el panel se oculta y el logo pasa a la tarjeta.
+
+### 11.8 DetailLayout: un template dentro de otro
+
+La ficha del paciente va **dentro** del hueco de `DashboardLayout`: el marco pone la navegación y
+las migas; `DetailLayout` organiza la ficha. **No rompe Atomic Design**: `DetailLayout` no importa
+a `DashboardLayout` (ninguno depende del otro); es la **página** la que los compone.
+
+| Zona | Contenido | Detalle técnico |
+|---|---|---|
+| Encabezado | Avatar, nombre (`<h1>`), estado, datos de contacto, acciones | Datos en `<dl>`: el ícono se ve, la etiqueta ("Teléfono") se lee con `u-visually-hidden` |
+| Resumen | Próxima cita, última visita, citas completadas, hallazgos por tratar | `<dl>` en cuadrícula `auto-fit` |
+| Alertas clínicas | Alergias, advertencias | **Siempre visibles** sobre las pestañas: un odontólogo no debe tener que abrir una pestaña para enterarse de una alergia |
+| Pestañas | Datos personales / Odontograma / Citas | Contenido **perezoso**: el odontograma se construye solo si se abre su pestaña |
+| Columna lateral | Historia clínica | `<aside>` (landmark "complementary") con nombre propio |
+
+- **Container query** (`@container (min-width: 1000px)`): la columna lateral se pone al lado solo
+  si **la ficha** tiene espacio, sin importar el ancho de la ventana (que incluye el sidebar).
+- **`syncHash`** (opcional): la pestaña se refleja en la URL (`paciente.html?id=11#odontograma`)
+  para poder enlazar directo a ella. Se usa `history.replaceState` y **no** `pushState`: cambiar
+  de pestaña no debe llenar el historial (el botón "Atrás" debe volver a la página anterior, no a
+  la pestaña anterior).
+
+### 11.9 Landmarks: el mapa de la página
+
+Los lectores de pantalla permiten saltar entre **regiones** (*landmarks*). Con los templates,
+cada pantalla interna tiene:
+
+| Región | Elemento | Nombre accesible |
+|---|---|---|
+| banner | `<header class="topbar">` | — |
+| navigation | `<nav>` del sidebar | "Menú de Administrador" (según el rol) |
+| navigation | `<nav>` de las migas | "Ruta de navegación" |
+| main | `<main id="contenido-principal">` | — (es único) |
+| complementary | `<aside>` de la ficha | "Información complementaria" |
+
+### 11.10 Otras decisiones de A4
+
+- **Superficies compartidas** en `app-shell.css`: `.card`, `.page-kpis`, `.page-columns` y
+  `.data-list`, para que todas las páginas de A6 usen las mismas tarjetas y cuadrículas.
+- **`minmax(min(100%, 220px), 1fr)`**: en un celular de 320 px, una columna de mínimo 220 px más
+  el margen desbordaría la pantalla; `min(100%, …)` garantiza que nunca sea más ancha que su
+  contenedor.
+- **`min-height: 100dvh`** (además de `100vh`): en los celulares, `vh` no descuenta la barra del
+  navegador que aparece y desaparece; `dvh` (*dynamic viewport height*) sí. Se deja `100vh` antes
+  como respaldo para navegadores antiguos.
+- **Mock nuevo:** `data/mock/historias.js` (tabla `historia_clinica` del seed) para la ficha.
+
+---
+
+## 12. Cómo se verificó la calidad
 
 Se escribieron **pruebas automatizadas** que abren el styleguide en un navegador real (Edge sin
 interfaz), simulan clics, teclado y envío de formularios, y comprueban el resultado:
@@ -500,8 +688,12 @@ interfaz), simulan clics, teclado y envío de formularios, y comprueban el resul
 |---|---|---|
 | Moléculas (A2) | 74 | 74 ✅ |
 | Organismos (A3) | 73 | 73 ✅ |
+| Templates (A4) | 56 | 56 ✅ |
 | Lógica de agenda y datos mock (Node) | 18 | 18 ✅ |
-| Desborde horizontal en móvil (375 px) | — | sin desborde ✅ |
+| Desborde horizontal en móvil (375 px), incluidos los 3 templates | — | sin desborde ✅ |
+
+Al terminar A4 se **volvieron a correr** las suites de A2 y A3 (pruebas de regresión): siguen en
+74/74 y 73/73, así que lo nuevo no dañó nada de lo anterior.
 
 **Errores reales que las pruebas encontraron (y se corrigieron):**
 1. `PasswordField` no pasaba el atributo `name` al input → el login no habría podido leer la
@@ -513,12 +705,22 @@ interfaz), simulan clics, teclado y envío de formularios, y comprueban el resul
    `aria-labelledby` → se generan con índices.
 6. El botón "Agendar cita" volvía a decir "Siguiente" tras la carga → se creó `setButtonLabel()`.
 
-**Frase para la sustentación:** *"No asumí que funcionaba: lo probé, y las pruebas encontraron seis
+**Hallazgos de A4 (revisión visual de capturas a 1366 px y 375 px):**
+7. El logo aparecía **dos veces** en escritorio (sidebar y topbar) → el template oculta el de la
+   topbar desde 1024 px (en móvil sí se muestra, porque el sidebar está escondido).
+8. En móvil el resumen de la ficha quedaba en una sola columna larga → mínimo de 130 px por
+   indicador; ahora caben dos por fila.
+
+**Las pruebas también se equivocan:** la prueba del *skip link* falló la primera vez porque leía
+el estilo **durante** la transición de 120 ms (el enlace todavía se estaba moviendo). El código
+estaba bien; se corrigió la prueba para esperar a que la transición terminara.
+
+**Frase para la sustentación:** *"No asumí que funcionaba: lo probé, y las pruebas encontraron
 errores que un usuario habría encontrado primero."*
 
 ---
 
-## 12. Simulacro de preguntas del docente
+## 13. Simulacro de preguntas del docente
 
 **P1. ¿Qué es Atomic Design y por qué lo usaron?**
 R: Una metodología que divide la interfaz en átomos, moléculas, organismos, templates y páginas. La
@@ -617,9 +819,9 @@ odontograma decide si el panel va al lado o debajo según el espacio que realmen
 hace reutilizable en cualquier página o modal.
 
 **P19. ¿Cómo prueban que todo funciona?**
-R: Con 165 pruebas automatizadas en un navegador real y en Node: interacciones, teclado, ARIA,
+R: Con 221 pruebas automatizadas en un navegador real y en Node: interacciones, teclado, ARIA,
 validaciones, reglas de negocio y diseño responsive. Encontraron seis errores reales que se
-corrigieron (sección 11).
+corrigieron (sección 12).
 
 **P20. ¿Qué cambios necesita la base de datos y por qué?**
 R: Se documentarán en `database/CAMBIOS.md` (fase B). Por ejemplo: `cita.id_servicio` (RF-CIT-01
@@ -627,25 +829,88 @@ pide elegir tratamiento), `rol.estado` (RF-ROL-06), el estado `PENDIENTE_CONFIRM
 contraseñas con bcrypt (el seed las tiene en texto plano, lo que incumple RNF-SEG-01) y más
 horarios (el seed solo trae un día por odontólogo).
 
+**P21. ¿Qué es un template y en qué se diferencia de una página?**
+R: El template es la estructura de la pantalla sin datos: dónde van el sidebar, la topbar, las
+migas, el título y el contenido. La página es el template con datos reales. Por ejemplo,
+`DashboardLayout` es el mismo para todas las pantallas internas; lo que cambia es el título y lo
+que cada página mete con `setContent()`.
+
+**P22. ¿Qué es un *skip link* y por qué no lo ocultan con `display: none`?**
+R: Es el primer enlace de la página, "Saltar al contenido principal", para que un usuario de
+teclado no tenga que recorrer todo el menú en cada pantalla (WCAG 2.4.1). Con `display: none` el
+enlace sale del orden de tabulación y no se puede usar; por eso se mueve fuera de la vista con
+`transform` y aparece al recibir foco.
+
+**P23. ¿Por qué el `<main>` tiene `tabindex="-1"`?**
+R: Para que pueda recibir el foco cuando se activa el *skip link* o desde código (`focusMain()`).
+El `-1` significa "enfocable por programa, pero no con Tab": no agrega una parada extra al
+recorrer la página.
+
+**P24. ¿Cómo hicieron accesibles las migas de pan?**
+R: Con el patrón WAI-ARIA: un `<nav>` con `aria-label="Ruta de navegación"`, una lista ordenada,
+el último elemento sin enlace y con `aria-current="page"`, y los separadores con
+`aria-hidden="true"` para que el lector no los lea.
+
+**P25. ¿Qué es una condición de carrera y cómo la evitan?**
+R: Ocurre cuando dos operaciones asíncronas compiten y el resultado depende de cuál termina
+primero. Si el usuario pide "Citas" y luego "Pagos", la respuesta de "Citas" podría llegar
+después y pintar la página equivocada. Usamos un contador de navegación: cada carga guarda su
+número y, al terminar, solo pinta si sigue siendo la última. Hay una prueba automatizada que lo
+verifica.
+
+**P26. En el login, ¿por qué el foco se mueve al título al cambiar de vista?**
+R: Porque el formulario que tenía el foco desaparece. Si no movemos el foco, el usuario de lector
+de pantalla no se entera de que la vista cambió. Al enfocar el `<h1>`, el lector anuncia "Revisa
+tu correo".
+
+**P27. ¿Por qué el mensaje dice "*si* el correo está registrado, recibirás un enlace"?**
+R: Para no revelar qué correos existen en el sistema. Si dijera "ese correo no existe", un
+atacante podría probar correos hasta encontrar usuarios reales (enumeración de usuarios). Por la
+misma razón el login dice "correo o contraseña incorrectos" sin decir cuál falló (RF-ACC-02).
+
+**P28. La ficha del paciente es un template dentro de otro. ¿Eso no rompe Atomic Design?**
+R: No, porque ninguno de los dos importa al otro: `DetailLayout` solo usa átomos, moléculas y
+organismos, y es la página la que los combina (`layout.setContent(DetailLayout(...))`). La regla
+de oro (las dependencias solo van hacia abajo) se cumple.
+
+**P29. ¿Por qué las alergias se muestran fuera de las pestañas?**
+R: Por seguridad del paciente. Una alergia (por ejemplo, a la penicilina o a un anestésico) es
+información crítica que el odontólogo debe ver sin hacer clic. Por eso las alertas clínicas van
+siempre visibles entre el encabezado y las pestañas.
+
+**P30. ¿Por qué `history.replaceState` y no `pushState` para la pestaña en la URL?**
+R: `pushState` agrega una entrada al historial por cada pestaña abierta, y el botón "Atrás" iría
+recorriendo pestañas en lugar de volver a la página anterior. `replaceState` actualiza la URL (se
+puede compartir o recargar en la misma pestaña) sin ensuciar el historial.
+
 ---
 
-## 13. Glosario
+## 14. Glosario
 
 | Término | Definición breve |
 |---|---|
 | **a11y** | Abreviatura de *accessibility* (a + 11 letras + y) |
+| **aria-busy** | Indica que una región se está actualizando; el lector espera a que termine |
 | **BEM** | Convención de nombres CSS: Bloque__Elemento--Modificador |
 | **Barrel** | Archivo `index.js` que reexporta los módulos de una carpeta |
+| **Breadcrumbs (migas de pan)** | Ruta jerárquica hasta la página actual: Inicio › Pacientes › Andrés |
 | **Closure** | Función que "recuerda" las variables del lugar donde se creó; así guardamos el estado de cada componente |
+| **Condición de carrera** | Error que aparece cuando el resultado depende de qué operación asíncrona termina primero |
 | **Container query** | Estilos según el ancho del contenedor, no de la ventana |
 | **Debounce** | Esperar a que un evento deje de repetirse antes de actuar |
 | **Design token** | Variable de diseño con nombre (color, espacio, radio…) |
 | **Disclosure** | Patrón de botón que muestra u oculta un panel |
+| **dvh** | Alto dinámico de la ventana: descuenta las barras del navegador móvil |
 | **ES Modules** | Sistema nativo de `import`/`export` de JavaScript (requiere servidor, por eso Live Server) |
 | **FDI** | Sistema internacional de numeración dental de dos dígitos |
 | **Idempotente** | Operación que da el mismo resultado si se ejecuta una o varias veces |
+| **Landmark** | Región de la página (banner, navigation, main…) a la que el lector de pantalla puede saltar |
 | **Mock** | Datos de prueba que imitan los reales mientras no existe el backend |
 | **Reflow** | Recálculo del layout que hace el navegador |
+| **replaceState** | Cambia la URL sin agregar una entrada al historial del navegador |
 | **Roving tabindex** | Solo un elemento del grupo es tabulable; las flechas mueven el foco dentro del grupo |
+| **Skip link** | Enlace inicial "Saltar al contenido principal" para usuarios de teclado |
+| **Slot** | Hueco de un template que la página llena con su contenido |
+| **Template** | Estructura de una pantalla sin datos (nivel 4 de Atomic Design) |
 | **WAI-ARIA** | Especificación del W3C de roles y atributos para accesibilidad |
 | **XSS** | Cross-Site Scripting: inyección de scripts maliciosos |

@@ -15,7 +15,7 @@
           <span class="sg-brand__logo" id="sg-logo"></span>
           <div>
             <p class="sg-brand__name">DentalCare</p>
-            <p class="sg-brand__sub">Design System · v0.2</p>
+            <p class="sg-brand__sub">Design System · v0.3</p>
           </div>
         </div>
         <nav class="sg-nav" aria-label="Secciones del styleguide">
@@ -38,6 +38,10 @@
           <a href="#o-calendar">Agenda</a>
           <a href="#o-charts">Gráficas</a>
           <a href="#o-wizard">Agendamiento</a>
+          <a href="#templates">Templates</a>
+          <a href="#t-dashboard">DashboardLayout</a>
+          <a href="#t-auth">AuthLayout</a>
+          <a href="#t-detail">DetailLayout</a>
         </nav>
       </div>
     </header>
@@ -46,7 +50,7 @@
       <section class="sg-intro">
         <h1>Design System</h1>
         <p class="text-secondary">
-          Fundamentos (tokens), átomos y moléculas de la interfaz de DentalCare. Todo lo que ves aquí
+          Fundamentos (tokens), átomos, moléculas, organismos y templates de la interfaz de DentalCare. Todo lo que ves aquí
           se genera con los mismos componentes JS que usarán las pantallas reales.
         </p>
       </section>
@@ -234,6 +238,37 @@
           alternativas (RF-CIT-03). La cita creada aparece en la agenda y la tabla de arriba.
         </p>
         <div class="sg-card" id="sg-wizard"></div>
+      </section>
+
+      <!-- ============================= TEMPLATES ============================= -->
+      <h2 class="sg-part" id="templates"><span>05</span> Templates</h2>
+
+      <section class="sg-section" id="t-dashboard" aria-labelledby="h-t-dash">
+        <h3 id="h-t-dash" class="sg-section__title">DashboardLayout</h3>
+        <p class="sg-section__desc">
+          Marco de todas las pantallas internas: skip-link, Sidebar por rol, Topbar, migas de pan (<code>Breadcrumbs</code>), título
+          único (<code>&lt;h1&gt;</code>), acciones y el hueco del contenido. Haz clic en el menú lateral: el template cambia título,
+          migas y contenido con <code>update()</code>, <code>setLoading()</code> y <code>setContent()</code>.
+        </p>
+        <div class="sg-card" id="sg-tpl-dashboard"></div>
+      </section>
+
+      <section class="sg-section" id="t-auth" aria-labelledby="h-t-auth">
+        <h3 id="h-t-auth" class="sg-section__title">AuthLayout</h3>
+        <p class="sg-section__desc">
+          Login (HU-02), recuperar y restablecer contraseña (RF-ACC-01). <code>setView()</code> cambia la vista y mueve el foco al
+          título. Prueba "¿Olvidaste tu contraseña?" → enviar → "Abrir el enlace".
+        </p>
+        <div class="sg-card" id="sg-tpl-auth"></div>
+      </section>
+
+      <section class="sg-section" id="t-detail" aria-labelledby="h-t-detail">
+        <h3 id="h-t-detail" class="sg-section__title">DetailLayout</h3>
+        <p class="sg-section__desc">
+          Ficha del paciente <strong>dentro</strong> de DashboardLayout (composición de templates): encabezado con datos de contacto,
+          resumen, alertas clínicas, pestañas perezosas (Datos / Odontograma / Citas) y columna de historia clínica.
+        </p>
+        <div class="sg-card" id="sg-tpl-detail"></div>
       </section>
     </main>
 
