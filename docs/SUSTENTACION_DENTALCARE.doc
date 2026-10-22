@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+  body { font-family: Calibri, Arial, sans-serif; font-size: 11pt; line-height: 1.5; color: #222; margin: 40px; }
+  h1 { color: #0b3c5d; font-size: 18pt; border-bottom: 2px solid #0b3c5d; padding-bottom: 5px; margin-top: 30px; }
+  h2 { color: #1d2731; font-size: 14pt; margin-top: 20px; }
+  h3 { color: #328cc1; font-size: 12pt; margin-top: 15px; }
+  .portada { text-align: center; margin-bottom: 40px; }
+  .portada h1 { border: none; font-size: 22pt; margin-bottom: 5px; }
+  .portada p { margin: 4px 0; color: #555; }
+  .pregunta { font-weight: bold; color: #0b3c5d; margin-top: 15px; }
+  .respuesta { margin-left: 15px; margin-bottom: 15px; }
+  ul { margin-top: 5px; }
+  li { margin-bottom: 5px; }
+</style>
+</head>
+<body>
+  <div class="portada">
+    <h1>CENTRO ODONTOLÓGICO DENTALCARE</h1>
+    <p><strong>DOCUMENTO MAESTRO DE SUSTENTACIÓN TÉCNICA · EVIDENCIA 2</strong></p>
+    <p>Tecnólogo en Análisis y Desarrollo de Software (ADSO) · Ficha 3489088</p>
+    <p>Node.js · Express 5 · MySQL / MariaDB (Sin ORM) · 4 Capas · JWT · Transacciones ACID</p>
+    <hr style="border: 0; border-top: 1px solid #aaa; margin: 20px 0;">
+  </div>
+
+  <h1>1. RESUMEN GENERAL Y COBERTURA DEL PROYECTO</h1>
+  <p>El sistema cubre el <strong>100% del Núcleo Obligatorio (23 Requerimientos Funcionales)</strong> y <strong>7 Requerimientos Electivos</strong> (módulo financiero y catálogos), alcanzando <strong>30 RF</strong>, superando el 80% exigido en el Criterio C1 de la Rúbrica SENA.</p>
+  <h3>Estado de la Suite de Pruebas Automatizadas (301 Pruebas en Verde)</h3>
+  <ul>
+    <li><strong>api.test.mjs (79 pruebas):</strong> Autenticación JWT, verificación de sesión activa, control de acceso basado en roles/permisos (RBAC), CRUD de pacientes y validación geográfica DIVIPOLA.</li>
+    <li><strong>citas.test.mjs (84 pruebas):</strong> Agendamiento, validación de horario de odontólogos (RN-02), franjas ocupadas, máquina de estados, minimización de datos y catálogos de lectura.</li>
+    <li><strong>historias.test.mjs (81 pruebas):</strong> Ficha clínica, antecedentes médicos, consultas (evoluciones), odontograma por piezas FDI, detalle de paciente y bloqueo estricto por asignación (RN-01).</li>
+    <li><strong>ventas.test.mjs (57 pruebas):</strong> Creación de ventas, cálculo de saldo, rechazo de montos con centavos, abonos concurrentes, prevención de sobrepago y resumen financiero.</li>
+  </ul>
+
+  <h1>2. ARQUITECTURA EN 4 CAPAS (CRITERIO C3)</h1>
+  <p>El backend abandonó la estructura de modelos combinados para implementar una separación estricta en 4 capas desacopladas:</p>
+  <ul>
+    <li><strong>1. Rutas (routes/):</strong> Define endpoints y aplica middlewares de seguridad (verifyToken, requirePermission).</li>
+    <li><strong>2. Controladores (controllers/):</strong> Capa delgada (2 a 3 líneas). Extrae parámetros (body, params, query, sesión), delega al servicio y retorna respuestas JSON.</li>
+    <li><strong>3. Servicios (services/):</strong> Contiene la lógica del negocio pura y reglas de dominio. No recibe req ni res. Maneja transacciones ACID (withTransaction), bloqueos pesimistas y auditoría.</li>
+    <li><strong>4. Repositorios (repositories/):</strong> Acceso exclusivo a base de datos con mysql2/promise. Consultas SQL parametrizadas con placeholders (?) para evitar inyección SQL.</li>
+  </ul>
+
+  <h1>3. REGLAS DE NEGOCIO Y DECISIONES TÉCNICAS CRÍTICAS</h1>
+  
+  <h3>A. Autenticación y Seguridad (RNF-SEG-01 / RNF-SEG-02)</h3>
+  <ul>
+    <li><strong>Tokens JWT:</strong> Firmados con algoritmo HS256 y secreto de mínimo 32 caracteres. El token solo lleva la identidad y el rol; los permisos se consultan en tiempo real en la base de datos.</li>
+    <li><strong>Prevención de Timing Attacks:</strong> Si el correo no existe, bcrypt.compare se ejecuta contra un hash simulado. Tarda exactamente el mismo tiempo (~70 ms) que una clave errónea, impidiendo la enumeración de usuarios.</li>
+    <li><strong>Auditoría Transaccional:</strong> Los eventos críticos van a log_auditoria dentro de la transacción. Si hay un ROLLBACK de datos, el log también se deshace.</li>
+  </ul>
+
+  <h3>B. Citas y Agenda (Regla RN-02)</h3>
+  <ul>
+    <li><strong>Minimización de Datos (Ley 1581):</strong> GET /api/citas/ocupacion devuelve únicamente id_especialista, fecha_hora y estado_cita, protegiendo los datos sensibles de los pacientes.</li>
+    <li><strong>Control de Concurrencia Pesimista:</strong> Para evitar que dos pacientes aparten la misma cita simultáneamente, se aplica SELECT ... FOR UPDATE sobre el registro del especialista. Una petición reserva y la otra es rechazada con 409 Conflict.</li>
+  </ul>
+
+  <h3>C. Historia Clínica y Odontograma (Regla RN-01 y B-11)</h3>
+  <ul>
+    <li><strong>Regla RN-01:</strong> Un odontólogo solo puede editar la historia clínica o el odontograma si tiene o tuvo al menos una cita no cancelada con ese paciente. Si no está asignado, recibe 403 Forbidden.</li>
+    <li><strong>Hallazgo B-11:</strong> La tabla diente solo tenía 6 piezas en el script original. Se pobló el catálogo FDI completo con las 52 piezas (32 permanentes y 20 temporales) con INSERT IGNORE para evitar errores 500 por llave foránea.</li>
+  </ul>
+
+  <h3>D. Ventas, Facturación y Abonos</h3>
+  <ul>
+    <li><strong>Columnas Generadas (STORED):</strong> saldo_pendiente y estado_venta se recalculan automáticamente en MySQL al sumar cada abono a monto_pagado.</li>
+    <li><strong>Control de Sobrepago:</strong> Cada abono bloquea la venta con SELECT ... FOR UPDATE. Si el monto supera el saldo restante, se rechaza con 422 Unprocessable Entity.</li>
+    <li><strong>Pesos Enteros:</strong> El peso colombiano no usa centavos en consultas médicas; los montos con decimales se rechazan con 400 Bad Request en lugar de redondearse para evitar inconsistencias contables.</li>
+  </ul>
+
+  <h1>4. BANCO DE PREGUNTAS Y RESPUESTAS PARA LA SUSTENTACIÓN</h1>
+  
+  <p class="pregunta">P1. ¿Por qué se utilizó una arquitectura en 4 capas y qué ventaja ofrece sobre MVC?</p>
+  <p class="respuesta"><strong>Respuesta:</strong> Evita los "controladores obesos". Al separar en rutas, controladores, servicios y repositorios, los controladores solo manejan HTTP, los servicios contienen la lógica de negocio pura y pueden probarse sin Express, y los repositorios encapsulan las consultas SQL directas en mysql2/promise.</p>
+
+  <p class="pregunta">P2. ¿Cómo solucionaron las condiciones de carrera en citas y pagos?</p>
+  <p class="respuesta"><strong>Respuesta:</strong> Mediante transacciones SQL con bloqueo pesimista (SELECT ... FOR UPDATE). En citas bloquea al especialista durante la reserva; en abonos bloquea la factura para recalcular el saldo real e impedir cobros simultáneos.</p>
+
+  <p class="pregunta">P3. ¿Cómo se garantiza la minimización de datos según la Ley 1581?</p>
+  <p class="respuesta"><strong>Respuesta:</strong> El endpoint /api/citas/ocupacion solo expone el ID del especialista, la fecha y el estado de la cita. No expone nombres ni documentos de otros pacientes a quienes consultan disponibilidad.</p>
+
+  <p class="pregunta">P4. ¿Cómo previenen la enumeración de usuarios en el login?</p>
+  <p class="respuesta"><strong>Respuesta:</strong> Comparando con un hash falso constante cuando el correo no existe, manteniendo el tiempo de respuesta uniforme (~70 ms) y evitando que se deduzca qué cuentas existen.</p>
+
+  <p class="pregunta">P5. ¿Por qué fue necesario el cambio B-11 en la base de datos?</p>
+  <p class="respuesta"><strong>Respuesta:</strong> Porque el seed original solo tenía 6 piezas dentales. Al intentar registrar un diagnóstico en otra pieza en el odontograma, la llave foránea hacia la tabla diente fallaba. Se agregaron las 52 piezas FDI completas.</p>
+
+</body>
+</html>
