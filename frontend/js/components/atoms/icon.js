@@ -1,13 +1,11 @@
 /**
  * Átomo: Icon
- * Íconos SVG de trazo (24×24, stroke = currentColor) del sprite local img/icons.svg,
- * sin librerías externas ni innerHTML. Los trazos siguen el estilo de Lucide (licencia ISC).
+ * Íconos SVG de trazo (24×24, stroke = currentColor) del sprite que icon-sprite.js inserta oculto en el
+ * documento: cada ícono es un <use href="#icon-…">, sin peticiones externas, librerías ni innerHTML.
  */
+import { ensureIconSprite, iconHref } from './icon-sprite.js';
 
 const SVG_NS = 'http://www.w3.org/2000/svg';
-
-/** Sprite estático con un <symbol> por ícono: la estructura SVG vive en un archivo, no en JS. */
-const SPRITE = new URL('../../../img/icons.svg', import.meta.url).href;
 
 /** Lista de nombres disponibles (ids del sprite; usada por el styleguide). */
 export const ICON_NAMES = [
@@ -45,8 +43,9 @@ export function Icon({ name, size = 20, label, className } = {}) {
   for (const [key, value] of Object.entries(attrs)) svg.setAttribute(key, String(value));
 
   if (!KNOWN.has(name)) console.warn(`[Icon] Ícono desconocido: "${name}"`);
+  ensureIconSprite();
   const use = document.createElementNS(SVG_NS, 'use');
-  use.setAttribute('href', `${SPRITE}#${KNOWN.has(name) ? name : 'alert-circle'}`);
+  use.setAttribute('href', iconHref(KNOWN.has(name) ? name : 'alert-circle'));
   svg.append(use);
 
   if (label) {
