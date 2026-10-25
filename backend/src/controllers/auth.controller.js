@@ -21,3 +21,18 @@ export async function logout(req, res) {
   await authService.logout(req.user);
   res.status(204).end();
 }
+
+/** GET /api/auth/perfil → 200 datos de la cuenta (identidad de solo lectura + contacto) */
+export async function perfil(req, res) {
+  res.json(await authService.perfil(req.user));
+}
+
+/** PUT /api/auth/perfil { telefono, email, direccion? } → 200 { perfil, user } (400 / 409) */
+export async function actualizarPerfil(req, res) {
+  res.json(await authService.actualizarPerfil(req.user, req.body ?? {}));
+}
+
+/** PUT /api/auth/password { password_actual, password_nueva, password_confirmacion } → 200 { message } (400) */
+export async function cambiarPassword(req, res) {
+  res.json(await authService.cambiarPassword(req.user, req.body ?? {}));
+}

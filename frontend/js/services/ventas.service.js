@@ -8,9 +8,9 @@ import { mockRequest, findOr404, nextId, nowSql, pick, audit, assertOwnPaciente,
  * Servicio de ventas y pagos/abonos (RF-PAG-01…04; tablas `venta`, `pago_venta`, `metodo_pago`).
  *
  *   metodos()                         → métodos de pago
- *   list({ id_paciente, estado })     → ventas con nombre del paciente (el PACIENTE solo ve las suyas)
+ *   list({ id_paciente, estado })     → ventas con nombre del paciente y del tratamiento (el PACIENTE solo ve las suyas)
  *   get(id)                           → venta + sus pagos
- *   create(data)                      → venta (plan de pago CONTADO o CREDITO en cuotas)
+ *   create(data)                      → venta de un tratamiento (id_servicio, B-11) a CONTADO o CREDITO en cuotas
  *   registrarAbono(idVenta, data)     → abono ≤ saldo; si el saldo llega a 0 la venta queda PAGADO
  *   resumen()                         → totales para los dashboards (RF-PAG-04)
  *
@@ -24,7 +24,11 @@ const recalcular = (venta) => {
   return venta;
 };
 
-const withNames = (db, venta) => ({ ...venta, paciente_nombre: nombrePacienteDb(db, venta.id_paciente) });
+const withNames = (db, venta) => ({
+  ...venta,
+  paciente_nombre: nombrePacienteDb(db, venta.id_paciente),
+  servicio_nombre: db.servicio.find((s) => s.id_servicio === venta.id_servicio)?.nombre_servicio ?? null,
+});
 
 const pagosDe = (db, idVenta) =>
   db.pago_venta
@@ -63,8 +67,11 @@ const mock = {
   create: (data) =>
     mockRequest(
       ({ db, user }) => {
-        const row = pick(data, ['id_paciente', 'monto_total', 'modalidad_pago', 'numero_cuotas']);
+        const row = pick(data, ['id_paciente', 'id_servicio', 'monto_total', 'modalidad_pago', 'numero_cuotas']);
         const fields = {};
+        const servicio = db.servicio.find((s) => s.id_servicio === Number(row.id_servicio));
+        if (!servicio) fields.id_servicio = 'Elige el tratamiento que se va a pagar.';
+        else if (servicio.estado !== 'ACTIVO') fields.id_servicio = 'Ese tratamiento está inactivo.';
         const monto = pesos(row.monto_total);
         const cuotas = row.modalidad_pago === 'CONTADO' ? 1 : Number(row.numero_cuotas);
         if (!(monto > 0)) fields.monto_total = 'El monto debe ser mayor a 0.';
@@ -76,6 +83,7 @@ const mock = {
         const venta = recalcular({
           id_venta: nextId(db.venta, 'id_venta'),
           id_paciente: Number(row.id_paciente),
+          id_servicio: servicio.id_servicio,
           monto_total: monto,
           monto_pagado: 0,
           modalidad_pago: row.modalidad_pago,
@@ -84,7 +92,7 @@ const mock = {
           fecha_venta: nowSql(),
         });
         db.venta.push(venta);
-        audit(db, user, 'CREAR', 'venta', `Venta #${venta.id_venta} por ${monto}`);
+        audit(db, user, 'CREAR', 'venta', `Venta #${venta.id_venta} (${servicio.nombre_servicio}) por ${monto}`);
         return withNames(db, venta);
       },
       { permiso: PERMISOS.REGISTRAR_PAGO, write: true },

@@ -114,6 +114,11 @@ try {
   e = await err(S.ventasService.registrarAbono(1, { id_metodo: 1, monto_abonado: 1000 }));
   check('Abonar a venta pagada → 409', e?.status === 409);
   check('Seed corregido: venta #2 con saldo es PENDIENTE', (await S.ventasService.get(2)).estado_venta === 'PENDIENTE');
+  check('Ventas con el nombre del tratamiento (B-11)', venta.servicio_nombre === 'Calza / Resina Estética' && (await S.ventasService.list()).every((v) => v.servicio_nombre));
+  e = await err(S.ventasService.create({ id_paciente: 12, monto_total: 120000, modalidad_pago: 'CONTADO' }));
+  check('Venta sin tratamiento → 400 en el campo', e?.status === 400 && e.fields.id_servicio);
+  const ventaNueva = await S.ventasService.create({ id_paciente: 12, id_servicio: 2, monto_total: 120000, modalidad_pago: 'CONTADO' });
+  check('Venta nueva con su tratamiento', ventaNueva.id_servicio === 2 && ventaNueva.servicio_nombre === 'Limpieza Dental Profunda' && ventaNueva.estado_venta === 'PENDIENTE');
   const nov = await S.novedadesService.create({ tipo_novedad: 'INVENTARIO', descripcion: 'Faltan guantes talla S en bodega.' });
   check('Novedad: responsable = usuario de la sesión', nov.responsable === 'Carlos Pérez' && nov.id_personal === 2);
   e = await err(S.novedadesService.remove(nov.id_novedad));

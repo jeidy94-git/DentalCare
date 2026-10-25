@@ -1,5 +1,5 @@
 // Integración frontend ↔ backend (fase C): las MISMAS páginas, ahora con USE_MOCK = false.
-// Comprueba que http.js habla con la API real: login con JWT, listado y registro de pacientes, errores
+// Comprueba que http.js habla con la API real: login con JWT, listado y registro de pacientes, perfil, errores
 // por campo (409 de la API junto al input) y sesión rechazada (401 → login).
 //
 // Requiere, cada uno en su terminal:
@@ -58,6 +58,7 @@ async function fillLogin(email, password) {
 }
 
 const documento = `98${String(Date.now()).slice(-8)}`;
+const [[{ telefono: telefonoAdmin }]] = await pool.query('SELECT telefono FROM personal WHERE id_usuario = 1');
 
 try {
   /* ---------- 1. El interruptor ---------- */
@@ -122,6 +123,16 @@ try {
   await sleep(400);
   check('… y la tabla se recargó desde la API', (await bodyText()).includes('Prueba Backend'));
 
+  /* ---------- 4b. Mi perfil (GET y PUT /api/auth/perfil) ---------- */
+  await go('perfil.html');
+  await waitReady();
+  const perfilPedido = await evaluate(`performance.getEntriesByType('resource').some((e) => e.name === '${API}/auth/perfil')`);
+  check('Perfil: los datos llegan de GET /api/auth/perfil', perfilPedido && (await evaluate(`document.querySelector('form.perfil-form [name="telefono"]').value`)) === telefonoAdmin);
+  await t(`__t.set('form.perfil-form [name="telefono"]', '3019998877') && (__t.q('form.perfil-form').requestSubmit(), true)`);
+  check('Perfil: PUT /api/auth/perfil → "Perfil actualizado"', await waitText('Perfil actualizado'));
+  const [[admin]] = await pool.query('SELECT telefono FROM personal WHERE id_usuario = 1');
+  check('… y en MySQL quedó el celular nuevo', admin.telefono === '3019998877', admin.telefono);
+
   /* ---------- 5. Sesión que la API rechaza ---------- */
   await evaluate(`(() => { const s = JSON.parse(localStorage.getItem('dentalcare:session')); s.token = s.token.slice(0, -4) + 'AAAA'; localStorage.setItem('dentalcare:session', JSON.stringify(s)); })()`);
   await go('pages/admin/pacientes.html');
@@ -145,6 +156,7 @@ try {
   check('EXCEPCIÓN', false, error.message);
 } finally {
   await pool.query('DELETE FROM paciente WHERE numero_documento = ?', [documento]);
+  await pool.query('UPDATE personal SET telefono = ? WHERE id_usuario = 1', [telefonoAdmin]);
   // También la auditoría que generó (logins, registro, logout) y los AUTO_INCREMENT: la base queda como estaba.
   await pool.query('DELETE FROM log_auditoria WHERE id_log > ?', [maxLog]);
   for (const tabla of ['paciente', 'historia_clinica', 'log_auditoria']) await pool.query(`ALTER TABLE ${tabla} AUTO_INCREMENT = 1`);

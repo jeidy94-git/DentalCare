@@ -242,7 +242,8 @@ export function DataTable({
   const root = h(
     'div',
     { class: cx('data-table', className) },
-    (searchBar || toolbar.length) &&
+    // Booleano explícito: un `0` (toolbar vacío) se pintaría como el texto "0".
+    (Boolean(searchBar) || toolbar.length > 0) &&
       h('div', { class: 'data-table__toolbar' }, searchBar, h('div', { class: 'data-table__toolbar-end' }, status, ...toolbar)),
     chipGroup,
     // Región desplazable y enfocable: en móvil la tabla hace scroll horizontal sin romper la página.

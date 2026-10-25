@@ -216,3 +216,21 @@ ALTER TABLE `horario`
 ALTER TABLE `paciente`
   ADD CONSTRAINT `chk_paciente_genero` CHECK (`genero` IN ('MASCULINO', 'FEMENINO', 'OTRO')),
   ADD CONSTRAINT `chk_paciente_tipo_doc` CHECK (`tipo_documento` IN ('CC', 'TI', 'CE', 'PA'));
+
+-- ----------------------------------------------------------------------------
+-- B-11 · Tratamiento que se paga en cada venta (RF-PAG-01)
+-- La venta no decía qué tratamiento se cobraba: pagos y comprobantes solo
+-- mostraban montos. Mismo patrón que B-07: columna con NULL, se llena, se exige.
+-- Valores del seed: venta 1 → Calza / Resina (3), venta 2 → Tratamiento de
+-- conducto (4) y las demás (150.000) → Limpieza dental profunda (2).
+-- Si tu base YA está en la v2, usa database/b11_venta_servicio.sql.
+-- ----------------------------------------------------------------------------
+ALTER TABLE `venta`
+  ADD COLUMN `id_servicio` int(11) DEFAULT NULL AFTER `id_paciente`;
+
+UPDATE `venta` SET `id_servicio` = CASE `id_venta` WHEN 1 THEN 3 WHEN 2 THEN 4 ELSE 2 END;
+
+ALTER TABLE `venta`
+  MODIFY `id_servicio` int(11) NOT NULL,
+  ADD KEY `fk_venta_servicio` (`id_servicio`),
+  ADD CONSTRAINT `fk_venta_servicio` FOREIGN KEY (`id_servicio`) REFERENCES `servicio` (`id_servicio`) ON UPDATE CASCADE;

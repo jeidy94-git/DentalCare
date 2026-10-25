@@ -11,7 +11,7 @@ import { mockRequest, findOr404, nextId, assertValid, pick, audit } from './mock
  *   list({ soloActivos })   → el PACIENTE solo ve los activos
  *   get(id) · create(data) · update(id, data)
  *   cambiarEstado(id, 'ACTIVO'|'INACTIVO')
- *   remove(id)              → 409 si ya se usó en citas (en ese caso, inactivarlo)
+ *   remove(id)              → 409 si ya se usó en citas o ventas (en ese caso, inactivarlo)
  */
 
 const CAMPOS = ['codigo_servicio', 'nombre_servicio', 'descripcion', 'precio_base'];
@@ -80,8 +80,9 @@ const mock = {
     mockRequest(
       ({ db, user }) => {
         const servicio = findOr404(db.servicio, 'id_servicio', id, 'El tratamiento');
-        if (db.cita.some((c) => c.id_servicio === servicio.id_servicio)) {
-          throw new ApiError(409, 'Este tratamiento ya se usó en citas: inactívalo en lugar de eliminarlo.', { code: 'HAS_REFERENCES' });
+        // Igual que las claves foráneas fk_cita_servicio y fk_venta_servicio (B-11) de la base.
+        if (db.cita.some((c) => c.id_servicio === servicio.id_servicio) || db.venta.some((v) => v.id_servicio === servicio.id_servicio)) {
+          throw new ApiError(409, 'Este tratamiento ya se usó en citas o ventas: inactívalo en lugar de eliminarlo.', { code: 'HAS_REFERENCES' });
         }
         db.servicio.splice(db.servicio.indexOf(servicio), 1);
         audit(db, user, 'ELIMINAR', 'servicio', servicio.codigo_servicio);

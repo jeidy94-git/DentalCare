@@ -3,6 +3,7 @@
  *
  *  - Personal con REGISTRAR_PAGO: registra ventas (contado o crédito en cuotas) y abonos.
  *  - Paciente: ve SOLO sus ventas, sus abonos y su saldo (el servicio filtra por la sesión).
+ *  - Cada venta es de un tratamiento (venta.id_servicio, B-11): se muestra en la tabla, al abonar y en el comprobante.
  * Los montos son pesos enteros: así se evitan errores de redondeo (0.1 + 0.2 !== 0.3).
  */
 import { h } from '../core/dom.js';
@@ -11,7 +12,7 @@ import { can, PERMISOS } from '../core/permissions.js';
 import { Button, StatusBadge } from '../components/atoms/index.js';
 import { FormField, KpiCard, toast } from '../components/molecules/index.js';
 import { DataTable, openModalForm } from '../components/organisms/index.js';
-import { ventasService, pacientesService, trmService } from '../services/index.js';
+import { ventasService, pacientesService, serviciosService, trmService } from '../services/index.js';
 import { createAppPage, loadInto, errorMessage } from './_shared/app-page.js';
 import { card, crumbs, dataList, fechaHora, fullName, notice, runAction, withFieldErrors } from './_shared/ui.js';
 
@@ -112,8 +113,14 @@ async function init() {
   const data = await loadInto(
     layout,
     async () => {
-      const [ventas, resumen, metodos, pacientes] = await Promise.all([ventasService.list(), ventasService.resumen(), ventasService.metodos(), registra ? pacientesService.list() : []]);
-      return { ventas, resumen, metodos, pacientes };
+      const [ventas, resumen, metodos, pacientes, servicios] = await Promise.all([
+        ventasService.list(),
+        ventasService.resumen(),
+        ventasService.metodos(),
+        registra ? pacientesService.list() : [],
+        registra ? serviciosService.list({ soloActivos: true }) : [],
+      ]);
+      return { ventas, resumen, metodos, pacientes, servicios };
     },
     'Cargando pagos…',
   );
@@ -131,8 +138,18 @@ async function init() {
 
   const metodoOptions = data.metodos.map((m) => ({ value: m.id_metodo, label: m.descripcion ? `${m.nombre_metodo.replace(/_/g, ' ').toLowerCase()} · ${m.descripcion}` : m.nombre_metodo }));
 
+  /** Resumen de la venta que se está pagando (modal de abono y comprobante). */
+  const resumenVenta = (v) => [
+    ['Tratamiento', v.servicio_nombre],
+    !esPaciente && ['Paciente', v.paciente_nombre],
+    ['Valor total', formatCOP(v.monto_total)],
+    ['Pagado', formatCOP(v.monto_pagado)],
+    ['Saldo pendiente', formatCOP(v.saldo_pendiente)],
+  ].filter(Boolean);
+
   async function nuevaVenta() {
     let cuotasField;
+    let montoField;
     const saved = await openModalForm({
       title: 'Registrar venta',
       description: 'El valor total del tratamiento y cómo se va a pagar.',
@@ -140,6 +157,7 @@ async function init() {
       fields: () => {
         cuotasField = FormField({ label: 'Número de cuotas', name: 'numero_cuotas', type: 'number', min: 2, max: 24, value: 2, hint: 'Entre 2 y 24.' });
         cuotasField.hidden = true;
+        montoField = FormField({ label: 'Valor total (COP)', name: 'monto_total', type: 'number', inputmode: 'numeric', min: 1, step: 1000, required: true, hint: 'Se sugiere el precio base del tratamiento; puedes ajustarlo.', validate: (v) => (Number(v) > 0 ? null : 'Debe ser mayor a 0.') });
         return h(
           'div',
           { class: 'form-grid' },
@@ -151,7 +169,19 @@ async function init() {
             placeholder: 'Seleccione el paciente…',
             options: [...data.pacientes].sort((a, b) => fullName(a).localeCompare(fullName(b), 'es')).map((p) => ({ value: p.id_paciente, label: `${fullName(p)} · ${p.numero_documento}` })),
           }),
-          FormField({ label: 'Valor total (COP)', name: 'monto_total', type: 'number', inputmode: 'numeric', min: 1, step: 1000, required: true, validate: (v) => (Number(v) > 0 ? null : 'Debe ser mayor a 0.') }),
+          FormField({
+            label: 'Tratamiento',
+            name: 'id_servicio',
+            as: 'select',
+            required: true,
+            placeholder: 'Seleccione el tratamiento…',
+            options: data.servicios.map((s) => ({ value: s.id_servicio, label: `${s.nombre_servicio} · ${formatCOP(s.precio_base)}` })),
+            onChange: (e) => {
+              const servicio = data.servicios.find((s) => s.id_servicio === Number(e.target.value));
+              if (servicio) montoField._dcField.control.value = servicio.precio_base;
+            },
+          }),
+          montoField,
           FormField({
             label: 'Modalidad',
             name: 'modalidad_pago',
@@ -166,15 +196,16 @@ async function init() {
       },
       onSubmit: withFieldErrors((d) => ventasService.create(d)),
     });
-    if (saved) await runAction(reload, `${saved.paciente_nombre} · ${formatCOP(saved.monto_total)}`, 'Venta registrada');
+    if (saved) await runAction(reload, `${saved.paciente_nombre} · ${saved.servicio_nombre} · ${formatCOP(saved.monto_total)}`, 'Venta registrada');
   }
 
   async function abonar(v) {
     const result = await openModalForm({
       title: `Registrar abono · venta #${v.id_venta}`,
-      description: `${v.paciente_nombre} · saldo pendiente ${formatCOP(v.saldo_pendiente)}`,
+      description: `${v.servicio_nombre ?? 'Tratamiento'} · ${v.paciente_nombre}`,
       submitLabel: 'Registrar abono',
-      fields: () =>
+      fields: () => [
+        dataList(resumenVenta(v)),
         h(
           'div',
           { class: 'form-grid' },
@@ -192,22 +223,28 @@ async function init() {
           }),
           FormField({ label: 'Método de pago', name: 'id_metodo', as: 'select', required: true, placeholder: 'Seleccione…', options: metodoOptions }),
         ),
+      ],
       onSubmit: withFieldErrors((d) => ventasService.registrarAbono(v.id_venta, d)),
     });
-    if (result) await runAction(reload, result.venta.saldo_pendiente ? `Saldo pendiente: ${formatCOP(result.venta.saldo_pendiente)}.` : 'La venta quedó pagada.', 'Abono registrado');
+    if (result) {
+      const estado = result.venta.saldo_pendiente ? `saldo pendiente ${formatCOP(result.venta.saldo_pendiente)}.` : 'la venta quedó pagada.';
+      await runAction(reload, `${result.venta.servicio_nombre}: ${estado}`, 'Abono registrado');
+    }
   }
 
   async function detalle(v) {
     const venta = await ventasService.get(v.id_venta).catch((error) => toast.error(errorMessage(error)));
     if (!venta) return;
     await openModalForm({
-      title: `Venta #${venta.id_venta}`,
-      description: esPaciente ? undefined : venta.paciente_nombre,
+      title: `Comprobante · venta #${venta.id_venta}`,
+      description: venta.servicio_nombre ?? undefined,
       size: 'lg',
       submitLabel: 'Cerrar',
       cancelLabel: 'Volver',
       fields: () => [
         dataList([
+          ['Tratamiento', venta.servicio_nombre],
+          !esPaciente && ['Paciente', venta.paciente_nombre],
           ['Fecha', formatDate(venta.fecha_venta)],
           ['Modalidad', venta.modalidad_pago === 'CREDITO' ? `Crédito · ${venta.numero_cuotas} cuotas` : 'Contado'],
           ['Valor total', formatCOP(venta.monto_total)],
@@ -215,7 +252,7 @@ async function init() {
           ['Pagado', formatCOP(venta.monto_pagado)],
           ['Saldo', formatCOP(venta.saldo_pendiente)],
           ['Estado', StatusBadge(venta.estado_venta, { size: 'sm' })],
-        ]),
+        ].filter(Boolean)),
         h('h3', { class: 'card__title' }, 'Abonos'),
         venta.pagos.length
           ? h(
@@ -242,11 +279,12 @@ async function init() {
     rowLabel: (v) => `venta #${v.id_venta}`,
     initialSort: { key: 'fecha', dir: 'desc' },
     filter: { label: 'Filtrar por estado', key: 'estado_venta', options: [{ value: 'PENDIENTE', label: 'Pendientes' }, { value: 'PAGADO', label: 'Pagadas' }] },
-    search: esPaciente ? undefined : { label: 'Buscar venta', placeholder: 'Paciente o número de venta…', keys: ['paciente_nombre', (v) => String(v.id_venta)] },
+    search: esPaciente ? undefined : { label: 'Buscar venta', placeholder: 'Paciente, tratamiento o número de venta…', keys: ['paciente_nombre', 'servicio_nombre', (v) => String(v.id_venta)] },
     toolbar: registra ? [Button({ label: 'Registrar venta', icon: 'plus', onClick: nuevaVenta })] : [],
     columns: [
       { key: 'id_venta', label: 'N.º', sortable: true },
       !esPaciente && { key: 'paciente_nombre', label: 'Paciente', sortable: true },
+      { key: 'servicio_nombre', label: 'Tratamiento', sortable: true, value: (v) => v.servicio_nombre ?? '—' },
       { key: 'fecha', label: 'Fecha', sortable: true, value: (v) => v.fecha_venta, render: (v) => formatDate(v.fecha_venta) },
       { key: 'modalidad', label: 'Modalidad', value: (v) => (v.modalidad_pago === 'CREDITO' ? `Crédito (${v.numero_cuotas})` : 'Contado') },
       { key: 'total', label: 'Total', align: 'right', sortable: true, value: (v) => v.monto_total, render: (v) => formatCOP(v.monto_total) },

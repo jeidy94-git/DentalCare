@@ -24,7 +24,7 @@ import { NOVEDADES } from '../../data/mock/novedades.js';
 
 const DB_KEY = 'db';
 /** Subir este número cuando cambie la forma de las tablas: los datos viejos se descartan y se re-siembran. */
-export const DB_VERSION = 1;
+export const DB_VERSION = 2; // 2: venta.id_servicio (B-11)
 
 function seed() {
   return structuredClone({

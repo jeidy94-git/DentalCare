@@ -293,6 +293,51 @@ try {
   const [matriz] = await pool.query('SELECT r.nombre_rol, GROUP_CONCAT(p.nombre_permiso ORDER BY p.nombre_permiso) AS permisos FROM rol_permiso rp JOIN rol r USING (id_rol) JOIN permiso p USING (id_permiso) GROUP BY r.nombre_rol');
   check('La matriz rol_permiso de la base es la de permissions.js', matriz.length === 4 && matriz.every((m) => same(m.permisos.split(',').sort(), [...PERMISOS_POR_ROL[m.nombre_rol]].sort())));
 
+  const { VENTAS } = await import(new URL('data/mock/ventas.js', fe).href);
+  const [ventasDb] = await pool.query('SELECT id_venta, id_servicio FROM venta ORDER BY id_venta');
+  check('B-11: venta.id_servicio de la base es el del mock', same(ventasDb.map((v) => [v.id_venta, v.id_servicio]), VENTAS.map((v) => [v.id_venta, v.id_servicio])));
+
+  /* ---------- GET / PUT /auth/perfil y PUT /auth/password ---------- */
+  const [[cuentaOriginal]] = await pool.query('SELECT email, password_hash FROM usuario WHERE id_usuario = 16');
+  const [[fichaOriginal]] = await pool.query('SELECT telefono, email, direccion FROM paciente WHERE id_usuario = 16');
+  try {
+    const paciente = await loginAs('PACIENTE');
+    r = await api('GET', '/auth/perfil');
+    check('GET /perfil sin token → 401', r.status === 401 && isErrorShape(r.body));
+    r = await api('GET', '/auth/perfil', { token: paciente.token });
+    check('GET /perfil (paciente) → 200 desde MySQL, con documento y dirección', r.status === 200 && r.body.numero_documento === '1036000101' && r.body.rol === 'PACIENTE' && 'direccion' in r.body && same(r.body.editables, ['telefono', 'email', 'direccion']));
+    const recep = await loginAs('RECEPCIONISTA');
+    r = await api('GET', '/auth/perfil', { token: recep.token });
+    check('GET /perfil (personal) → sin dirección (personal no la tiene)', r.status === 200 && !('direccion' in r.body) && same(r.body.editables, ['telefono', 'email']));
+
+    r = await api('PUT', '/auth/perfil', { token: paciente.token, body: { telefono: '123', email: 'malo' } });
+    check('PUT /perfil inválido → 400 por campo', r.status === 400 && r.body.fields.telefono && r.body.fields.email);
+    r = await api('PUT', '/auth/perfil', { token: paciente.token, body: { telefono: '3001234567', email: 'Admin@DentalCare.com' } });
+    check('PUT /perfil con el correo de otra cuenta → 409 en el campo', r.status === 409 && r.body.fields.email);
+    r = await api('PUT', '/auth/perfil', { token: paciente.token, body: { telefono: '3015550000', email: 'Andres.API@Correo.com', direccion: 'Calle 1 # 2-3', numero_documento: '999', id_rol: 1 } });
+    const [[ficha]] = await pool.query('SELECT p.telefono, p.email, p.direccion, p.numero_documento, u.email AS cuenta, u.id_rol FROM paciente p JOIN usuario u USING (id_usuario) WHERE p.id_usuario = 16');
+    check('PUT /perfil → 200 y MySQL guarda celular, correo y dirección', r.status === 200 && ficha.telefono === '3015550000' && ficha.cuenta === 'andres.api@correo.com' && ficha.email === 'andres.api@correo.com' && ficha.direccion === 'Calle 1 # 2-3');
+    check('PUT /perfil no cambia documento ni rol aunque lleguen', ficha.numero_documento === '1036000101' && ficha.id_rol === 4);
+    check('PUT /perfil devuelve el user de la sesión actualizado', r.body.user.email === 'andres.api@correo.com' && r.body.user.id_paciente === 11 && r.body.perfil.telefono === '3015550000');
+
+    r = await api('PUT', '/auth/password', { token: paciente.token, body: { password_actual: 'AndresG2026*', password_nueva: 'Nueva2026*', password_confirmacion: 'Otra2026*' } });
+    check('PUT /password: confirmación distinta → 400', r.status === 400 && r.body.fields.password_confirmacion);
+    r = await api('PUT', '/auth/password', { token: paciente.token, body: { password_actual: 'Incorrecta1*', password_nueva: 'Nueva2026*', password_confirmacion: 'Nueva2026*' } });
+    check('PUT /password: actual incorrecta → 400 (no 401)', r.status === 400 && r.body.fields.password_actual);
+    r = await api('PUT', '/auth/password', { token: paciente.token, body: { password_actual: 'AndresG2026*', password_nueva: 'debil', password_confirmacion: 'debil' } });
+    check('PUT /password: nueva débil → 400', r.status === 400 && r.body.fields.password_nueva);
+    r = await api('PUT', '/auth/password', { token: paciente.token, body: { password_actual: 'AndresG2026*', password_nueva: 'Nueva2026*', password_confirmacion: 'Nueva2026*' } });
+    const [[hash]] = await pool.query('SELECT password_hash FROM usuario WHERE id_usuario = 16');
+    check('PUT /password → 200 y se guarda como bcrypt', r.status === 200 && /^\$2[aby]\$10\$/.test(hash.password_hash));
+    r = await api('POST', '/auth/login', { body: { email: 'andres.api@correo.com', password: 'AndresG2026*' } });
+    check('Login con la contraseña anterior → 401', r.status === 401);
+    r = await api('POST', '/auth/login', { body: { email: 'andres.api@correo.com', password: 'Nueva2026*' } });
+    check('Login con el correo y la contraseña nuevos → 200', r.status === 200 && r.body.user.id_paciente === 11);
+  } finally {
+    await pool.query('UPDATE usuario SET email = ?, password_hash = ? WHERE id_usuario = 16', [cuentaOriginal.email, cuentaOriginal.password_hash]);
+    await pool.query('UPDATE paciente SET telefono = ?, email = ?, direccion = ? WHERE id_usuario = 16', [fichaOriginal.telefono, fichaOriginal.email, fichaOriginal.direccion]);
+  }
+
   /* ---------- POST /auth/logout ---------- */
   r = await api('POST', '/auth/logout', { token: admin.token });
   log = await ultimoLog();

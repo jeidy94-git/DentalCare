@@ -21,6 +21,9 @@ completa en `docs/SUSTENTACION.md` §16 (fase C) y §17 (Evidencia 2: capas y ci
 | `POST /api/auth/login` | `{ email, password }` → `{ token, user }` (JWT de 8 h) | Público |
 | `GET /api/auth/me` | Usuario de la sesión | Token |
 | `POST /api/auth/logout` | Registra el cierre de sesión (204) | Token |
+| `GET /api/auth/perfil` | Datos de la cuenta propia: identidad (solo lectura) y contacto | Token |
+| `PUT /api/auth/perfil` | `{ telefono, email, direccion? }` → `{ perfil, user }` (400, 409 correo en uso); documento y rol no se cambian | Token |
+| `PUT /api/auth/password` | `{ password_actual, password_nueva, password_confirmacion }` (400; nunca 401 por clave mal digitada) | Token |
 | `GET /api/pacientes?q=` | Listado y búsqueda (el rol PACIENTE solo se ve a sí mismo) | Token |
 | `POST /api/pacientes` | Registro con validación y DIVIPOLA (201, 400, 409) | `GESTIONAR_PACIENTES` |
 | `GET /api/citas?desde&hasta&id_especialista&id_paciente&estado` | Citas con nombres (el PACIENTE solo las suyas); `estado` admite `A,B` | Token |
@@ -51,7 +54,7 @@ Las llamadas van en un solo sentido: ruta → controlador → servicio → repos
 
 ## Pruebas
 Desde la raíz del proyecto (usan la base de `.env`; con `DB_PORT=…` apuntan a otra y la dejan como estaba):
-- `node tests/backend/api.test.mjs`: auth y pacientes (79).
+- `node tests/backend/api.test.mjs`: auth, perfil y pacientes (94).
 - `node tests/backend/citas.test.mjs`: citas, RN-02, carreras, estados y catálogos de la agenda (84).
 - `npm test` (en `backend/`) corre las dos.
 

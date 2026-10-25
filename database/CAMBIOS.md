@@ -51,6 +51,7 @@ que cambia es cómo se guardan.
 | B-08 | Tabla `password_reset` (enlaces de recuperación) | HU-01 / login | Tabla nueva |
 | B-09 | Más horarios de atención en los datos de demo | RN-02 | Datos |
 | B-10 | Restricciones `CHECK` en los valores cerrados | Integridad | Restricciones |
+| B-11 | `venta.id_servicio`: el tratamiento que se paga | RF-PAG-01 | Columna nueva + FK |
 
 ---
 
@@ -310,6 +311,38 @@ menos que el formulario, el usuario vería un error 500 incomprensible.
 **Requisito de versión.** MySQL ignoraba los `CHECK` hasta la versión 8.0.16: los aceptaba en el
 `CREATE TABLE` y no los aplicaba. MariaDB los aplica desde la 10.2. Las versiones del proyecto,
 MariaDB 10.4 (XAMPP) y MySQL 8.0.36, los aplican.
+
+---
+
+## B-11 · Tratamiento que se paga en cada venta
+
+**Problema.** La venta guardaba paciente y montos, pero no **qué** tratamiento se cobraba. Las
+pantallas de pagos, el abono y el comprobante solo podían mostrar "venta #2 · $ 350.000", y el
+paciente no sabía a qué correspondía cada saldo.
+
+**Cambio.**
+
+```sql
+ALTER TABLE venta ADD COLUMN id_servicio int(11) DEFAULT NULL AFTER id_paciente;
+UPDATE venta SET id_servicio = CASE id_venta WHEN 1 THEN 3 WHEN 2 THEN 4 ELSE 2 END;
+ALTER TABLE venta
+  MODIFY id_servicio int(11) NOT NULL,
+  ADD KEY fk_venta_servicio (id_servicio),
+  ADD CONSTRAINT fk_venta_servicio FOREIGN KEY (id_servicio) REFERENCES servicio (id_servicio) ON UPDATE CASCADE;
+```
+
+- Los mismos tres pasos de B-07 (columna con `NULL`, se llena, se vuelve obligatoria).
+- Valores del seed: la venta 1 (140.000) es una calza en resina, la 2 (350.000) un tratamiento de
+  conducto y las demás (150.000) limpiezas profundas. El monto de la venta puede diferir del
+  `precio_base` (ajustes o descuentos): por eso se guarda el monto y no se calcula.
+- Una venta, un tratamiento: es lo que hace hoy el consultorio. Si algún día una venta agrupa
+  varios, el paso siguiente es una tabla `detalle_venta`; no se crea antes de necesitarla.
+- Igual que en la cita, la llave foránea **no** borra en cascada: un tratamiento con ventas no se
+  puede eliminar, se **inactiva**.
+
+**Cómo aplicarlo.** En una instalación nueva ya viene en `dentalcare_bd_v2.sql`. Desde la v1, va al
+final de `migrations.sql`. Si la base **ya está en la v2**, ejecuta solo
+`database/b11_venta_servicio.sql` (una vez, después de la copia de seguridad).
 
 ---
 

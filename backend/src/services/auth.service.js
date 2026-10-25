@@ -1,8 +1,9 @@
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { env } from '../config/env.js';
+import { withTransaction } from '../config/db.js';
 import { ApiError } from '../utils/api-error.js';
-import { validar, reglas } from '../utils/validators.js';
+import { validar, reglas, pick } from '../utils/validators.js';
 import * as usuarioRepo from '../repositories/usuario.repository.js';
 import * as auditoria from '../repositories/auditoria.repository.js';
 
@@ -93,4 +94,88 @@ export async function login(body = {}) {
  */
 export async function logout(user) {
   await auditoria.registrar({ idUsuario: user.id_usuario, accion: 'LOGOUT', tabla: 'usuario', detalles: 'Cierre de sesión' });
+}
+
+/* ---------- Perfil propio (perfil.html). Mismo contrato que el mock del frontend. ---------- */
+
+/** Lo que cada cuenta edita de sí misma. La tabla `personal` no tiene dirección: solo el paciente la edita. */
+const camposPerfil = (rol) => (rol === 'PACIENTE' ? ['telefono', 'email', 'direccion'] : ['telefono', 'email']);
+
+const REGLAS_PERFIL = {
+  telefono: [reglas.requerido('Escribe tu número de celular.'), reglas.texto(20), reglas.telefono()],
+  email: [reglas.requerido('Escribe tu correo electrónico.'), reglas.texto(100), reglas.email()],
+  direccion: [reglas.texto(150)],
+};
+
+const REGLAS_PASSWORD = {
+  password_actual: [reglas.requerido('Escribe tu contraseña actual.'), reglas.texto(128)],
+  // Misma regla de contraseña robusta del frontend (validators.password).
+  password_nueva: [
+    reglas.requerido('Escribe la nueva contraseña.'),
+    reglas.texto(128),
+    reglas.patron(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z\d]).{8,}$/, 'Mínimo 8 caracteres, con mayúscula, minúscula, número y símbolo.'),
+  ],
+  password_confirmacion: [reglas.requerido('Confirma la nueva contraseña.'), reglas.texto(128)],
+};
+
+/** GET /api/auth/perfil → identidad (solo lectura) + contacto editable. */
+export async function perfil(user) {
+  const row = await usuarioRepo.buscarPerfil(user.id_usuario);
+  return {
+    rol: row.rol,
+    email: row.email,
+    nombre: row.nombres ? `${row.nombres} ${row.apellidos}` : row.email,
+    tipo_documento: row.tipo_documento,
+    numero_documento: row.numero_documento,
+    telefono: row.telefono,
+    ...(row.rol === 'PACIENTE' && { direccion: row.direccion }),
+    editables: camposPerfil(row.rol),
+  };
+}
+
+/**
+ * PUT /api/auth/perfil { telefono, email, direccion? } → { perfil, user }.
+ * Documento, nombre y rol NO se cambian aquí aunque lleguen en el cuerpo (pick). Devuelve también el
+ * `user` de la sesión actualizado: el frontend lo guarda y el topbar muestra el correo nuevo.
+ */
+export async function actualizarPerfil(user, body = {}) {
+  const campos = camposPerfil(user.rol);
+  const datos = pick(body, campos);
+  validar(datos, pick(REGLAS_PERFIL, campos));
+  const email = datos.email.toLowerCase();
+
+  const enUso = new ApiError(409, 'Ese correo ya está registrado.', { fields: { email: 'Ese correo ya lo usa otra cuenta.' }, code: 'DUPLICATE' });
+  if (await usuarioRepo.correoEnUso(email, user.id_usuario)) throw enUso;
+
+  try {
+    await withTransaction(async (conn) => {
+      await usuarioRepo.actualizarContacto(conn, { idUsuario: user.id_usuario, esPaciente: user.rol === 'PACIENTE', email, telefono: datos.telefono, direccion: datos.direccion || null });
+      await auditoria.registrar({ idUsuario: user.id_usuario, accion: 'ACTUALIZAR', tabla: 'usuario', detalles: `Perfil propio: ${Object.keys(datos).join(', ')}` }, conn);
+    });
+  } catch (error) {
+    // Dos cuentas toman el mismo correo a la vez: la llave UNIQUE de usuario.email solo deja entrar a una.
+    if (error.code === 'ER_DUP_ENTRY') throw enUso;
+    throw error;
+  }
+  return { perfil: await perfil(user), user: (await sesion(user.id_usuario)).user };
+}
+
+/** PUT /api/auth/password { password_actual, password_nueva, password_confirmacion } → { message } */
+export async function cambiarPassword(user, body = {}) {
+  validar(body, REGLAS_PASSWORD, (data, fields) => {
+    if (fields.password_nueva || fields.password_confirmacion) return {};
+    if (data.password_confirmacion !== data.password_nueva) return { password_confirmacion: 'Las contraseñas no coinciden.' };
+    if (data.password_nueva === data.password_actual) return { password_nueva: 'La nueva contraseña debe ser distinta de la actual.' };
+    return {};
+  });
+
+  const hashActual = await usuarioRepo.buscarHash(user.id_usuario);
+  // 400 y no 401: un 401 haría que el frontend cerrara la sesión por una contraseña mal digitada.
+  if (!(await bcrypt.compare(body.password_actual, hashActual))) {
+    throw new ApiError(400, 'Revisa los datos marcados.', { fields: { password_actual: 'La contraseña actual no es correcta.' }, code: 'WRONG_PASSWORD' });
+  }
+
+  await usuarioRepo.actualizarPassword(user.id_usuario, await bcrypt.hash(body.password_nueva, 10));
+  await auditoria.registrar({ idUsuario: user.id_usuario, accion: 'CAMBIO_PASSWORD', tabla: 'usuario', detalles: 'Cambio de contraseña desde el perfil' });
+  return { message: 'Tu contraseña se actualizó.' };
 }

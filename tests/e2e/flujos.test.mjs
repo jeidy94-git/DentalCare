@@ -89,6 +89,8 @@ try {
   /* D. Recepción confirma solicitudes desde la agenda (lista filtrada) */
   await as('recepcion@dentalcare.com', 'Recep2026*');
   await go('pages/asistente/agenda.html'); await waitReady();
+  // Las pestañas aparecen cuando la agenda termina de cargar sus datos: se esperan antes del clic.
+  for (let i = 0; i < 40 && !(await evaluate(`[...document.querySelectorAll('[role="tab"]')].some((x) => x.textContent.includes('Lista'))`)); i++) await sleep(100);
   await t(`__t.click('[role="tab"]', 'Lista')`); await sleep(200);
   await t(`__t.click('.data-table__chips button', 'Por confirmar')`); await sleep(200);
   // Se confirma la solicitud de B (Andrés con el Dr. Roberto): así E siempre tiene una cita programada sin consulta.
@@ -121,9 +123,19 @@ try {
   /* G. Administración registra un abono */
   await as('admin@dentalcare.com', 'Admin2026*');
   await go('pages/admin/pagos.html'); await waitReady();
+  check('G0 La tabla de ventas muestra el tratamiento', await t(`[...document.querySelectorAll('thead th')].some((th) => th.textContent.includes('Tratamiento')) && document.body.innerText.includes('Limpieza Dental Profunda')`));
   await t(`__t.click('button[aria-label^="Registrar abono"]')`); await sleep(300);
+  const abonoTxt = await t(`document.querySelector('dialog[open]').innerText`);
+  check('G1 El modal de abono dice qué tratamiento se paga', /Tratamiento\s+\S/.test(abonoTxt) && /Saldo pendiente/.test(abonoTxt), abonoTxt.split('\n').slice(0, 4).join(' | '));
   await t(`__t.set('dialog[open] [name="monto_abonado"]', '1000') && __t.selectWhere('dialog[open] [name="id_metodo"]', () => true) && __t.submitDialog()`);
-  check('G1 Abono registrado', await waitText('Abono registrado'));
+  check('G2 Abono registrado', await waitText('Abono registrado'));
+  await sleep(500);
+  await t(`__t.click('button[aria-label^="Ver detalle"]')`);
+  // El comprobante se abre después de pedir la venta al servicio (latencia del mock): se espera el diálogo.
+  for (let i = 0; i < 40 && !(await evaluate(`!!document.querySelector('dialog[open]')`)); i++) await sleep(100);
+  const comprobante = (await t(`document.querySelector('dialog[open]')?.innerText`)) ?? 'sin diálogo';
+  check('G3 Comprobante con el tratamiento', comprobante.includes('Comprobante') && /Tratamiento\s+\S/.test(comprobante), comprobante.split('\n').slice(0, 3).join(' | '));
+  await t(`__t.click('dialog[open] button', 'Cerrar')`); await sleep(200);
 
   /* I. El paciente edita su perfil y cambia la contraseña (perfil.html) */
   await as('andres.galvis@gmail.com', 'AndresG2026*');
@@ -152,8 +164,10 @@ try {
   /* H. Cerrar sesión desde la topbar → login */
   await t(`__t.click('.topbar__profile')`); await sleep(200);
   await t(`__t.click('button, a', 'Cerrar sesión')`);
-  await sleep(1200);
-  check('H1 Cerrar sesión → login', (await here()).startsWith('/login.html'), await here());
+  // Se espera la redirección y la URL se lee UNA vez (antes se leía dos: condición y mensaje podían diferir).
+  let destino = await here();
+  for (let i = 0; i < 40 && !destino?.startsWith('/login.html'); i++) await sleep(100), (destino = await here());
+  check('H1 Cerrar sesión → login', destino?.startsWith('/login.html'), destino);
 } catch (error) {
   check('EXCEPCIÓN', false, error.message);
 }
