@@ -80,3 +80,37 @@
     width: 100%;
   }
 }
+
+/* ---------- Comprobante imprimible (openModalForm({ printable: true })) ----------
+   «Descargar comprobante» llama a window.print(): el navegador ofrece «Guardar como PDF».
+   Al imprimir solo sale el diálogo, sin la página de fondo ni los botones. */
+.modal-form__print-actions {
+  display: flex;
+  justify-content: flex-start;
+}
+
+@media print {
+  body:has(.modal-form--printable[open]) > :not(.modal-form--printable) {
+    display: none;
+  }
+
+  .modal-form--printable[open] {
+    position: static;
+    width: 100%;
+    max-width: none;
+    max-height: none;
+    margin: 0;
+    border: none;
+    box-shadow: none;
+  }
+
+  .modal-form--printable::backdrop {
+    background: none;
+  }
+
+  .modal-form--printable .modal-form__footer,
+  .modal-form--printable .modal-form__header button,
+  .modal-form--printable .modal-form__print-actions {
+    display: none;
+  }
+}

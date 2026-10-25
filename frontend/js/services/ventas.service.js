@@ -11,7 +11,9 @@ import { mockRequest, findOr404, nextId, nowSql, pick, audit, assertOwnPaciente,
  *   list({ id_paciente, estado })     → ventas con nombre del paciente y del tratamiento (el PACIENTE solo ve las suyas)
  *   get(id)                           → venta + sus pagos
  *   create(data)                      → venta de un tratamiento (id_servicio, B-11) a CONTADO o CREDITO en cuotas
- *   registrarAbono(idVenta, data)     → abono ≤ saldo; si el saldo llega a 0 la venta queda PAGADO
+ *   registrarAbono(idVenta, data)     → abono ≤ saldo; si el saldo llega a 0 la venta queda PAGADO.
+ *                                       Lo registra el personal (REGISTRAR_PAGO) o el PACIENTE sobre SUS
+ *                                       ventas, como pago en línea (sin efectivo; ver METODOS_EN_LINEA)
  *   resumen()                         → totales para los dashboards (RF-PAG-04)
  *
  * Los montos se manejan en pesos enteros (COP no usa centavos en la práctica) para evitar errores de
@@ -37,6 +39,13 @@ const pagosDe = (db, idVenta) =>
     .sort((a, b) => a.fecha_pago.localeCompare(b.fecha_pago));
 
 const pesos = (value) => Math.round(Number(value));
+
+/**
+ * Métodos que el paciente puede usar en un pago en línea. El efectivo es solo en caja. PSE es una
+ * transferencia bancaria: se registra como TRANSFERENCIA (la tabla `metodo_pago` no tiene PSE aparte).
+ * La pasarela real está pendiente (SRS TBD-03): el pago se registra pero no se cobra a ninguna tarjeta.
+ */
+export const METODOS_EN_LINEA = ['TARJETA_CREDITO', 'TARJETA_DEBITO', 'TRANSFERENCIA'];
 
 /** Ver ventas: el personal con REGISTRAR_PAGO, o el paciente (solo las suyas). */
 function assertCanRead(user) {
@@ -104,6 +113,16 @@ const mock = {
         const venta = findOr404(db.venta, 'id_venta', idVenta, 'La venta');
         const monto = pesos(data?.monto_abonado);
         const idMetodo = Number(data?.id_metodo);
+        const enLinea = user.rol === 'PACIENTE';
+        if (enLinea) {
+          assertOwnPaciente(user, venta.id_paciente); // el paciente solo paga SUS ventas
+          const metodo = db.metodo_pago.find((m) => m.id_metodo === idMetodo);
+          if (metodo && !METODOS_EN_LINEA.includes(metodo.nombre_metodo)) {
+            throw new ApiError(400, 'Ese método no está disponible en línea.', { fields: { id_metodo: 'El efectivo se paga en la caja del consultorio.' }, code: 'VALIDATION' });
+          }
+        } else if (!can(user, PERMISOS.REGISTRAR_PAGO)) {
+          throw forbidden('No tienes permiso para registrar pagos.');
+        }
         if (venta.estado_venta === 'PAGADO') throw new ApiError(409, 'Esta venta ya está pagada.', { code: 'ALREADY_PAID' });
         if (!db.metodo_pago.some((m) => m.id_metodo === idMetodo)) throw new ApiError(400, 'Elige un método de pago.', { fields: { id_metodo: 'Elige un método de pago.' }, code: 'VALIDATION' });
         if (!(monto > 0)) throw new ApiError(400, 'El abono debe ser mayor a 0.', { fields: { monto_abonado: 'Debe ser mayor a 0.' }, code: 'VALIDATION' });
@@ -121,10 +140,12 @@ const mock = {
         db.pago_venta.push(pago);
         venta.monto_pagado += monto;
         recalcular(venta);
-        audit(db, user, 'ABONO', 'pago_venta', `Venta #${venta.id_venta}: abono ${monto}, saldo ${venta.saldo_pendiente}`);
-        return { venta: { ...withNames(db, venta), pagos: pagosDe(db, venta.id_venta) }, pago };
+        audit(db, user, enLinea ? 'PAGO_EN_LINEA' : 'ABONO', 'pago_venta', `Venta #${venta.id_venta}: abono ${monto}, saldo ${venta.saldo_pendiente}`);
+        const pagos = pagosDe(db, venta.id_venta);
+        // `pago` con el nombre del método: es lo que muestra el comprobante.
+        return { venta: { ...withNames(db, venta), pagos }, pago: pagos.find((p) => p.id_pago === pago.id_pago) };
       },
-      { permiso: PERMISOS.REGISTRAR_PAGO, write: true },
+      { write: true }, // el permiso depende del rol y de la venta: se decide arriba
     ),
 
   resumen: () =>

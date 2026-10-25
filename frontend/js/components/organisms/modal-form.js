@@ -19,11 +19,12 @@ import { validateForm, setFieldError } from '../molecules/index.js';
  * @param {string} [options.submitLabel='Guardar']
  * @param {string} [options.cancelLabel='Cancelar']
  * @param {'md'|'lg'} [options.size='md']
+ * @param {boolean} [options.printable=false]  Comprobante: al imprimir (o «Guardar como PDF») sale solo este diálogo.
  * @param {(data: object, form: HTMLFormElement) => Promise<any>|any} [options.onSubmit]
  *        Lo que devuelva se usa como resultado; si no devuelve nada, el resultado son los datos.
  * @returns {Promise<any|null>}  null si se canceló.
  */
-export function openModalForm({ title, description, fields, submitLabel = 'Guardar', cancelLabel = 'Cancelar', size = 'md', onSubmit } = {}) {
+export function openModalForm({ title, description, fields, submitLabel = 'Guardar', cancelLabel = 'Cancelar', size = 'md', printable = false, onSubmit } = {}) {
   return new Promise((resolve) => {
     const titleId = uniqueId('mf-title');
     const descId = description ? uniqueId('mf-desc') : undefined;
@@ -44,7 +45,7 @@ export function openModalForm({ title, description, fields, submitLabel = 'Guard
 
     const dialog = h(
       'dialog',
-      { class: cx('dialog', 'modal-form', `modal-form--${size}`), 'aria-labelledby': titleId, 'aria-describedby': descId },
+      { class: cx('dialog', 'modal-form', `modal-form--${size}`, printable && 'modal-form--printable'), 'aria-labelledby': titleId, 'aria-describedby': descId },
       h(
         'div',
         { class: 'modal-form__header' },

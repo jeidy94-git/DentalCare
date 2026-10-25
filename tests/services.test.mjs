@@ -119,6 +119,8 @@ try {
   check('Venta sin tratamiento → 400 en el campo', e?.status === 400 && e.fields.id_servicio);
   const ventaNueva = await S.ventasService.create({ id_paciente: 12, id_servicio: 2, monto_total: 120000, modalidad_pago: 'CONTADO' });
   check('Venta nueva con su tratamiento', ventaNueva.id_servicio === 2 && ventaNueva.servicio_nombre === 'Limpieza Dental Profunda' && ventaNueva.estado_venta === 'PENDIENTE');
+  // Venta pendiente de Andrés (paciente 11) para el pago en línea de más abajo: la #1 ya quedó pagada.
+  const ventaAndres = await S.ventasService.create({ id_paciente: 11, id_servicio: 3, monto_total: 90000, modalidad_pago: 'CREDITO', numero_cuotas: 3 });
   const nov = await S.novedadesService.create({ tipo_novedad: 'INVENTARIO', descripcion: 'Faltan guantes talla S en bodega.' });
   check('Novedad: responsable = usuario de la sesión', nov.responsable === 'Carlos Pérez' && nov.id_personal === 2);
   e = await err(S.novedadesService.remove(nov.id_novedad));
@@ -145,6 +147,8 @@ try {
   check('Completar cita de otro odontólogo → 403', e?.status === 403);
   e = await err(S.ventasService.list());
   check('Especialista no ve pagos → 403', e?.status === 403);
+  e = await err(S.ventasService.registrarAbono(ventaAndres.id_venta, { id_metodo: 2, monto_abonado: 1000 }));
+  check('Especialista no registra pagos → 403', e?.status === 403);
   const hcDoc = await S.historiasService.getByPaciente(11);
   check('Especialista: historia completa (antecedentes, observaciones, diagnóstico)', 'antecedentes_medicos' in hcDoc && 'observaciones' in hcDoc && 'diagnostico' in hcDoc.consultas[0]);
 
@@ -162,6 +166,15 @@ try {
   check('Paciente: sin notas internas (antecedentes, observaciones)', !('antecedentes_medicos' in hc) && !('observaciones' in hc) && 'alergias' in hc);
   check('Paciente: tratamientos sin diagnóstico, con procedimiento', hc.consultas.every((q) => !('diagnostico' in q) && 'procedimiento_realizado' in q));
   check('Paciente: solo sus ventas', (await S.ventasService.list()).every((v) => v.id_paciente === 11));
+  e = await err(S.ventasService.registrarAbono(2, { id_metodo: 2, monto_abonado: 1000 }));
+  check('Pago en línea: venta de otro paciente → 403', e?.status === 403);
+  e = await err(S.ventasService.registrarAbono(ventaAndres.id_venta, { id_metodo: 1, monto_abonado: 1000 }));
+  check('Pago en línea: efectivo no disponible → 400 en el método', e?.status === 400 && e.fields.id_metodo);
+  const enLinea = await S.ventasService.registrarAbono(ventaAndres.id_venta, { id_metodo: 2, monto_abonado: 30000 });
+  check('Pago en línea del paciente → saldo actualizado y comprobante con método', enLinea.venta.saldo_pendiente === 60000 && enLinea.pago.metodo === 'TARJETA_CREDITO' && enLinea.pago.numero_cuota_actual === 1 && enLinea.venta.servicio_nombre === 'Calza / Resina Estética');
+  check('Pago en línea queda en la auditoría como PAGO_EN_LINEA', getDb().log_auditoria.at(-1).accion === 'PAGO_EN_LINEA');
+  e = await err(S.ventasService.registrarAbono(ventaAndres.id_venta, { id_metodo: 4, monto_abonado: 999999 }));
+  check('Pago en línea mayor al saldo → 422', e?.status === 422);
   e = await err(S.novedadesService.list());
   check('Paciente: novedades → 403', e?.status === 403);
   let libre2 = null;

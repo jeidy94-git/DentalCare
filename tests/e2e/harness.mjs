@@ -136,7 +136,9 @@ export async function startBrowser(width = 1366) {
       set('email', ${JSON.stringify(email)}); set('password', ${JSON.stringify(password)});
       document.querySelector('form.auth-form').requestSubmit();
     })()`);
-    for (let i = 0; i < 40; i++) {
+    // Hasta 15 s: el login verifica la contraseña con PBKDF2 (100.000 iteraciones) y con la máquina cargada
+    // puede pasar de los 6 s que se esperaban antes. Sale apenas cambia de página: no alarga las pruebas.
+    for (let i = 0; i < 100; i++) {
       await sleep(150);
       if (!(await here()).includes('login.html')) break;
     }

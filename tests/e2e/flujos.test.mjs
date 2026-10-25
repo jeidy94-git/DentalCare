@@ -1,7 +1,8 @@
 // Flujos de la fase A6 de punta a punta, como los haría cada usuario:
 //  A recepción registra un paciente (documento repetido → error en el campo)   B el paciente solicita una cita
 //  C el paciente cancela   D recepción confirma   E el odontólogo registra una consulta
-//  F RN-01: otra odontóloga sin citas ve la ficha en solo lectura   G abono   I perfil y contraseña   H cerrar sesión
+//  F RN-01: otra odontóloga sin citas ve la ficha en solo lectura   G abono   J pago en línea del paciente
+//  I perfil y contraseña   H cerrar sesión
 // Requiere el servidor: node tests/e2e/server.mjs
 // Uso: node tests/e2e/flujos.test.mjs [ancho=1366]
 import { startBrowser, sleep } from './harness.mjs';
@@ -37,6 +38,8 @@ const waitText = async (text, timeout = 5000) => {
 async function as(email, pwd) {
   await evaluate('localStorage.removeItem("dentalcare:session")');
   await login(email, pwd);
+  // Sin sesión, los pasos siguientes fallarían más adelante con un error engañoso: mejor decirlo aquí.
+  if ((await here()).includes('login.html')) throw new Error(`No se pudo iniciar sesión como ${email}`);
   await waitReady();
 }
 
@@ -135,6 +138,28 @@ try {
   for (let i = 0; i < 40 && !(await evaluate(`!!document.querySelector('dialog[open]')`)); i++) await sleep(100);
   const comprobante = (await t(`document.querySelector('dialog[open]')?.innerText`)) ?? 'sin diálogo';
   check('G3 Comprobante con el tratamiento', comprobante.includes('Comprobante') && /Tratamiento\s+\S/.test(comprobante), comprobante.split('\n').slice(0, 3).join(' | '));
+  await t(`__t.click('dialog[open] button', 'Cerrar')`); await sleep(200);
+
+  /* J. El paciente paga en línea su saldo pendiente (pasarela simulada) */
+  await as('andres.galvis@gmail.com', 'AndresG2026*');
+  await go('pages/paciente/mis-pagos.html'); await waitReady();
+  check('J1 Botón visible "Pagar en línea" en la venta pendiente', await t(`!!__t.byText('.data-table tbody button', 'Pagar en línea')`));
+  await t(`__t.click('.data-table tbody button', 'Pagar en línea')`); await sleep(300);
+  const pagoTxt = await t(`document.querySelector('dialog[open]').innerText`);
+  const opciones = await t(`[...document.querySelectorAll('dialog[open] [name="id_metodo"] option')].filter((o) => o.value).map((o) => o.textContent)`);
+  check('J2 Modal: tratamiento, saldo y aviso de pago simulado', pagoTxt.includes('Calza / Resina Estética') && /\$\s90\.000/.test(pagoTxt) && pagoTxt.includes('Pago simulado'), pagoTxt.split('\n').slice(0, 3).join(' | '));
+  check('J3 Métodos en línea: tarjetas y PSE, sin efectivo', opciones.length === 3 && opciones.some((o) => o.includes('PSE')) && !opciones.some((o) => /efectivo/i.test(o)), opciones.join(' · '));
+  await t(`__t.set('dialog[open] [name="monto_abonado"]', '10000') && __t.click('dialog[open] button', 'Pagar totalidad del saldo')`);
+  check('J4 "Pagar totalidad del saldo" llena el monto', (await t(`__t.q('dialog[open] [name="monto_abonado"]').value`)) === '90000');
+  await t(`__t.selectWhere('dialog[open] [name="id_metodo"]', (o) => o.textContent.includes('PSE')) && __t.submitDialog()`);
+  check('J5 "Pago realizado con éxito"', await waitText('Pago realizado con éxito'));
+  for (let i = 0; i < 40 && !(await evaluate(`!!document.querySelector('dialog[open].modal-form--printable')`)); i++) await sleep(100);
+  const recibo = await t(`document.querySelector('dialog[open]')?.innerText ?? ''`);
+  check('J6 Comprobante del pago con descarga', recibo.includes('Comprobante de pago') && recibo.includes('PSE o transferencia bancaria') && recibo.includes('Descargar comprobante'), recibo.split('\n').slice(0, 2).join(' | '));
+  check('J7 La tabla ya muestra la venta pagada', await t(`[...document.querySelectorAll('.data-table tbody tr')].some((tr) => tr.textContent.includes('Calza') && tr.textContent.includes('Pagada') && !tr.querySelector('button[aria-label^="Pagar en línea"]'))`));
+  await send('Emulation.setEmulatedMedia', { media: 'print' });
+  check('J8 Al imprimir/guardar PDF solo sale el comprobante', await t(`getComputedStyle(document.querySelector('.app-shell')).display === 'none' && getComputedStyle(document.querySelector('dialog[open] .modal-form__footer')).display === 'none'`));
+  await send('Emulation.setEmulatedMedia', { media: '' });
   await t(`__t.click('dialog[open] button', 'Cerrar')`); await sleep(200);
 
   /* I. El paciente edita su perfil y cambia la contraseña (perfil.html) */

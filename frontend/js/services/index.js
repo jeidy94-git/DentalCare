@@ -14,7 +14,7 @@ export { historiasService } from './historias.service.js';
 export { odontogramaService, ESTADOS_TRATAMIENTO } from './odontograma.service.js';
 export { serviciosService } from './servicios.service.js';
 export { especialistasService, DIAS_SEMANA } from './especialistas.service.js';
-export { ventasService } from './ventas.service.js';
+export { ventasService, METODOS_EN_LINEA } from './ventas.service.js';
 export { novedadesService, TIPOS_NOVEDAD } from './novedades.service.js';
 export { resetDb as resetDemoData } from './mock/db.js';
 

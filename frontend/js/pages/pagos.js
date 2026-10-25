@@ -12,7 +12,7 @@ import { can, PERMISOS } from '../core/permissions.js';
 import { Button, StatusBadge } from '../components/atoms/index.js';
 import { FormField, KpiCard, toast } from '../components/molecules/index.js';
 import { DataTable, openModalForm } from '../components/organisms/index.js';
-import { ventasService, pacientesService, serviciosService, trmService } from '../services/index.js';
+import { ventasService, pacientesService, serviciosService, trmService, METODOS_EN_LINEA } from '../services/index.js';
 import { createAppPage, loadInto, errorMessage } from './_shared/app-page.js';
 import { card, crumbs, dataList, fechaHora, fullName, notice, runAction, withFieldErrors } from './_shared/ui.js';
 
@@ -232,6 +232,91 @@ async function init() {
     }
   }
 
+  /** «Descargar comprobante»: el diálogo es imprimible y el navegador ofrece «Guardar como PDF». */
+  const descargarComprobante = () =>
+    h('div', { class: 'modal-form__print-actions' }, Button({ label: 'Descargar comprobante', icon: 'file-text', variant: 'outline', size: 'sm', onClick: () => window.print() }));
+
+  /* ---------- Pago en línea del paciente (pasarela simulada: SRS TBD-03) ---------- */
+  const NOMBRE_EN_LINEA = { TARJETA_CREDITO: 'Tarjeta de crédito', TARJETA_DEBITO: 'Tarjeta débito', TRANSFERENCIA: 'PSE o transferencia bancaria' };
+  const metodosEnLinea = data.metodos.filter((m) => METODOS_EN_LINEA.includes(m.nombre_metodo)).map((m) => ({ value: m.id_metodo, label: NOMBRE_EN_LINEA[m.nombre_metodo] }));
+
+  /** Contado: todo el saldo. Crédito: la cuota del plan (o lo que falte, si es menos). */
+  const montoSugerido = (v) => (v.modalidad_pago === 'CREDITO' ? Math.min(v.saldo_pendiente, Math.ceil(v.monto_total / v.numero_cuotas)) : v.saldo_pendiente);
+
+  async function pagarEnLinea(v) {
+    const result = await openModalForm({
+      title: 'Pagar en línea',
+      description: `${v.servicio_nombre ?? 'Tratamiento'} · venta #${v.id_venta}`,
+      submitLabel: 'Confirmar pago',
+      fields: () => {
+        const monto = FormField({
+          label: 'Valor a pagar (COP)',
+          name: 'monto_abonado',
+          type: 'number',
+          inputmode: 'numeric',
+          min: 1,
+          max: v.saldo_pendiente,
+          step: 1,
+          required: true,
+          value: montoSugerido(v),
+          hint: v.modalidad_pago === 'CREDITO' ? `Cuota sugerida del plan a ${v.numero_cuotas} cuotas. Puedes pagar más, hasta el saldo.` : 'Pago de contado: el saldo completo.',
+          validate: (x) => (Number(x) > 0 && Number(x) <= v.saldo_pendiente ? null : `Entre $1 y ${formatCOP(v.saldo_pendiente)}.`),
+        });
+        const control = monto._dcField.control;
+        const totalidad = Button({
+          label: `Pagar totalidad del saldo (${formatCOP(v.saldo_pendiente)})`,
+          variant: 'ghost',
+          size: 'sm',
+          onClick: () => {
+            control.value = v.saldo_pendiente;
+            control.dispatchEvent(new Event('input', { bubbles: true }));
+          },
+        });
+        return [
+          notice('Pago simulado: la pasarela de pagos aún no está contratada, así que no se cobra a ninguna tarjeta ni se piden sus datos. El pago queda registrado en tu cuenta.', 'info'),
+          dataList(resumenVenta(v)),
+          h(
+            'div',
+            { class: 'form-grid' },
+            h('div', { class: 'u-stack' }, monto, h('div', {}, totalidad)),
+            FormField({ label: 'Método de pago', name: 'id_metodo', as: 'select', required: true, placeholder: 'Seleccione…', options: metodosEnLinea }),
+          ),
+        ];
+      },
+      onSubmit: withFieldErrors((d) => ventasService.registrarAbono(v.id_venta, d)),
+    });
+    if (!result) return;
+    toast.success(`${formatCOP(result.pago.monto_abonado)} a ${result.venta.servicio_nombre}.`, 'Pago realizado con éxito');
+    await runAction(reload); // el saldo de la tabla se actualiza antes de mostrar el comprobante
+    await comprobantePago(result);
+  }
+
+  /** Comprobante de UN pago (después de pagar en línea). */
+  async function comprobantePago({ venta, pago }) {
+    await openModalForm({
+      title: `Comprobante de pago N.º ${pago.id_pago}`,
+      description: 'DentalCare · pago en línea registrado',
+      printable: true,
+      submitLabel: 'Cerrar',
+      cancelLabel: 'Volver',
+      fields: () => [
+        dataList([
+          // Un recibo dice quién pagó: el nombre va aunque el paciente esté viendo su propio pago.
+          ['Paciente', venta.paciente_nombre],
+          ['Tratamiento', venta.servicio_nombre],
+          ['Venta', `#${venta.id_venta}`],
+          ['Fecha del pago', fechaHora(pago.fecha_pago)],
+          ['Método', NOMBRE_EN_LINEA[pago.metodo] ?? pago.metodo.replace(/_/g, ' ').toLowerCase()],
+          ['Valor pagado', formatCOP(pago.monto_abonado)],
+          ['Cuota', String(pago.numero_cuota_actual)],
+          ['Saldo pendiente', formatCOP(venta.saldo_pendiente)],
+          ['Estado de la venta', StatusBadge(venta.estado_venta, { size: 'sm' })],
+        ]),
+        descargarComprobante(),
+      ],
+    });
+  }
+
   async function detalle(v) {
     const venta = await ventasService.get(v.id_venta).catch((error) => toast.error(errorMessage(error)));
     if (!venta) return;
@@ -239,6 +324,7 @@ async function init() {
       title: `Comprobante · venta #${venta.id_venta}`,
       description: venta.servicio_nombre ?? undefined,
       size: 'lg',
+      printable: true,
       submitLabel: 'Cerrar',
       cancelLabel: 'Volver',
       fields: () => [
@@ -268,6 +354,7 @@ async function init() {
               ),
             )
           : h('p', { class: 'item-list__empty' }, 'Aún no hay abonos.'),
+        descargarComprobante(),
       ],
     });
   }
@@ -290,6 +377,13 @@ async function init() {
       { key: 'total', label: 'Total', align: 'right', sortable: true, value: (v) => v.monto_total, render: (v) => formatCOP(v.monto_total) },
       { key: 'saldo', label: 'Saldo', align: 'right', sortable: true, value: (v) => v.saldo_pendiente, render: (v) => formatCOP(v.saldo_pendiente) },
       { key: 'estado', label: 'Estado', sortable: true, value: (v) => v.estado_venta, render: (v) => StatusBadge(v.estado_venta, { size: 'sm' }) },
+      // El paciente paga sus saldos desde aquí: botón con texto (no solo ícono) para que se vea.
+      esPaciente && {
+        key: 'pago',
+        label: 'Pago',
+        value: (v) => v.saldo_pendiente,
+        render: (v) => (v.saldo_pendiente > 0 ? Button({ label: 'Pagar en línea', icon: 'credit-card', size: 'sm', ariaLabel: `Pagar en línea la venta #${v.id_venta}`, onClick: () => pagarEnLinea(v) }) : 'Pagada'),
+      },
     ].filter(Boolean),
     actions: (v) => [
       { icon: 'eye', label: 'Ver detalle y abonos', onClick: () => detalle(v) },
