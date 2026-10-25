@@ -3,7 +3,7 @@
 //
 // ¿Por qué CDP y no `--dump-dom --virtual-time-budget`? El "tiempo virtual" no espera a Web Crypto
 // (PBKDF2 corre fuera del hilo principal) y el login se quedaba congelado.
-import { spawn } from 'node:child_process';
+import { spawn, spawnSync } from 'node:child_process';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -12,11 +12,52 @@ const BROWSER = process.env.BROWSER_PATH ?? 'C:/Program Files (x86)/Microsoft/Ed
 export const BASE = process.env.BASE_URL ?? 'http://127.0.0.1:5600/';
 export const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
+/**
+ * Cierre forzado y SÍNCRONO (sirve también en process.on('exit')) de todo lo que abrió esta corrida.
+ * `proc.kill()` solo terminaba el proceso lanzado y en Windows quedaban vivos los hijos de Edge (renderers,
+ * GPU, utilidades), que se acumulaban entre corridas hasta dejar la máquina sin memoria. Por eso:
+ *  1. taskkill /T /F sobre el árbol del proceso lanzado. Con Chrome basta; msedge.exe en cambio es un
+ *     LANZADOR: arranca el navegador real como otro proceso y termina, así que su árbol queda huérfano.
+ *  2. Barrido de huérfanos: los msedge.exe cuya línea de comandos usa el perfil temporal de ESTA corrida
+ *     (nombre único: nunca toca el Edge del usuario). Se repite hasta que no quede ninguno, porque mientras
+ *     Edge se cierra todavía puede arrancar algún proceso auxiliar.
+ *  3. Borra la carpeta del perfil (solo se puede cuando ya no hay procesos que la tengan abierta).
+ */
+function killBrowserTree(proc, profile) {
+  if (process.platform === 'win32') {
+    if (proc.pid) spawnSync('taskkill', ['/PID', String(proc.pid), '/T', '/F'], { stdio: 'ignore', windowsHide: true });
+    const marker = path.basename(profile);
+    const sweep = `
+      for ($i = 0; $i -lt 20; $i++) {
+        $p = Get-CimInstance Win32_Process -Filter "Name='msedge.exe'" | Where-Object { $_.CommandLine -like '*${marker}*' }
+        if (-not $p) { break }
+        $p | Invoke-CimMethod -MethodName Terminate -ErrorAction SilentlyContinue | Out-Null
+        Start-Sleep -Milliseconds 300
+      }`;
+    spawnSync('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command', sweep], { stdio: 'ignore', windowsHide: true });
+  } else if (proc.exitCode === null) {
+    proc.kill('SIGKILL');
+  }
+  try {
+    fs.rmSync(profile, { recursive: true, force: true, maxRetries: 5, retryDelay: 200 });
+  } catch {}
+}
+
 export async function startBrowser(width = 1366) {
   // Puerto aleatorio: un navegador que quedó vivo de otra corrida no debe "contestar" por este.
   const port = 9500 + Math.floor(Math.random() * 400);
   const profile = fs.mkdtempSync(path.join(os.tmpdir(), 'dc-e2e-'));
   const proc = spawn(BROWSER, ['--headless=new', '--disable-gpu', `--remote-debugging-port=${port}`, `--user-data-dir=${profile}`, `--window-size=${width},900`, 'about:blank']);
+
+  // El navegador se cierra pase lo que pase: fin normal, excepción no atrapada o Ctrl+C.
+  let closed = false;
+  const forceClose = () => {
+    if (closed) return;
+    closed = true;
+    killBrowserTree(proc, profile);
+  };
+  process.on('exit', forceClose);
+  for (const signal of ['SIGINT', 'SIGTERM']) process.once(signal, () => (forceClose(), process.exit(130)));
 
   let target;
   for (let i = 0; i < 50 && !target; i++) {
@@ -25,7 +66,10 @@ export async function startBrowser(width = 1366) {
       target = (await (await fetch(`http://127.0.0.1:${port}/json`)).json()).find((t) => t.type === 'page');
     } catch {}
   }
-  if (!target) throw new Error(`No se pudo abrir el navegador (${BROWSER}). Define BROWSER_PATH.`);
+  if (!target) {
+    forceClose();
+    throw new Error(`No se pudo abrir el navegador (${BROWSER}). Define BROWSER_PATH.`);
+  }
 
   const ws = new WebSocket(target.webSocketDebuggerUrl);
   await new Promise((r) => ws.addEventListener('open', r));
@@ -108,15 +152,35 @@ export async function startBrowser(width = 1366) {
   /** Errores de consola ESPERADOS en una prueba (p. ej. peticiones bloqueadas a propósito). */
   const ignoreErrors = (pattern) => ignored.push(pattern);
 
-  function finish() {
+  /**
+   * Cierre ordenado: Browser.close por la conexión CDP del NAVEGADOR (la de la pestaña no lo admite) y espera
+   * a que el navegador deje de responder (hasta 5 s). No sirve esperar a `proc`: con Edge es el lanzador y ya
+   * terminó. Después, siempre, el cierre forzado por si quedó algún proceso vivo.
+   */
+  async function closeBrowser() {
+    ws.close();
+    const version = `http://127.0.0.1:${port}/json/version`;
+    try {
+      const { webSocketDebuggerUrl } = await (await fetch(version)).json();
+      const browserWs = new WebSocket(webSocketDebuggerUrl);
+      await new Promise((resolve, reject) => (browserWs.addEventListener('open', resolve), browserWs.addEventListener('error', reject)));
+      browserWs.send(JSON.stringify({ id: 1, method: 'Browser.close' }));
+      for (let i = 0; i < 25; i++) {
+        await sleep(200);
+        await fetch(version, { signal: AbortSignal.timeout(500) }); // lanza cuando el navegador ya cerró
+      }
+    } catch {}
+    forceClose();
+  }
+
+  async function finish() {
     const unique = [...new Set(errors)].filter((e) => !ignored.some((re) => re.test(e)));
     check('Sin errores de JavaScript en la consola', unique.length === 0, unique.slice(0, 5).join(' || '));
     console.log(results.join('\n'));
     const fails = results.filter((r) => r.startsWith('FAIL')).length;
     console.log(`\nTOTAL ${results.length} · FAILS ${fails}`);
-    ws.close();
-    proc.kill();
     process.exitCode = fails ? 1 : 0;
+    await closeBrowser();
   }
 
   return { send, evaluate, go, waitReady, login, here, check, screenshot, ignoreErrors, finish };
