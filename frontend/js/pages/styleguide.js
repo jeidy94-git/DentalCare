@@ -133,7 +133,7 @@ function swatch(name) {
   return h(
     'div',
     { class: 'sg-swatch' },
-    h('div', { class: 'sg-swatch__color', style: { background: `var(${name})` } }),
+    h('div', { class: 'sg-swatch__color', dataset: { token: name } }),
     h(
       'div',
       { class: 'sg-swatch__meta' },
@@ -163,13 +163,13 @@ function renderColors() {
 
 function renderTypography() {
   const sizes = [
-    ['--text-3xl', 'Agenda del día', 'var(--font-semibold)'],
-    ['--text-2xl', 'Historia clínica', 'var(--font-semibold)'],
-    ['--text-xl', 'Próximas citas', 'var(--font-semibold)'],
-    ['--text-lg', 'Odontograma del paciente', 'var(--font-medium)'],
-    ['--text-base', 'Texto base para formularios y contenido general del sistema.', 'var(--font-regular)'],
-    ['--text-sm', 'Texto de tablas, etiquetas y controles.', 'var(--font-regular)'],
-    ['--text-xs', 'Texto de ayuda, metadatos y badges.', 'var(--font-regular)'],
+    ['--text-3xl', 'Agenda del día', 'semibold'],
+    ['--text-2xl', 'Historia clínica', 'semibold'],
+    ['--text-xl', 'Próximas citas', 'semibold'],
+    ['--text-lg', 'Odontograma del paciente', 'medium'],
+    ['--text-base', 'Texto base para formularios y contenido general del sistema.', 'regular'],
+    ['--text-sm', 'Texto de tablas, etiquetas y controles.', 'regular'],
+    ['--text-xs', 'Texto de ayuda, metadatos y badges.', 'regular'],
   ];
   mount(
     $('#sg-type'),
@@ -178,7 +178,7 @@ function renderTypography() {
         'div',
         { class: 'sg-type-row' },
         h('span', { class: 'sg-type-row__token' }, `${name} · ${token(name)}`),
-        h('span', { style: { fontSize: `var(${name})`, fontWeight: weight } }, sample),
+        h('span', { class: 'sg-type-sample', dataset: { token: name, weight } }, sample),
       ),
     ),
   );
@@ -193,20 +193,20 @@ function renderSpacing() {
         'div',
         { class: 'sg-space-row' },
         h('span', {}, `--space-${n}`),
-        h('span', { class: 'sg-space-bar', style: { width: `var(--space-${n})` } }),
+        h('span', { class: 'sg-space-bar', dataset: { token: `--space-${n}` } }),
       ),
     ),
   );
   mount(
     $('#sg-radius'),
     ['sm', 'md', 'lg', 'xl', 'full'].map((r) =>
-      h('div', { class: 'sg-shape', style: { borderRadius: `var(--radius-${r})` } }, `radius-${r}`),
+      h('div', { class: 'sg-shape', dataset: { radius: r } }, `radius-${r}`),
     ),
   );
   mount(
     $('#sg-shadows'),
     ['xs', 'sm', 'md', 'lg'].map((s) =>
-      h('div', { class: 'sg-shape', style: { boxShadow: `var(--shadow-${s})`, borderRadius: 'var(--radius-md)', border: 'none' } }, `shadow-${s}`),
+      h('div', { class: 'sg-shape sg-shape--shadow', dataset: { shadow: s } }, `shadow-${s}`),
     ),
   );
 }
@@ -276,7 +276,7 @@ function renderButtons() {
         h('span', { class: 'sg-note' }, '← clic para simular envío'),
       ),
     ),
-    block('Bloque (100% de ancho)', h('div', { style: { maxWidth: '360px' } }, Button({ label: 'Iniciar sesión', block: true, size: 'lg' }))),
+    block('Bloque (100% de ancho)', h('div', { class: 'sg-narrow' }, Button({ label: 'Iniciar sesión', block: true, size: 'lg' }))),
   );
 }
 
@@ -306,8 +306,8 @@ function renderControls() {
         { class: 'sg-grid-3' },
         h(
           'fieldset',
-          { class: 'u-stack', style: { border: 'none', padding: 0 } },
-          h('legend', { class: 'label', style: { marginBottom: 'var(--space-2)' } }, 'Permisos del rol'),
+          { class: 'u-stack sg-fieldset' },
+          h('legend', { class: 'label sg-legend' }, 'Permisos del rol'),
           Checkbox({ label: 'Crear cita', checked: true }),
           Checkbox({ label: 'Cancelar cita', checked: true }),
           Checkbox({ label: 'Ver historia clínica' }),
@@ -315,8 +315,8 @@ function renderControls() {
         ),
         h(
           'fieldset',
-          { class: 'u-stack', style: { border: 'none', padding: 0 } },
-          h('legend', { class: 'label', style: { marginBottom: 'var(--space-2)' } }, 'Modalidad de pago'),
+          { class: 'u-stack sg-fieldset' },
+          h('legend', { class: 'label sg-legend' }, 'Modalidad de pago'),
           Radio({ label: 'Contado', name: 'modalidad', value: 'CONTADO', checked: true }),
           Radio({ label: 'Crédito (cuotas)', name: 'modalidad', value: 'CREDITO' }),
           Radio({ label: 'Otra (no disponible)', name: 'modalidad', value: 'OTRA', disabled: true }),
@@ -353,7 +353,7 @@ function renderBadges() {
       ),
     ),
     groups.map(([title, codes]) => block(`Estados · ${title}`, h('div', { class: 'sg-row' }, codes.map((code) => StatusBadge(code))))),
-    h('p', { class: 'sg-note', style: { marginTop: 'var(--space-4)' } }, `${Object.keys(ESTADOS).length} estados mapeados en ESTADOS (badge.js).`),
+    h('p', { class: 'sg-note sg-note--spaced' }, `${Object.keys(ESTADOS).length} estados mapeados en ESTADOS (badge.js).`),
   );
 }
 
@@ -539,7 +539,7 @@ function resetPasswordForm() {
 }
 
 function renderFormsDemo() {
-  mount($('#sg-forms'), patientForm(), h('div', { class: 'u-stack', style: { gap: 'var(--space-4)' } }, loginForm(), resetPasswordForm()));
+  mount($('#sg-forms'), patientForm(), h('div', { class: 'u-stack sg-stack-loose' }, loginForm(), resetPasswordForm()));
 }
 
 function renderSearch() {
@@ -605,7 +605,7 @@ function renderTabsDemo() {
         h(
           'li',
           { class: 'sg-list__item' },
-          h('strong', { style: { minWidth: '4.5rem' } }, formatDate(c.hora, { hour: '2-digit', minute: '2-digit' })),
+          h('strong', { class: 'sg-list__time' }, formatDate(c.hora, { hour: '2-digit', minute: '2-digit' })),
           h('span', {}, c.paciente, h('br'), h('span', { class: 'sg-note' }, c.motivo)),
           h('span', { class: 'sg-list__meta' }, StatusBadge(c.estado, { size: 'sm' })),
         ),
@@ -682,7 +682,7 @@ function renderPaginationDemo() {
       log,
       h(
         'div',
-        { class: 'sg-row', style: { marginTop: 'var(--space-3)' } },
+        { class: 'sg-row sg-row--spaced' },
         Button({ label: 'Simular filtro (7 resultados)', variant: 'outline', size: 'sm', icon: 'filter', onClick: () => pagination.update({ total: 7, page: 1 }) }),
         Button({ label: 'Restablecer', variant: 'ghost', size: 'sm', onClick: () => pagination.update({ total: 40 }) }),
       ),

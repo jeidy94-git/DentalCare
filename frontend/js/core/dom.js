@@ -12,7 +12,8 @@ export function cx(...classes) {
  * Crea un elemento HTML.
  * - `class` acepta string o array.
  * - `onClick`, `onInput`… registran listeners.
- * - `dataset` y `style` (objeto) se asignan directamente.
+ * - `dataset` se asigna directamente.
+ * - No hay estilos en línea: el aspecto se cambia con clases (`class`) o atributos (`dataset`) que lee el CSS.
  * - Atributos con valor `true` se agregan vacíos; `false/null/undefined` se omiten.
  *
  * @param {string} tag
@@ -30,8 +31,8 @@ export function h(tag, attrs = {}, ...children) {
       el.className = Array.isArray(value) ? cx(...value) : value;
     } else if (key === 'dataset') {
       Object.assign(el.dataset, value);
-    } else if (key === 'style' && typeof value === 'object') {
-      Object.assign(el.style, value);
+    } else if (key === 'style') {
+      console.warn(`[h] Estilo en línea ignorado en <${tag}>: usa una clase CSS o dataset.`);
     } else if (key.startsWith('on') && typeof value === 'function') {
       el.addEventListener(key.slice(2).toLowerCase(), value);
     } else if (value === true) {

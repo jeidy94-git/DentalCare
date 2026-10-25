@@ -81,7 +81,8 @@ try {
   /* C. El paciente cancela una de sus citas futuras */
   await go('pages/paciente/mis-citas.html'); await waitReady();
   check('C1 Aviso de solicitudes por confirmar', (await bodyText()).includes('esperando confirmación'));
-  await t(`__t.click('button[aria-label^="Cancelar cita"]')`); await sleep(300);
+  // No con el Dr. Roberto: la solicitud de B debe seguir viva para D y E (las citas generadas cambian con la fecha).
+  await t(`__t.click('button[aria-label^="Cancelar cita"]:not([aria-label*="Roberto"])')`); await sleep(300);
   await t(`__t.click('dialog[open] .dialog__actions button', 'Cancelar cita')`);
   check('C2 Cita cancelada por el paciente', await waitText('La cita fue cancelada.'));
 
@@ -90,7 +91,14 @@ try {
   await go('pages/asistente/agenda.html'); await waitReady();
   await t(`__t.click('[role="tab"]', 'Lista')`); await sleep(200);
   await t(`__t.click('.data-table__chips button', 'Por confirmar')`); await sleep(200);
-  await t(`__t.click('button[aria-label^="Confirmar"]')`); await sleep(300);
+  // Se confirma la solicitud de B (Andrés con el Dr. Roberto): así E siempre tiene una cita programada sin consulta.
+  await t(`__t.set('.data-table input[type="search"]', 'Galvis')`); await sleep(500);
+  await t(`(() => {
+    const row = [...document.querySelectorAll('.data-table tbody tr')].find((r) => r.textContent.includes('Roberto') && r.querySelector('button[aria-label^="Confirmar"]'));
+    if (!row) throw new Error('No encontré la solicitud de Andrés Galvis con el Dr. Roberto');
+    row.querySelector('button[aria-label^="Confirmar"]').click();
+    return true;
+  })()`); await sleep(300);
   await t(`__t.click('dialog[open] .dialog__actions button', 'Confirmar')`);
   check('D1 Recepción confirma una solicitud', await waitText('La cita quedó programada.'));
 

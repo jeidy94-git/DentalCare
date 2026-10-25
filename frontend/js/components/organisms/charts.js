@@ -61,6 +61,9 @@ export function BarChart({ title, subtitle, data = [], orientation = 'vertical',
   const titleId = uniqueId('chart-title');
   const plot = h('div', { class: 'chart__plot' });
   const tooltip = h('div', { class: 'chart__tooltip', 'aria-hidden': 'true', hidden: true }, h('strong', {}), h('span', {}));
+  // El tooltip se ancla con los atributos x/y de un foreignObject (geometría SVG), no con element.style.
+  const tipAnchor = svg('foreignObject', { class: 'chart__tip-anchor', width: 1, height: 1 });
+  tipAnchor.append(tooltip);
   const describe = (d) => `${d.fullLabel ?? d.label}: ${format(d.value)}${unit ? ` ${unit}` : ''}`;
 
   /* ---------- Vista de tabla ---------- */
@@ -96,8 +99,8 @@ export function BarChart({ title, subtitle, data = [], orientation = 'vertical',
     tooltip.lastChild.textContent = d.fullLabel ?? d.label;
     tooltip.hidden = false;
     const width = plot.clientWidth;
-    tooltip.style.left = `${Math.min(Math.max(x, 70), width - 70)}px`;
-    tooltip.style.top = `${y}px`;
+    tipAnchor.setAttribute('x', String(Math.min(Math.max(x, 70), width - 70)));
+    tipAnchor.setAttribute('y', String(y));
   }
   function hideTip() {
     activeBar?.classList.remove('is-active');
@@ -185,10 +188,12 @@ export function BarChart({ title, subtitle, data = [], orientation = 'vertical',
     lastWidth = width;
     hideTip();
     if (!data.length) {
-      mount(plot, h('p', { class: 'chart__empty' }, 'Sin datos para el periodo.'), tooltip);
+      mount(plot, h('p', { class: 'chart__empty' }, 'Sin datos para el periodo.'));
       return;
     }
-    mount(plot, orientation === 'horizontal' ? renderHorizontal(width) : renderVertical(width), tooltip);
+    const chart = orientation === 'horizontal' ? renderHorizontal(width) : renderVertical(width);
+    chart.append(tipAnchor); // último hijo: queda por encima de las barras
+    mount(plot, chart);
   }
 
   const root = h(

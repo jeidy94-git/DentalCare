@@ -86,7 +86,7 @@ function renderShell() {
         h(
           'div',
           { class: 'sg-frame__content' },
-          h('h2', { style: { fontSize: 'var(--text-2xl)' } }, `Hola, ${user.nombre.split(' ').slice(0, 2).join(' ')}`),
+          h('h2', { class: 'sg-frame__title' }, `Hola, ${user.nombre.split(' ').slice(0, 2).join(' ')}`),
           h('p', { class: 'text-secondary' }, `Vista de ${ROLES[role].label}. El menú lateral cambia según el rol.`),
           h('div', { class: 'sg-kpis' }, KPIS_DEMO[role].map(([label, icon, tone, value]) => KpiCard({ label, value, icon, tone }))),
         ),
