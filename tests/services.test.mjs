@@ -140,6 +140,8 @@ try {
   check('Completar cita de otro odontólogo → 403', e?.status === 403);
   e = await err(S.ventasService.list());
   check('Especialista no ve pagos → 403', e?.status === 403);
+  const hcDoc = await S.historiasService.getByPaciente(11);
+  check('Especialista: historia completa (antecedentes, observaciones, diagnóstico)', 'antecedentes_medicos' in hcDoc && 'observaciones' in hcDoc && 'diagnostico' in hcDoc.consultas[0]);
 
   /* ---------- Paciente ---------- */
   user = await login('andres.galvis@gmail.com', 'AndresG2026*');
@@ -152,6 +154,8 @@ try {
   check('Paciente: historia ajena → 403', e?.status === 403);
   const hc = await S.historiasService.getByPaciente(11);
   check('Paciente: su historia con consultas', hc.id_historia === 1 && hc.consultas.length >= 1 && hc.consultas[0].especialista_nombre);
+  check('Paciente: sin notas internas (antecedentes, observaciones)', !('antecedentes_medicos' in hc) && !('observaciones' in hc) && 'alergias' in hc);
+  check('Paciente: tratamientos sin diagnóstico, con procedimiento', hc.consultas.every((q) => !('diagnostico' in q) && 'procedimiento_realizado' in q));
   check('Paciente: solo sus ventas', (await S.ventasService.list()).every((v) => v.id_paciente === 11));
   e = await err(S.novedadesService.list());
   check('Paciente: novedades → 403', e?.status === 403);
@@ -206,6 +210,35 @@ try {
   const activasDb = getDb().cita.filter((c) => ['PROGRAMADA', 'PENDIENTE_CONFIRMACION'].includes(c.estado_cita) && c.fecha_hora.slice(0, 10) >= hoyIso);
   check('Ocupación: el paciente puede consultarla', ocupacion.length === activasDb.length && ocupacion.length > 0, `${ocupacion.length} citas`);
   check('Ocupación: no expone pacientes ni ids', ocupacion.every((c) => Object.keys(c).sort().join() === 'estado_cita,fecha_hora,id_especialista'));
+
+  /* ---------- Perfil propio (perfil.html) ---------- */
+  const perfil = await S.authService.perfil();
+  check('Perfil: datos de la cuenta con documento y dirección (paciente)', perfil.numero_documento === '1036000101' && perfil.rol === 'PACIENTE' && 'direccion' in perfil && perfil.editables.join() === 'telefono,email,direccion');
+  e = await err(S.authService.actualizarPerfil({ telefono: '12345', email: 'malo', direccion: 'x' }));
+  check('Perfil: celular y correo inválidos → 400 por campo', e?.status === 400 && e.fields.telefono && e.fields.email);
+  e = await err(S.authService.actualizarPerfil({ telefono: '3001234567', email: 'Admin@DentalCare.com' }));
+  check('Perfil: correo de otra cuenta → 409 en el campo', e?.status === 409 && e.fields.email);
+  const perfil2 = await S.authService.actualizarPerfil({ telefono: '3015550000', email: 'Andres.Nuevo@Correo.com', direccion: 'Calle 1 # 2-3', numero_documento: '999', rol: 'ADMINISTRADOR' });
+  const pDb = getDb().paciente.find((p) => p.id_paciente === 11);
+  check('Perfil: guarda celular, correo y dirección', perfil2.telefono === '3015550000' && pDb.direccion === 'Calle 1 # 2-3' && pDb.email === 'andres.nuevo@correo.com');
+  check('Perfil: documento y rol no cambian aunque lleguen', pDb.numero_documento === '1036000101' && perfil2.rol === 'PACIENTE');
+  check('Perfil: la sesión refleja el correo nuevo sin volver a ingresar', getSession().user.email === 'andres.nuevo@correo.com' && getSession().user.rol === 'PACIENTE');
+  e = await err(S.authService.cambiarPassword({ password_actual: 'AndresG2026*', password_nueva: 'Nueva2026*', password_confirmacion: 'Otra2026*' }));
+  check('Contraseña: confirmación distinta → 400', e?.status === 400 && e.fields.password_confirmacion);
+  e = await err(S.authService.cambiarPassword({ password_actual: 'Incorrecta1*', password_nueva: 'Nueva2026*', password_confirmacion: 'Nueva2026*' }));
+  check('Contraseña: actual incorrecta → 400 (no cierra la sesión)', e?.status === 400 && e.fields.password_actual && getSession() !== null);
+  e = await err(S.authService.cambiarPassword({ password_actual: 'AndresG2026*', password_nueva: 'debil', password_confirmacion: 'debil' }));
+  check('Contraseña: nueva débil → 400', e?.status === 400 && e.fields.password_nueva);
+  await S.authService.cambiarPassword({ password_actual: 'AndresG2026*', password_nueva: 'Nueva2026*', password_confirmacion: 'Nueva2026*' });
+  clearSession();
+  e = await err(login('andres.nuevo@correo.com', 'AndresG2026*'));
+  check('Contraseña: la anterior ya no sirve', e?.status === 401);
+  check('Perfil: ingresa con el correo y la contraseña nuevos', (await login('andres.nuevo@correo.com', 'Nueva2026*')).id_paciente === 11);
+  clearSession();
+
+  await login('recepcion@dentalcare.com', 'Recep2026*');
+  const perfilRecep = await S.authService.perfil();
+  check('Perfil del personal: sin dirección (la tabla personal no la tiene)', !('direccion' in perfilRecep) && perfilRecep.editables.join() === 'telefono,email' && perfilRecep.numero_documento === '1010101002');
   clearSession();
 
   await login('admin@dentalcare.com', 'NuevaClave2026*');

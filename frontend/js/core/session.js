@@ -58,6 +58,21 @@ export function setSession({ token, user, ttl = SESSION_TTL_MS }, now = Date.now
   return session;
 }
 
+/**
+ * Actualiza los datos del usuario de la sesión vigente (p. ej. después de editar su perfil) sin cambiar
+ * token ni vencimiento. Emite 'update': el topbar de las páginas abiertas muestra los datos nuevos.
+ * @returns {object|null} la sesión actualizada, o null si no había sesión.
+ */
+export function updateSessionUser(patch) {
+  const session = getSession();
+  if (!session) return null;
+  const next = { ...session, user: { ...session.user, ...patch } };
+  if (!isValid(next)) throw new Error('Sesión inválida');
+  storage.set(KEY, next);
+  emit('update');
+  return next;
+}
+
 /** Cierra la sesión. `reason`: 'logout' (el usuario salió) o 'expired' (vencida / rechazada por la API). */
 export function clearSession(reason = 'logout') {
   storage.remove(KEY);

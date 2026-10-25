@@ -3,6 +3,7 @@
  *   pages/admin/citas.html       → lista + calendario de todos los odontólogos, agendar
  *   pages/asistente/agenda.html  → calendario + lista, agendar y confirmar solicitudes
  *   pages/doctor/agenda.html     → SU agenda; desde una cita abre la ficha del paciente
+ *   Administrador y odontólogo abren la historia clínica desde el nombre del paciente o la acción de la fila.
  *
  * Organismos: Calendar (vistas día/semana/mes/lista), DataTable (filtros por estado) y BookingWizard.
  */
@@ -15,7 +16,7 @@ import { Calendar, DataTable, BookingWizard, openModalForm } from '../components
 import { citasService, especialistasService, pacientesService, serviciosService } from '../services/index.js';
 import { createAppPage, loadInto, errorMessage } from './_shared/app-page.js';
 import { card, crumbs, withFieldErrors } from './_shared/ui.js';
-import { CITA_FILTER, citaColumns, citaActions, citaSummary, allowedTransitions, applyTransition, transitionLabel, fichaUrl } from './_shared/citas.js';
+import { CITA_FILTER, citaColumns, citaActions, citaSummary, allowedTransitions, applyTransition, transitionLabel, fichaUrl, puedeVerFichas } from './_shared/citas.js';
 
 const CONFIG = {
   ADMINISTRADOR: { activeId: 'citas', title: 'Citas', subtitle: 'Todas las citas del consultorio.', tab: 'lista' },
@@ -31,6 +32,7 @@ async function init() {
   const { user, layout } = page;
   const esOdontologo = user.rol === 'ESPECIALISTA';
   const agenda = can(user, PERMISOS.CREAR_CITA) && !esOdontologo;
+  const verFichas = puedeVerFichas(user);
   const filtroCitas = esOdontologo ? { id_especialista: user.id_especialista } : {};
 
   const agendarBtn = agenda && Button({ label: 'Agendar cita', icon: 'plus', onClick: () => showWizard() });
@@ -63,7 +65,7 @@ async function init() {
   /** Al elegir una cita en el calendario: resumen + acciones permitidas para este rol. */
   async function onCitaSelect(cita) {
     const full = data.citas.find((c) => c.id_cita === cita.id_cita) ?? cita;
-    const options = [...(esOdontologo ? [{ value: 'ficha', label: 'Abrir la ficha del paciente' }] : []), ...allowedTransitions(full, user).map((id) => ({ value: id, label: transitionLabel(id) }))];
+    const options = [...(verFichas ? [{ value: 'ficha', label: 'Abrir la historia clínica' }] : []), ...allowedTransitions(full, user).map((id) => ({ value: id, label: transitionLabel(id) }))];
     const result = await openModalForm({
       title: `Cita #${full.id_cita}`,
       submitLabel: options.length ? 'Continuar' : 'Cerrar',
@@ -71,7 +73,7 @@ async function init() {
       fields: () => [citaSummary(full), options.length && FormField({ label: '¿Qué deseas hacer?', name: 'accion', as: 'select', required: true, placeholder: 'Selecciona una acción…', options })],
     });
     if (!result?.accion) return;
-    if (result.accion === 'ficha') location.assign(fichaUrl(full.id_paciente));
+    if (result.accion === 'ficha') location.assign(fichaUrl(full.id_paciente, user.rol));
     else await applyTransition(result.accion, full, reload, { ask: false });
   }
 
@@ -94,7 +96,7 @@ async function init() {
     initialSort: { key: 'fecha', dir: 'desc' },
     filter: CITA_FILTER,
     search: { label: 'Buscar cita', placeholder: 'Paciente, odontólogo o tratamiento…', keys: ['paciente_nombre', 'especialista_nombre', 'servicio_nombre', 'motivo'] },
-    columns: citaColumns({ especialista: !esOdontologo }),
+    columns: citaColumns({ especialista: !esOdontologo, user }),
     actions: citaActions(user, reload),
     emptyMessage: 'No hay citas con esos filtros.',
   });

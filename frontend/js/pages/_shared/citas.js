@@ -2,7 +2,7 @@ import { h } from '../../core/dom.js';
 import { toDate } from '../../core/format.js';
 import { appUrl } from '../../core/navigation.js';
 import { can, PERMISOS } from '../../core/permissions.js';
-import { StatusBadge } from '../../components/atoms/index.js';
+import { Link, StatusBadge } from '../../components/atoms/index.js';
 import { confirmDialog } from '../../components/molecules/index.js';
 import { citasService } from '../../services/index.js';
 import { fechaHora, runAction } from './ui.js';
@@ -26,18 +26,37 @@ export const CITA_FILTER = {
   ],
 };
 
-/** @param {{ paciente?: boolean, especialista?: boolean }} show  Columnas de persona que se muestran. */
-export function citaColumns({ paciente = true, especialista = true } = {}) {
+/**
+ * Ficha clínica de otro paciente, por rol. Cada rol la abre desde SU carpeta porque el guard autoriza por carpeta;
+ * el paciente no está aquí: solo ve la suya en pages/paciente/mi-historia.html.
+ */
+const FICHA_POR_ROL = { ADMINISTRADOR: 'pages/admin/historia.html', ESPECIALISTA: 'pages/doctor/historia.html' };
+
+/** ¿El usuario puede abrir la historia clínica de cualquier paciente? (administrador y odontólogo) */
+export const puedeVerFichas = (user) => Boolean(FICHA_POR_ROL[user?.rol]) && can(user, PERMISOS.VER_HISTORIA_CLINICA);
+
+export const fichaUrl = (idPaciente, rol = 'ESPECIALISTA') => appUrl(`${FICHA_POR_ROL[rol] ?? FICHA_POR_ROL.ESPECIALISTA}?id=${encodeURIComponent(idPaciente)}`);
+
+/** Nombre del paciente como enlace a su historia clínica (si el usuario puede abrirla). */
+export function pacienteLink(user, idPaciente, nombre) {
+  if (!puedeVerFichas(user)) return nombre;
+  return Link({ href: fichaUrl(idPaciente, user.rol), label: nombre, title: `Abrir la historia clínica de ${nombre}` });
+}
+
+/**
+ * @param {{ paciente?: boolean, especialista?: boolean, user?: object }} show  Columnas de persona que se muestran;
+ *        con `user`, el nombre del paciente enlaza a su historia clínica (pacienteLink).
+ */
+export function citaColumns({ paciente = true, especialista = true, user } = {}) {
   return [
     { key: 'fecha', label: 'Fecha y hora', sortable: true, value: (c) => c.fecha_hora, render: (c) => fechaHora(c.fecha_hora) },
-    paciente && { key: 'paciente', label: 'Paciente', sortable: true, value: (c) => c.paciente_nombre },
+    paciente && { key: 'paciente', label: 'Paciente', sortable: true, value: (c) => c.paciente_nombre, render: user && ((c) => pacienteLink(user, c.id_paciente, c.paciente_nombre)) },
     especialista && { key: 'especialista', label: 'Odontólogo', sortable: true, value: (c) => c.especialista_nombre },
     { key: 'servicio', label: 'Tratamiento', value: (c) => c.servicio_nombre ?? c.motivo },
     { key: 'estado', label: 'Estado', sortable: true, value: (c) => c.estado_cita, render: (c) => StatusBadge(c.estado_cita, { size: 'sm' }) },
   ].filter(Boolean);
 }
 
-export const fichaUrl = (idPaciente) => appUrl(`pages/doctor/historia.html?id=${encodeURIComponent(idPaciente)}`);
 
 /** Qué cambios de estado puede hacer este usuario sobre esta cita (mismas reglas que citas.service). */
 export function allowedTransitions(cita, user) {
@@ -89,9 +108,9 @@ export async function applyTransition(id, cita, onDone, { ask = true } = {}) {
 }
 
 /** Acciones por fila para DataTable. */
-export function citaActions(user, onDone, { ficha = user.rol === 'ESPECIALISTA' } = {}) {
+export function citaActions(user, onDone, { ficha = puedeVerFichas(user) } = {}) {
   return (cita) => [
-    ficha && { icon: 'file-text', label: 'Ver ficha del paciente', onClick: () => globalThis.location.assign(fichaUrl(cita.id_paciente)) },
+    ficha && { icon: 'file-text', label: 'Ver historia clínica', onClick: () => globalThis.location.assign(fichaUrl(cita.id_paciente, user.rol)) },
     ...allowedTransitions(cita, user).map((id) => ({ icon: TRANSITIONS[id].icon, label: TRANSITIONS[id].label, variant: TRANSITIONS[id].variant, onClick: () => applyTransition(id, cita, onDone) })),
   ].filter(Boolean);
 }

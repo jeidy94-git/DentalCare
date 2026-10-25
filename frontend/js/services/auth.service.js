@@ -1,9 +1,9 @@
 import { USE_MOCK } from '../core/config.js';
-import { setSession, clearSession, getSession } from '../core/session.js';
+import { setSession, clearSession, getSession, updateSessionUser } from '../core/session.js';
 import { validators, compose } from '../core/validators.js';
 import { http } from './http.js';
 import { ApiError } from './api-error.js';
-import { mockRequest, audit, assertValid } from './mock/db.js';
+import { mockRequest, audit, assertValid, pick } from './mock/db.js';
 import { hashPassword, verifyPassword, fakeVerify } from './mock/password.js';
 import { CREDENCIALES_DEMO, NOTIFICACIONES_DEMO } from '../data/mock/usuarios.js';
 
@@ -16,6 +16,10 @@ import { CREDENCIALES_DEMO, NOTIFICACIONES_DEMO } from '../data/mock/usuarios.js
  *   requestPasswordReset(email)      → siempre el mismo mensaje, exista o no el correo
  *   verifyResetToken(token)          → { email } enmascarado, o 400 si el enlace no sirve
  *   resetPassword(token, password)   → cambia la contraseña y anula el enlace
+ *
+ *   perfil()                         → datos de la cuenta del usuario de la sesión (perfil.html)
+ *   actualizarPerfil(data)           → celular, correo y dirección (solo paciente); refresca la sesión
+ *   cambiarPassword(data)            → { password_actual, password_nueva, password_confirmacion }
  */
 
 const INVALID_CREDENTIALS = 'Correo o contraseña incorrectos.';
@@ -56,6 +60,39 @@ function findValidToken(db, token) {
   return row && !row.usado && Date.now() < row.expira ? row : null;
 }
 
+/* ---------- Perfil del usuario de la sesión ---------- */
+
+/** Lo que cada cuenta puede editar de sí misma. La tabla `personal` no tiene dirección: solo el paciente la edita. */
+const CAMPOS_PERFIL = { PACIENTE: ['telefono', 'email', 'direccion'], PERSONAL: ['telefono', 'email'] };
+const camposPerfil = (rol) => CAMPOS_PERFIL[rol === 'PACIENTE' ? 'PACIENTE' : 'PERSONAL'];
+
+const REGLAS_PERFIL = {
+  telefono: compose(validators.required('Escribe tu número de celular.'), validators.telefono()),
+  email: compose(validators.required('Escribe tu correo electrónico.'), validators.email()),
+  direccion: validators.maxLength(150),
+};
+
+/** Ficha (paciente o personal) de la cuenta. */
+function fichaDe(db, usuario, rol) {
+  return rol === 'PACIENTE' ? db.paciente.find((p) => p.id_usuario === usuario.id_usuario) : db.personal.find((p) => p.id_usuario === usuario.id_usuario);
+}
+
+/** Perfil de la cuenta: identidad (solo lectura) + datos de contacto editables. */
+function perfilDe(db, usuario) {
+  const rol = db.rol.find((r) => r.id_rol === usuario.id_rol)?.nombre_rol;
+  const ficha = fichaDe(db, usuario, rol) ?? {};
+  return {
+    rol,
+    email: usuario.email,
+    nombre: ficha.nombres ? `${ficha.nombres} ${ficha.apellidos}` : usuario.email,
+    tipo_documento: ficha.tipo_documento ?? null,
+    numero_documento: ficha.numero_documento ?? null,
+    telefono: ficha.telefono ?? null,
+    ...(rol === 'PACIENTE' && { direccion: ficha.direccion ?? null }),
+    editables: camposPerfil(rol),
+  };
+}
+
 const mock = {
   async login(email, password) {
     // Los fallos también se auditan: por eso el handler no lanza el error (lo haría el rollback) sino que lo devuelve.
@@ -91,6 +128,61 @@ const mock = {
   },
 
   me: () => mockRequest(({ user }) => user),
+
+  perfil: () => mockRequest(({ db, user }) => perfilDe(db, db.usuario.find((u) => u.id_usuario === user.id_usuario))),
+
+  async actualizarPerfil(data) {
+    const result = await mockRequest(
+      ({ db, user }) => {
+        const usuario = db.usuario.find((u) => u.id_usuario === user.id_usuario);
+        const campos = camposPerfil(user.rol);
+        // Solo los campos de contacto: documento, nombre y rol no se cambian desde el perfil aunque lleguen.
+        const row = pick(data, campos);
+        assertValid(row, pick(REGLAS_PERFIL, campos));
+        const email = row.email.toLowerCase();
+        const ficha = fichaDe(db, usuario, user.rol);
+        const enUso =
+          db.usuario.some((u) => u.email.toLowerCase() === email && u.id_usuario !== usuario.id_usuario) ||
+          (user.rol === 'PACIENTE' && db.paciente.some((p) => p.email?.toLowerCase() === email && p !== ficha));
+        if (enUso) throw new ApiError(409, 'Ese correo ya está registrado.', { fields: { email: 'Ese correo ya lo usa otra cuenta.' }, code: 'DUPLICATE' });
+
+        usuario.email = email;
+        if (ficha) {
+          ficha.telefono = row.telefono;
+          if (user.rol === 'PACIENTE') Object.assign(ficha, { email, direccion: row.direccion || null });
+        }
+        audit(db, user, 'ACTUALIZAR', 'usuario', `Perfil propio: ${Object.keys(row).join(', ')}`);
+        return { perfil: perfilDe(db, usuario), user: buildUser(db, usuario) };
+      },
+      { write: true },
+    );
+    updateSessionUser(result.user); // el topbar muestra el correo nuevo sin volver a ingresar
+    return result.perfil;
+  },
+
+  async cambiarPassword(data) {
+    const { password_actual, password_nueva, password_confirmacion } = data ?? {};
+    assertValid(data ?? {}, {
+      password_actual: validators.required('Escribe tu contraseña actual.'),
+      password_nueva: compose(validators.required('Escribe la nueva contraseña.'), validators.password()),
+      password_confirmacion: compose(validators.required('Confirma la nueva contraseña.'), validators.matches(() => password_nueva, 'Las contraseñas no coinciden.')),
+    });
+    if (password_nueva === password_actual) throw new ApiError(400, 'Revisa los datos marcados.', { fields: { password_nueva: 'La nueva contraseña debe ser distinta de la actual.' }, code: 'VALIDATION' });
+    const password_hash = await hashPassword(password_nueva);
+    return mockRequest(
+      async ({ db, user }) => {
+        const usuario = db.usuario.find((u) => u.id_usuario === user.id_usuario);
+        // 400 y no 401: un 401 cerraría la sesión por una contraseña mal digitada.
+        if (!(await verifyPassword(password_actual, usuario.password_hash))) {
+          throw new ApiError(400, 'Revisa los datos marcados.', { fields: { password_actual: 'La contraseña actual no es correcta.' }, code: 'WRONG_PASSWORD' });
+        }
+        usuario.password_hash = password_hash;
+        audit(db, user, 'CAMBIO_PASSWORD', 'usuario', 'Cambio de contraseña desde el perfil');
+        return { message: 'Tu contraseña se actualizó.' };
+      },
+      { write: true },
+    );
+  },
 
   async requestPasswordReset(email) {
     assertValid({ email }, { email: compose(validators.required(), validators.email()) });
@@ -157,6 +249,14 @@ const remote = {
     }
   },
   me: () => http.get('/auth/me'),
+  // Endpoints de perfil: pendientes en el backend (backend/src/routes/auth.routes.js).
+  perfil: () => http.get('/auth/perfil'),
+  async actualizarPerfil(data) {
+    const { perfil, user } = await http.put('/auth/perfil', data);
+    updateSessionUser(user);
+    return perfil;
+  },
+  cambiarPassword: (data) => http.put('/auth/password', data),
   requestPasswordReset: (email) => http.post('/auth/forgot-password', { email }),
   verifyResetToken: (token) => http.get(`/auth/reset-password/${encodeURIComponent(token)}`),
   resetPassword: (token, password) => http.post('/auth/reset-password', { token, password }),

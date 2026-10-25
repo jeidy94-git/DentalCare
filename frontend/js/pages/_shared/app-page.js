@@ -1,8 +1,9 @@
 import { h } from '../../core/dom.js';
 import { guard } from '../../core/guard.js';
+import { appUrl } from '../../core/navigation.js';
+import { onSessionChange } from '../../core/session.js';
 import { authService, isApiError, demoNotifications } from '../../services/index.js';
 import { Button } from '../../components/atoms/index.js';
-import { toast } from '../../components/molecules/index.js';
 import { DashboardLayout } from '../../components/templates/index.js';
 
 /**
@@ -16,6 +17,10 @@ import { DashboardLayout } from '../../components/templates/index.js';
  *    <body data-role="…"> (así un mismo controlador sirve a varias carpetas: admin, asistente…).
  * 2. DashboardLayout con el usuario de la sesión (menú según SU rol).
  * 3. "Cerrar sesión" → authService.logout(); el guard detecta el cambio y lleva al login.
+ * 4. "Mi perfil" / "Configuración" → perfil.html; si el usuario edita su perfil (aquí o en otra pestaña),
+ *    el topbar muestra los datos nuevos de la sesión sin volver a ingresar.
+ *
+ * `role` puede ser una lista (perfil.html sirve a todos los roles).
  *
  * @returns {{ user: object, layout: HTMLElement } | null}
  */
@@ -36,8 +41,9 @@ export function createAppPage({ role = document.body.dataset.role, activeId, tit
     content,
     notifications: demoNotifications(),
     onLogout: () => authService.logout(),
-    onProfileAction: () => toast.info(`${user.email} · ${user.cargo ?? user.rol}`, user.nombre),
+    onProfileAction: (item) => location.assign(appUrl(item === 'configuracion' ? 'perfil.html#seguridad' : 'perfil.html')),
   });
+  onSessionChange(({ session }) => session && layout.setUser(session.user));
   document.body.append(layout);
   return { user, layout };
 }

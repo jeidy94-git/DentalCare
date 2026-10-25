@@ -111,6 +111,7 @@ const cases = [
   ['', home, 'vacío'],
 ];
 for (const [next, expected, label] of cases) check(`safeNext: ${label}`, safeNext(next, 'ADMINISTRADOR') === expected, safeNext(next, 'ADMINISTRADOR').slice(ROOT.length));
+check('safeNext: perfil.html sirve a todos los roles', ['ADMINISTRADOR', 'RECEPCIONISTA', 'ESPECIALISTA', 'PACIENTE'].every((rol) => safeNext('perfil.html#seguridad', rol) === appUrl('perfil.html#seguridad')));
 
 reset();
 check('redirectIfAuthenticated: sin sesión → muestra el login', redirectIfAuthenticated({ navigate }) === false && visited.length === 0);

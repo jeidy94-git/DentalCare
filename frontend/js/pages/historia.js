@@ -1,7 +1,10 @@
 /**
  * Ficha clínica del paciente (RF-PAC-02…05, HU-04, RN-01):
+ *   pages/admin/historia.html?id=11      → el administrador; consulta y edita la de cualquier paciente
  *   pages/doctor/historia.html?id=11     → el odontólogo; edita solo si está ASIGNADO (RN-01)
- *   pages/paciente/mi-historia.html      → el paciente ve la SUYA en solo lectura (el id sale de la sesión)
+ *   pages/paciente/mi-historia.html      → el paciente ve la SUYA en solo lectura (el id sale de la sesión;
+ *                                          un ?id de otro paciente lleva a 403). Vista parcial: tratamientos
+ *                                          realizados, citas y odontograma, sin notas internas del odontólogo.
  *
  * DetailLayout dentro del DashboardLayout: encabezado, resumen, alertas clínicas (alergias siempre visibles),
  * pestañas (datos, odontograma, consultas, citas) y la historia clínica en la columna lateral.
@@ -11,6 +14,7 @@ import { validators } from '../core/validators.js';
 import { formatDate, formatLongDate, toDate } from '../core/format.js';
 import { timeOf } from '../core/agenda.js';
 import { appUrl } from '../core/navigation.js';
+import { FORBIDDEN_PATH } from '../core/guard.js';
 import { Button, StatusBadge } from '../components/atoms/index.js';
 import { FormField, toast } from '../components/molecules/index.js';
 import { DataTable, Odontogram, openModalForm } from '../components/organisms/index.js';
@@ -38,9 +42,17 @@ async function init() {
   if (!page) return;
   const { user, layout } = page;
 
-  const idPaciente = esPaciente ? user.id_paciente : Number(queryParam('id'));
+  // El paciente solo consulta SU historia: pedir otra por la URL es un acceso prohibido, no se ignora en silencio.
+  const idUrl = queryParam('id');
+  if (esPaciente && idUrl !== null && Number(idUrl) !== user.id_paciente) {
+    location.replace(appUrl(`${FORBIDDEN_PATH}?from=${encodeURIComponent(`pages/paciente/mi-historia.html?id=${idUrl}`)}`));
+    return;
+  }
+
+  const pacientesHref = appUrl(user.rol === 'ADMINISTRADOR' ? 'pages/admin/pacientes.html' : 'pages/doctor/pacientes.html');
+  const idPaciente = esPaciente ? user.id_paciente : Number(idUrl);
   if (!idPaciente) {
-    layout.update({ title: 'Ficha del paciente', breadcrumbs: crumbs(user, { label: 'Pacientes', href: appUrl('pages/doctor/pacientes.html') }, { label: 'Ficha' }) });
+    layout.update({ title: 'Ficha del paciente', breadcrumbs: crumbs(user, { label: 'Pacientes', href: pacientesHref }, { label: 'Ficha' }) });
     layout.setContent(notice('No se indicó el paciente. Abre la ficha desde la lista de pacientes o desde tu agenda.', 'warning', { role: 'alert' }));
     return;
   }
@@ -161,15 +173,16 @@ async function init() {
                 { class: 'timeline__item' },
                 h('p', { class: 'timeline__date' }, `${formatLongDate(q.fecha_cita)} · ${timeOf(q.fecha_cita)} · ${q.especialista_nombre}`),
                 h('h3', { class: 'timeline__title' }, q.motivo_consulta),
+                // El paciente no recibe el diagnóstico (nota interna): solo el resumen del tratamiento.
                 dataList([
-                  ['Diagnóstico', q.diagnostico],
+                  !esPaciente && ['Diagnóstico', q.diagnostico],
                   ['Procedimiento', q.procedimiento_realizado],
                   ['Prescripción', q.prescripcion_medica],
-                ]),
+                ].filter(Boolean)),
               ),
             ),
           )
-        : h('p', { class: 'item-list__empty' }, 'Aún no hay consultas registradas.'),
+        : h('p', { class: 'item-list__empty' }, esPaciente ? 'Aún no tienes tratamientos registrados.' : 'Aún no hay consultas registradas.'),
     );
   }
 
@@ -184,7 +197,7 @@ async function init() {
 
     document.title = `${esPaciente ? 'Mi historia clínica' : nombre} · DentalCare`;
     layout.update({
-      breadcrumbs: esPaciente ? crumbs(user, { label: 'Mi historia clínica' }) : crumbs(user, { label: 'Pacientes', href: appUrl('pages/doctor/pacientes.html') }, { label: nombre }),
+      breadcrumbs: esPaciente ? crumbs(user, { label: 'Mi historia clínica' }) : crumbs(user, { label: 'Pacientes', href: pacientesHref }, { label: nombre }),
     });
 
     const alerts = [];
@@ -240,7 +253,7 @@ async function init() {
             count: hallazgos.length,
             content: () => Odontogram({ records: hallazgos, readonly: !canEdit, readonlyReason, onChange: onOdontogramChange }),
           },
-          { id: 'consultas', label: 'Consultas', icon: 'clipboard', count: hc.consultas.length, content: consultasView },
+          { id: 'consultas', label: esPaciente ? 'Tratamientos realizados' : 'Consultas', icon: 'clipboard', count: hc.consultas.length, content: consultasView },
           {
             id: 'citas',
             label: 'Citas',
@@ -256,18 +269,19 @@ async function init() {
                 initialSort: { key: 'fecha', dir: 'desc' },
                 filter: CITA_FILTER,
                 columns: citaColumns({ paciente: false }),
-                actions: citaActions(user, () => refresh('citas'), { ficha: false }),
+                // Vista de consulta para el paciente: sus citas se gestionan en "Mis citas".
+                actions: esPaciente ? undefined : citaActions(user, () => refresh('citas'), { ficha: false }),
               }),
           },
         ],
         aside: card(
           { title: 'Historia clínica', actions: canEdit ? [Button({ label: 'Editar', icon: 'edit', size: 'sm', variant: 'outline', onClick: editarHistoria })] : undefined },
           dataList([
-            ['Antecedentes médicos', hc.antecedentes_medicos],
+            !esPaciente && ['Antecedentes médicos', hc.antecedentes_medicos],
             ['Alergias', hc.alergias],
-            ['Observaciones', hc.observaciones],
+            !esPaciente && ['Observaciones', hc.observaciones],
             ['Apertura', hc.fecha_apertura ? formatDate(hc.fecha_apertura) : null],
-          ]),
+          ].filter(Boolean)),
         ),
       }),
     );

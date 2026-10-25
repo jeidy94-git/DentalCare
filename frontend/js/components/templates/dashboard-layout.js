@@ -39,7 +39,7 @@ const APP_NAME = 'DentalCare';
  * @param {string} [props.mainId='contenido-principal']
  * @param {string} [props.sidebarId='app-sidebar']
  * @param {boolean} [props.syncDocumentTitle=true]  Actualiza <title> con el título (WCAG 2.4.2).
- * @returns {HTMLElement}  Expone update(), setContent(), setLoading(), focusMain(),
+ * @returns {HTMLElement}  Expone update(), setContent(), setLoading(), setUser(), focusMain(),
  *                         y las referencias main, topbar, sidebar.
  */
 export function DashboardLayout({
@@ -152,6 +152,7 @@ export function DashboardLayout({
   root.update = update;
   root.setContent = setContent;
   root.setLoading = setLoading;
+  root.setUser = (user) => topbar.setUser(user);
   root.focusMain = () => main.focus();
   root.main = main;
   root.topbar = topbar;

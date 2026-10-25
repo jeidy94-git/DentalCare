@@ -31,8 +31,8 @@ Sin internet, los municipios salen del respaldo `js/data/divipola.js` (import di
 
 ## Pantallas (fase A6)
 ```
-index.html · login.html · 403.html
-pages/admin/      dashboard, pacientes, citas, especialistas, servicios, pagos, reportes
+index.html · login.html · 403.html · perfil.html (todos los roles: datos de contacto y contraseña)
+pages/admin/      dashboard, pacientes, historia (?id=), citas, especialistas, servicios, pagos, reportes
 pages/asistente/  inicio, agenda, pacientes, pagos, novedades
 pages/doctor/     dashboard, agenda, pacientes, historia (?id=), novedades
 pages/paciente/   inicio, agendar, mis-citas, mi-historia, mis-pagos

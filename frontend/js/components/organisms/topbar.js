@@ -102,14 +102,19 @@ export function Topbar({ user, notifications = [], homeHref = '#', sidebarId, on
 
   /* ---------- Perfil ---------- */
   const roleLabel = ROLES[user?.rol]?.label ?? user?.cargo ?? '';
+  // Nodos que cambian si el usuario edita su perfil (setUser).
+  let avatar = Avatar({ name: user?.nombre ?? '', size: 'sm' });
+  const userName = h('span', { class: 'topbar__user-name' }, user?.nombre);
+  const panelName = h('p', { class: 'popover__title' }, user?.nombre);
+  const panelEmail = h('p', { class: 'popover__meta' }, user?.email);
   const profileBtn = h(
     'button',
     { type: 'button', class: 'topbar__profile', 'aria-label': `Menú de usuario: ${user?.nombre ?? ''}` },
-    Avatar({ name: user?.nombre ?? '', size: 'sm' }),
+    avatar,
     h(
       'span',
       { class: 'topbar__user', 'aria-hidden': 'true' },
-      h('span', { class: 'topbar__user-name' }, user?.nombre),
+      userName,
       h('span', { class: 'topbar__user-role' }, roleLabel),
     ),
     Icon({ name: 'chevron-down', size: 16, className: 'topbar__chevron' }),
@@ -124,8 +129,8 @@ export function Topbar({ user, notifications = [], homeHref = '#', sidebarId, on
     h(
       'div',
       { class: 'popover__user' },
-      h('p', { class: 'popover__title' }, user?.nombre),
-      h('p', { class: 'popover__meta' }, user?.email),
+      panelName,
+      panelEmail,
       h('span', { class: 'badge badge--primary badge--sm' }, roleLabel),
     ),
     h(
@@ -169,6 +174,16 @@ export function Topbar({ user, notifications = [], homeHref = '#', sidebarId, on
   root.setMenuExpanded = (expanded) => {
     menuBtn.setAttribute('aria-expanded', String(expanded));
     menuBtn.setAttribute('aria-label', expanded ? 'Cerrar menú de navegación' : 'Abrir menú de navegación');
+  };
+  /** Refleja los datos nuevos del usuario (p. ej. después de editar su perfil) sin recargar la página. */
+  root.setUser = (next) => {
+    const fresh = Avatar({ name: next?.nombre ?? '', size: 'sm' });
+    avatar.replaceWith(fresh);
+    avatar = fresh;
+    userName.textContent = next?.nombre ?? '';
+    panelName.textContent = next?.nombre ?? '';
+    panelEmail.textContent = next?.email ?? '';
+    profileBtn.setAttribute('aria-label', `Menú de usuario: ${next?.nombre ?? ''}`);
   };
   root.setNotifications = (list) => {
     items = list.map((n) => ({ ...n }));

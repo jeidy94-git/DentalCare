@@ -1,7 +1,7 @@
 // Flujos de la fase A6 de punta a punta, como los haría cada usuario:
 //  A recepción registra un paciente (documento repetido → error en el campo)   B el paciente solicita una cita
 //  C el paciente cancela   D recepción confirma   E el odontólogo registra una consulta
-//  F RN-01: otra odontóloga sin citas ve la ficha en solo lectura   G abono   H cerrar sesión
+//  F RN-01: otra odontóloga sin citas ve la ficha en solo lectura   G abono   I perfil y contraseña   H cerrar sesión
 // Requiere el servidor: node tests/e2e/server.mjs
 // Uso: node tests/e2e/flujos.test.mjs [ancho=1366]
 import { startBrowser, sleep } from './harness.mjs';
@@ -124,6 +124,30 @@ try {
   await t(`__t.click('button[aria-label^="Registrar abono"]')`); await sleep(300);
   await t(`__t.set('dialog[open] [name="monto_abonado"]', '1000') && __t.selectWhere('dialog[open] [name="id_metodo"]', () => true) && __t.submitDialog()`);
   check('G1 Abono registrado', await waitText('Abono registrado'));
+
+  /* I. El paciente edita su perfil y cambia la contraseña (perfil.html) */
+  await as('andres.galvis@gmail.com', 'AndresG2026*');
+  await t(`__t.click('.topbar__profile')`); await sleep(200);
+  await t(`__t.click('.popover__item', 'Mi perfil')`);
+  await sleep(600); await waitReady();
+  const ro = await t(`JSON.stringify({ path: location.pathname, doc: [...document.querySelectorAll('form.perfil-form input[readonly]')].map((i) => i.value),
+    disabled: __t.q('form.perfil-form button[type="submit"]').disabled })`);
+  check('I1 Perfil: documento y rol en solo lectura, guardar inactivo sin cambios', ro.includes('/perfil.html') && ro.includes('CC 1036000101') && ro.includes('Paciente') && ro.includes('"disabled":true'), ro);
+  await t(`__t.set('form.perfil-form [name="telefono"]', '123') && (__t.q('form.perfil-form').requestSubmit(), true)`); await sleep(200);
+  check('I2 Celular inválido → error junto al campo', await t(`!!__t.q('form.perfil-form [name="telefono"]').closest('.field--invalid') && document.body.innerText.includes('celular de 10 dígitos')`));
+  await t(`__t.set('form.perfil-form [name="telefono"]', '3015550000') && __t.set('form.perfil-form [name="email"]', 'andres.e2e@correo.com')`);
+  check('I3 Cambios sin guardar (data-state)', (await t(`__t.q('form.perfil-form').dataset.state`)) === 'dirty');
+  await t(`(__t.q('form.perfil-form').requestSubmit(), true)`);
+  check('I4 Perfil actualizado', await waitText('Perfil actualizado'));
+  check('I5 Topbar con el correo nuevo sin volver a ingresar', (await t(`__t.q('form.perfil-form').dataset.state + ' ' + __t.q('.popover__meta').textContent`)) === 'saved andres.e2e@correo.com');
+  await t(`__t.click('button', 'Cambiar contraseña')`); await sleep(300);
+  await t(`__t.set('dialog[open] [name="password_actual"]', 'AndresG2026*') && __t.set('dialog[open] [name="password_nueva"]', 'Nueva2026*') && __t.set('dialog[open] [name="password_confirmacion"]', 'Otra2026*') && __t.submitDialog()`);
+  await sleep(300);
+  check('I6 Contraseñas distintas → error en la confirmación', await t(`!!document.querySelector('dialog[open]') && document.querySelector('dialog[open]').innerText.includes('Las contraseñas no coinciden')`));
+  await t(`__t.set('dialog[open] [name="password_confirmacion"]', 'Nueva2026*') && __t.submitDialog()`);
+  check('I7 Contraseña actualizada', await waitText('Contraseña actualizada'));
+  await as('andres.e2e@correo.com', 'Nueva2026*');
+  check('I8 Ingresa con el correo y la contraseña nuevos', (await here()).startsWith('/pages/paciente/'), await here());
 
   /* H. Cerrar sesión desde la topbar → login */
   await t(`__t.click('.topbar__profile')`); await sleep(200);

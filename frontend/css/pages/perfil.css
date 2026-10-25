@@ -1,0 +1,50 @@
+/* Página: Mi perfil (perfil.html). Reutiliza .card y .form-grid; aquí solo lo propio de la página. */
+
+.perfil {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-4);
+  max-width: 880px;
+}
+
+.perfil__text {
+  margin-bottom: var(--space-4);
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+}
+
+.perfil-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+.perfil-form__footer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-3);
+}
+
+/* ---------- Estado del formulario (data-state lo cambia el JS: clean | dirty | saved) ---------- */
+.perfil-form__status {
+  margin-right: auto;
+  font-size: var(--text-sm);
+}
+
+.perfil-form__status-dirty,
+.perfil-form__status-saved {
+  display: none;
+}
+
+.perfil-form[data-state="dirty"] .perfil-form__status-dirty {
+  display: inline;
+  color: var(--color-warning-700);
+}
+
+.perfil-form[data-state="saved"] .perfil-form__status-saved {
+  display: inline;
+  color: var(--color-success-700);
+  font-weight: var(--font-medium);
+}

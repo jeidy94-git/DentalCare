@@ -21,7 +21,8 @@ import {
 /**
  * Servicio de historia clínica (RF-PAC-04/05, RN-01): antecedentes, alergias y consultas.
  *
- *   getByPaciente(idPaciente)   → historia + consultas (con fecha y odontólogo de cada cita)
+ *   getByPaciente(idPaciente)   → historia + consultas (con fecha y odontólogo de cada cita);
+ *                                 el PACIENTE solo la suya y sin notas internas (vistaPaciente)
  *   update(idPaciente, data)    → antecedentes / alergias / observaciones (RN-01)
  *   addConsulta(data)           → registra la atención de una cita y la marca COMPLETADA (RN-01)
  */
@@ -45,12 +46,27 @@ function consultasDe(db, idPaciente) {
     .sort((a, b) => b.fecha_cita.localeCompare(a.fecha_cita));
 }
 
+/**
+ * Lo que el PACIENTE recibe de su historia: alergias y el resumen de los tratamientos realizados.
+ * Antecedentes, observaciones y diagnósticos son notas internas del odontólogo: no salen del servicio
+ * (ocultarlos solo en la pantalla no los protegería).
+ */
+const CAMPOS_PACIENTE = ['id_historia', 'id_paciente', 'alergias', 'fecha_apertura'];
+const CAMPOS_CONSULTA_PACIENTE = ['id_consulta', 'id_cita', 'fecha_cita', 'id_especialista', 'especialista_nombre', 'motivo_consulta', 'procedimiento_realizado', 'prescripcion_medica'];
+
+const vistaPaciente = (historia, consultas) => ({
+  ...pick(historia, CAMPOS_PACIENTE),
+  consultas: consultas.map((q) => pick(q, CAMPOS_CONSULTA_PACIENTE)),
+});
+
 const mock = {
   getByPaciente: (idPaciente) =>
     mockRequest(({ db, user }) => {
       assertCanReadHistoria(user, idPaciente);
       findOr404(db.paciente, 'id_paciente', idPaciente, 'El paciente');
-      return { ...historiaDe(db, idPaciente), consultas: consultasDe(db, idPaciente) };
+      const historia = historiaDe(db, idPaciente);
+      const consultas = consultasDe(db, idPaciente);
+      return user.rol === 'PACIENTE' ? vistaPaciente(historia, consultas) : { ...historia, consultas };
     }),
 
   update: (idPaciente, data) =>

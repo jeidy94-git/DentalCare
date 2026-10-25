@@ -3,6 +3,7 @@
  *
  *  - Administrador y recepción (GESTIONAR_PACIENTES): registrar, editar y eliminar.
  *  - Odontólogo: consulta la lista y abre la ficha clínica (historia.html?id=…).
+ *  - Administrador y odontólogo: el nombre del paciente enlaza a su historia clínica (cada uno en su carpeta).
  */
 import { h } from '../core/dom.js';
 import { validators } from '../core/validators.js';
@@ -14,7 +15,7 @@ import { DataTable, openModalForm, patientQuickFields } from '../components/orga
 import { pacientesService, colombiaService } from '../services/index.js';
 import { createAppPage, loadInto } from './_shared/app-page.js';
 import { crumbs, fullName, runAction, withFieldErrors } from './_shared/ui.js';
-import { fichaUrl } from './_shared/citas.js';
+import { fichaUrl, pacienteLink, puedeVerFichas } from './_shared/citas.js';
 
 const FUENTE_DIVIPOLA = 'Lista oficial DIVIPOLA (DANE) consultada en datos.gov.co.';
 const FUENTE_LOCAL = 'Sin conexión con datos.gov.co: se usa la lista guardada en la aplicación.';
@@ -94,10 +95,12 @@ async function init() {
   if (!page) return;
   const { user, layout } = page;
   const gestiona = can(user, PERMISOS.GESTIONAR_PACIENTES);
-  const esOdontologo = user.rol === 'ESPECIALISTA';
+  const verFichas = puedeVerFichas(user);
 
   layout.update({
-    subtitle: gestiona ? 'Registro y datos de contacto de los pacientes del consultorio.' : 'Consulta los pacientes y abre su ficha clínica.',
+    subtitle: gestiona
+      ? `Registro y datos de contacto de los pacientes del consultorio.${verFichas ? ' Abre la historia clínica desde el nombre del paciente.' : ''}`
+      : 'Consulta los pacientes y abre su historia clínica desde el nombre.',
     breadcrumbs: crumbs(user, { label: 'Pacientes' }),
   });
 
@@ -145,7 +148,7 @@ async function init() {
         label: 'Paciente',
         sortable: true,
         value: (p) => `${p.apellidos} ${p.nombres}`,
-        render: (p) => h('span', { class: 'cell-person' }, Avatar({ name: fullName(p), size: 'sm' }), h('span', {}, fullName(p))),
+        render: (p) => h('span', { class: 'cell-person' }, Avatar({ name: fullName(p), size: 'sm' }), h('span', {}, pacienteLink(user, p.id_paciente, fullName(p)))),
       },
       { key: 'documento', label: 'Documento', value: (p) => `${p.tipo_documento} ${p.numero_documento}` },
       { key: 'telefono', label: 'Celular' },
@@ -155,7 +158,7 @@ async function init() {
     ],
     actions: (p) =>
       [
-        esOdontologo && { icon: 'file-text', label: 'Ver ficha clínica', onClick: () => location.assign(fichaUrl(p.id_paciente)) },
+        verFichas && { icon: 'file-text', label: 'Ver historia clínica', onClick: () => location.assign(fichaUrl(p.id_paciente, user.rol)) },
         gestiona && { icon: 'edit', label: 'Editar', onClick: () => editar(p) },
         gestiona && { icon: 'trash', label: 'Eliminar', variant: 'danger', onClick: () => eliminar(p) },
       ].filter(Boolean),
