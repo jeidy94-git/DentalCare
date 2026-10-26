@@ -30,6 +30,7 @@ function compare(a, b) {
  * @param {{placeholder?: string, label?: string, keys: Array<string|((row) => string)>}} [props.search]
  * @param {{label: string, key?: string, value?: (row) => string, options: Array<{value: string, label: string}>}} [props.filter]
  *        Filtros rápidos (chips) por un campo, normalmente el estado.
+ * @param {string} [props.initialFilter='ALL']          Chip activo al cargar (p. ej. el estado que llega en la URL).
  * @param {(row) => Array<{icon: string, label: string, onClick: (row) => void, variant?: string, hidden?: boolean}>} [props.actions]
  * @param {(row) => string} [props.rowLabel]             Texto que completa el nombre accesible de cada acción.
  * @param {Node[]} [props.toolbar]                       Botones extra a la derecha (ej. "Nuevo paciente").
@@ -48,12 +49,15 @@ export function DataTable({
   actions,
   rowLabel = () => '',
   toolbar = [],
+  initialFilter = 'ALL',
   initialSort = null,
   pageSize = 10,
   emptyMessage = 'No hay registros que coincidan con la búsqueda.',
   className,
 } = {}) {
-  const state = { rows: [...rows], term: '', filter: 'ALL', sort: initialSort, page: 1 };
+  // Un initialFilter que no es una de las opciones se ignora (p. ej. un estado inventado en la URL).
+  const filtroInicial = filter?.options.some((o) => o.value === initialFilter) ? initialFilter : 'ALL';
+  const state = { rows: [...rows], term: '', filter: filtroInicial, sort: initialSort, page: 1 };
   const captionId = uniqueId('dt-caption');
   const valueOf = (row, col) => (col.value ? col.value(row) : row[col.key]);
   const filterValue = (row) => String(filter.value ? filter.value(row) : row[filter.key]);

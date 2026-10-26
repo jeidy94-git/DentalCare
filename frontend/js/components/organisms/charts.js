@@ -12,6 +12,8 @@ import { Button, setButtonLabel } from '../atoms/index.js';
  *  - Etiquetas de valor selectivas (máximo y último) en columnas; en barras horizontales, valor en la punta.
  *  - Tooltip al pasar el mouse Y al enfocar con teclado (cada barra es enfocable).
  *  - Vista de tabla alternativa: ningún dato depende solo del gráfico.
+ *  - Detalle (drill-down): un dato con `href` vuelve su barra un enlace <a> de SVG nativo (clic, Enter,
+ *    abrir en otra pestaña) y su fila de la tabla también enlaza. El cursor lo pone el CSS (.chart__link).
  *  - Los textos se insertan con textContent (nunca innerHTML).
  */
 
@@ -51,7 +53,7 @@ function barPath(x, y, w, height) {
  * @param {object} props
  * @param {string} props.title
  * @param {string} [props.subtitle]
- * @param {Array<{label: string, value: number, fullLabel?: string}>} props.data
+ * @param {Array<{label: string, value: number, fullLabel?: string, href?: string}>} props.data
  * @param {'vertical'|'horizontal'} [props.orientation='vertical']
  * @param {string} [props.unit='']                 Ej. "citas".
  * @param {(v: number) => string} [props.format]   Formato del valor.
@@ -72,7 +74,7 @@ export function BarChart({ title, subtitle, data = [], orientation = 'vertical',
     { class: 'chart__table', hidden: true },
     h('caption', { class: 'u-visually-hidden' }, title),
     h('thead', {}, h('tr', {}, h('th', { scope: 'col' }, 'Categoría'), h('th', { scope: 'col', class: 'is-right' }, capitalize(unit || 'valor')))),
-    h('tbody', {}, data.map((d) => h('tr', {}, h('th', { scope: 'row' }, d.fullLabel ?? d.label), h('td', { class: 'is-right' }, format(d.value))))),
+    h('tbody', {}, data.map((d) => h('tr', {}, h('th', { scope: 'row' }, d.href ? h('a', { href: d.href, class: 'link' }, d.fullLabel ?? d.label) : d.fullLabel ?? d.label), h('td', { class: 'is-right' }, format(d.value))))),
   );
 
   const toggle = Button({
@@ -106,6 +108,23 @@ export function BarChart({ title, subtitle, data = [], orientation = 'vertical',
     activeBar?.classList.remove('is-active');
     activeBar = null;
     tooltip.hidden = true;
+  }
+
+  /**
+   * Zona sensible de una barra (más grande que la barra, para acertar fácil). Con `href` es un enlace nativo:
+   * recibe el foco y se activa con Enter; sin `href`, un rect enfocable que solo muestra el tooltip.
+   */
+  function hitArea(d, bar, x, y, rect) {
+    const hit = svg('rect', { ...rect, class: 'chart__hit' });
+    if (!d.href) {
+      for (const [k, v] of Object.entries({ tabindex: 0, role: 'img', 'aria-label': describe(d) })) hit.setAttribute(k, String(v));
+      bindHit(hit, d, bar, x, y);
+      return hit;
+    }
+    const link = svg('a', { href: d.href, class: 'chart__link', 'aria-label': `${describe(d)}. Ver estas citas` });
+    link.append(hit);
+    bindHit(link, d, bar, x, y);
+    return link;
   }
 
   function bindHit(hit, d, bar, x, y) {
@@ -146,9 +165,7 @@ export function BarChart({ title, subtitle, data = [], orientation = 'vertical',
       root.append(svg('text', { x: center, y: height - 10, class: 'chart__category', 'text-anchor': 'middle' }, d.label));
       if (labelled.has(i) && d.value > 0) root.append(svg('text', { x: center, y: y - 7, class: 'chart__value', 'text-anchor': 'middle' }, format(d.value)));
 
-      const hit = svg('rect', { x: cx0, y: m.top, width: band, height: innerH, class: 'chart__hit', tabindex: 0, role: 'img', 'aria-label': describe(d) });
-      bindHit(hit, d, bar, center, y - 12);
-      root.append(hit);
+      root.append(hitArea(d, bar, center, y - 12, { x: cx0, y: m.top, width: band, height: innerH }));
     });
     return root;
   }
@@ -173,9 +190,7 @@ export function BarChart({ title, subtitle, data = [], orientation = 'vertical',
       if (bar) root.append(bar);
       root.append(svg('text', { x: w + 8, y: barY + thickness - 3, class: 'chart__value' }, format(d.value)));
 
-      const hit = svg('rect', { x: 0, y: top, width, height: rowH, class: 'chart__hit', tabindex: 0, role: 'img', 'aria-label': describe(d) });
-      bindHit(hit, d, bar, Math.max(w / 2, 40), barY - 4);
-      root.append(hit);
+      root.append(hitArea(d, bar, Math.max(w / 2, 40), barY - 4, { x: 0, y: top, width, height: rowH }));
     });
     return root;
   }
@@ -202,7 +217,13 @@ export function BarChart({ title, subtitle, data = [], orientation = 'vertical',
     h(
       'div',
       { class: 'chart__header' },
-      h('div', {}, h('h3', { id: titleId, class: 'chart__title' }, title), subtitle && h('p', { class: 'chart__subtitle' }, subtitle)),
+      h(
+        'div',
+        {},
+        h('h3', { id: titleId, class: 'chart__title' }, title),
+        subtitle && h('p', { class: 'chart__subtitle' }, subtitle),
+        data.some((d) => d.href) && h('p', { class: 'chart__hint' }, 'Haz clic en una barra para ver esas citas.'),
+      ),
       toggle,
     ),
     plot,
@@ -222,8 +243,11 @@ export function BarChart({ title, subtitle, data = [], orientation = 'vertical',
  * @param {object[]} props.servicios
  * @param {number} [props.months=6]
  * @param {Date} [props.now]
+ * @param {(filtro: object) => string} [props.detalle]  URL del detalle de las citas de una barra. Recibe los
+ *        MISMOS criterios con que se contó la barra ({ desde, hasta, activas, id_servicio? }), así la lista
+ *        de destino muestra exactamente ese número de citas. Sin `detalle`, las barras no son enlaces.
  */
-export function DashboardCharts({ citas = [], servicios = [], months = 6, now = new Date(), className } = {}) {
+export function DashboardCharts({ citas = [], servicios = [], months = 6, now = new Date(), detalle, className } = {}) {
   const firstMonth = addMonths(startOfMonth(now), -(months - 1));
   const from = toISODate(firstMonth);
   const to = toISODate(new Date(now.getFullYear(), now.getMonth() + 1, 0));
@@ -233,7 +257,9 @@ export function DashboardCharts({ citas = [], servicios = [], months = 6, now = 
     const month = addMonths(firstMonth, i);
     const key = toISODate(month).slice(0, 7);
     const current = i === months - 1;
+    const ultimoDia = toISODate(new Date(month.getFullYear(), month.getMonth() + 1, 0));
     return {
+      href: detalle?.({ desde: toISODate(month), hasta: ultimoDia, activas: 1 }),
       label: formatDate(month, { month: 'short' }).replace('.', ''),
       fullLabel: `${capitalize(formatDate(month, { month: 'long', year: 'numeric' }))}${current ? ' (en curso)' : ''}`,
       value: active.filter((c) => c.fecha_hora.startsWith(key)).length,
@@ -243,7 +269,7 @@ export function DashboardCharts({ citas = [], servicios = [], months = 6, now = 
   const counts = new Map();
   for (const c of active) counts.set(c.id_servicio, (counts.get(c.id_servicio) ?? 0) + 1);
   const perService = servicios
-    .map((s) => ({ label: s.nombre_servicio, value: counts.get(s.id_servicio) ?? 0 }))
+    .map((s) => ({ label: s.nombre_servicio, value: counts.get(s.id_servicio) ?? 0, href: detalle?.({ id_servicio: s.id_servicio, desde: from, hasta: to, activas: 1 }) }))
     .sort((a, b) => b.value - a.value);
 
   return h(

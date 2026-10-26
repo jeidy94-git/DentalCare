@@ -102,6 +102,23 @@
   stroke-width: 2;
 }
 
+/* Barra con detalle (drill-down): enlace <a> de SVG que lleva a las citas de esa barra. */
+.chart__link {
+  cursor: pointer;
+  outline: none;
+}
+
+.chart__link:focus-visible .chart__hit {
+  stroke: var(--color-accent);
+  stroke-width: 2;
+}
+
+.chart__hint {
+  margin-top: 2px;
+  font-size: var(--text-xs);
+  color: var(--color-primary-700);
+}
+
 /* Ancla del tooltip: foreignObject de 1×1 movido con sus atributos x/y; el contenido se desborda visible. */
 .chart__tip-anchor {
   overflow: visible;

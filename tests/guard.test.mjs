@@ -111,6 +111,25 @@ const cases = [
   ['', home, 'vacío'],
 ];
 for (const [next, expected, label] of cases) check(`safeNext: ${label}`, safeNext(next, 'ADMINISTRADOR') === expected, safeNext(next, 'ADMINISTRADOR').slice(ROOT.length));
+/* ---------- Filtros de citas por URL (detalle desde las gráficas de Reportes) ---------- */
+const { filtroDeUrl, aplicarFiltro, citasUrl } = await imp('pages/_shared/citas.js');
+const url = citasUrl('ADMINISTRADOR', { id_servicio: 2, desde: '2026-05-01', hasta: '2026-05-31', activas: 1, vacio: undefined });
+check('citasUrl: lista de citas del rol con sus filtros', url === appUrl('pages/admin/citas.html?id_servicio=2&desde=2026-05-01&hasta=2026-05-31&activas=1'), url.slice(ROOT.length));
+check('citasUrl: cada rol abre SU página de citas', citasUrl('ESPECIALISTA', { estado: 'PROGRAMADA' }) === appUrl('pages/doctor/agenda.html?estado=PROGRAMADA'));
+const filtroOk = filtroDeUrl(new URL(url).search);
+check('filtroDeUrl: lee y convierte los filtros válidos', filtroOk?.id_servicio === 2 && filtroOk.desde === '2026-05-01' && filtroOk.hasta === '2026-05-31' && filtroOk.activas === true);
+check('filtroDeUrl: descarta ids, fechas y estados inválidos', filtroDeUrl('?id_servicio=2abc&id_especialista=0&estado=HACKEADA&desde=ayer&hasta=2026-13&activas=si') === null);
+check('filtroDeUrl: sin parámetros → null (sin filtro)', filtroDeUrl('') === null);
+const muestra = [
+  { id_cita: 1, id_servicio: 2, id_especialista: 1, estado_cita: 'COMPLETADA', fecha_hora: '2026-05-10 08:00:00' },
+  { id_cita: 2, id_servicio: 2, id_especialista: 1, estado_cita: 'CANCELADA', fecha_hora: '2026-05-11 08:00:00' },
+  { id_cita: 3, id_servicio: 3, id_especialista: 2, estado_cita: 'PROGRAMADA', fecha_hora: '2026-05-12 08:00:00' },
+  { id_cita: 4, id_servicio: 2, id_especialista: 2, estado_cita: 'PROGRAMADA', fecha_hora: '2026-06-01 08:00:00' },
+];
+check('aplicarFiltro: tratamiento + mes + sin canceladas', aplicarFiltro(muestra, filtroOk).map((c) => c.id_cita).join() === '1');
+check('aplicarFiltro: por odontólogo (el estado lo deja al chip)', aplicarFiltro(muestra, { id_especialista: 2, estado: 'COMPLETADA' }).map((c) => c.id_cita).join() === '3,4');
+check('aplicarFiltro: sin filtro devuelve todo', aplicarFiltro(muestra, null).length === 4);
+
 check('safeNext: perfil.html sirve a todos los roles', ['ADMINISTRADOR', 'RECEPCIONISTA', 'ESPECIALISTA', 'PACIENTE'].every((rol) => safeNext('perfil.html#seguridad', rol) === appUrl('perfil.html#seguridad')));
 
 reset();

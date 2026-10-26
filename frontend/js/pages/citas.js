@@ -4,19 +4,22 @@
  *   pages/asistente/agenda.html  → calendario + lista, agendar y confirmar solicitudes
  *   pages/doctor/agenda.html     → SU agenda; desde una cita abre la ficha del paciente
  *   Administrador y odontólogo abren la historia clínica desde el nombre del paciente o la acción de la fila.
+ *   Filtros por URL (detalle desde las gráficas de Reportes): ?id_servicio, id_especialista, estado, desde,
+ *   hasta y activas=1. Se validan (filtroDeUrl), abren la vista de lista y se anuncian con «Quitar filtros».
  *
  * Organismos: Calendar (vistas día/semana/mes/lista), DataTable (filtros por estado) y BookingWizard.
  */
 import { h } from '../core/dom.js';
 import { toISODate } from '../core/dates.js';
+import { formatDate } from '../core/format.js';
 import { can, PERMISOS } from '../core/permissions.js';
-import { Button } from '../components/atoms/index.js';
+import { Button, Link } from '../components/atoms/index.js';
 import { FormField, Tabs, toast } from '../components/molecules/index.js';
 import { Calendar, DataTable, BookingWizard, openModalForm } from '../components/organisms/index.js';
 import { citasService, especialistasService, pacientesService, serviciosService } from '../services/index.js';
 import { createAppPage, loadInto, errorMessage } from './_shared/app-page.js';
-import { card, crumbs, withFieldErrors } from './_shared/ui.js';
-import { CITA_FILTER, citaColumns, citaActions, citaSummary, allowedTransitions, applyTransition, transitionLabel, fichaUrl, puedeVerFichas } from './_shared/citas.js';
+import { card, crumbs, notice, withFieldErrors } from './_shared/ui.js';
+import { CITA_FILTER, citaColumns, citaActions, citaSummary, allowedTransitions, applyTransition, transitionLabel, fichaUrl, puedeVerFichas, filtroDeUrl, aplicarFiltro } from './_shared/citas.js';
 
 const CONFIG = {
   ADMINISTRADOR: { activeId: 'citas', title: 'Citas', subtitle: 'Todas las citas del consultorio.', tab: 'lista' },
@@ -53,13 +56,33 @@ async function init() {
   );
   if (!data) return;
 
+  const filtro = filtroDeUrl();
+  const visibles = () => aplicarFiltro(data.citas, filtro);
+
+  /** «Filtrado por: …» con lo que llegó en la URL, y el enlace para ver todas las citas. */
+  function avisoFiltro() {
+    const nombre = (campo, id, texto) => data.citas.find((c) => c[campo] === id)?.[texto] ?? `#${id}`;
+    const partes = [
+      filtro.id_servicio && `tratamiento ${nombre('id_servicio', filtro.id_servicio, 'servicio_nombre')}`,
+      filtro.id_especialista && `odontólogo ${nombre('id_especialista', filtro.id_especialista, 'especialista_nombre')}`,
+      filtro.estado && `estado «${CITA_FILTER.options.find((o) => o.value === filtro.estado).label}»`,
+      filtro.desde && filtro.hasta && `del ${formatDate(filtro.desde)} al ${formatDate(filtro.hasta)}`,
+      filtro.desde && !filtro.hasta && `desde el ${formatDate(filtro.desde)}`,
+      !filtro.desde && filtro.hasta && `hasta el ${formatDate(filtro.hasta)}`,
+      filtro.activas && 'sin canceladas',
+    ].filter(Boolean);
+    const aviso = notice(`Filtrado por ${partes.join(' · ')}.`, 'info', { role: 'status' });
+    aviso.append(Link({ href: location.pathname, label: 'Quitar filtros', size: 'sm' }));
+    return aviso;
+  }
+
   const especialistas = esOdontologo ? data.especialistas.filter((e) => e.id_especialista === user.id_especialista) : data.especialistas;
   const horarios = especialistas.flatMap((e) => e.horarios);
 
   async function reload() {
     data.citas = await citasService.list(filtroCitas);
-    table.setRows(data.citas);
-    calendar.setCitas(data.citas, data.pacientes);
+    table.setRows(visibles());
+    calendar.setCitas(visibles(), data.pacientes);
   }
 
   /** Al elegir una cita en el calendario: resumen + acciones permitidas para este rol. */
@@ -80,7 +103,7 @@ async function init() {
   const calendar = Calendar({
     especialistas,
     horarios,
-    citas: data.citas,
+    citas: visibles(),
     pacientes: data.pacientes,
     view: 'semana',
     especialistaId: esOdontologo ? user.id_especialista : 'ALL',
@@ -89,12 +112,13 @@ async function init() {
 
   const table = DataTable({
     caption: esOdontologo ? 'Mis citas' : 'Citas del consultorio',
-    rows: data.citas,
+    rows: visibles(),
     rowKey: 'id_cita',
     rowLabel: (c) => `cita de ${c.paciente_nombre}`,
     pageSize: 10,
     initialSort: { key: 'fecha', dir: 'desc' },
     filter: CITA_FILTER,
+    initialFilter: filtro?.estado,
     search: { label: 'Buscar cita', placeholder: 'Paciente, odontólogo o tratamiento…', keys: ['paciente_nombre', 'especialista_nombre', 'servicio_nombre', 'motivo'] },
     columns: citaColumns({ especialista: !esOdontologo, user }),
     actions: citaActions(user, reload),
@@ -105,7 +129,7 @@ async function init() {
   const mainView = () =>
     Tabs({
       ariaLabel: 'Vista de la agenda',
-      activeId: cfg.tab,
+      activeId: filtro ? 'lista' : cfg.tab, // el detalle de una gráfica es una lista
       tabs: [
         { id: 'calendario', label: 'Calendario', icon: 'calendar', content: calendar },
         // El contador son las solicitudes por confirmar: solo para quien puede confirmarlas.
@@ -115,7 +139,7 @@ async function init() {
 
   function showMain() {
     layout.update({ title: cfg.title, subtitle: cfg.subtitle, breadcrumbs: crumbs(user, { label: cfg.title }), actions: agendarBtn ? [agendarBtn] : [] });
-    layout.setContent(mainView());
+    layout.setContent(filtro && avisoFiltro(), mainView());
   }
 
   /** Agendamiento (BookingWizard) en la misma página: la ocupación se pide al abrirlo para que esté al día. */

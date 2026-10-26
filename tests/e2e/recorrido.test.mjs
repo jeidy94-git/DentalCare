@@ -155,6 +155,64 @@ try {
   await go('perfil.html');
   await sleep(600);
   check('Perfil sin sesión → login?next=perfil.html', (await here()) === '/login.html?next=perfil.html', await here());
+
+  // Reportes → detalle: cada barra lleva a la lista de citas con los MISMOS criterios, así que la lista
+  // debe mostrar exactamente el número que dice la barra.
+  await login('admin@dentalcare.com', 'Admin2026*');
+  const abrirReportes = async () => {
+    await go('pages/admin/reportes.html');
+    await waitReady();
+    await sleep(800); // las gráficas se dibujan con el ancho real (ResizeObserver)
+  };
+  await abrirReportes();
+  const barras = await evaluate(`[...document.querySelectorAll('.chart')].map((fig) => {
+    const link = [...fig.querySelectorAll('a.chart__link')].find((a) => !/: 0 citas/.test(a.getAttribute('aria-label')));
+    return link && { grafica: fig.querySelector('.chart__title').textContent, href: link.getAttribute('href'), etiqueta: link.getAttribute('aria-label'), cursor: getComputedStyle(link).cursor };
+  }).filter(Boolean)`);
+  check('Reportes: las 4 gráficas tienen barras con detalle y cursor de puntero', barras.length === 4 && barras.every((x) => x.cursor === 'pointer'), barras.map((x) => `${x.grafica}=${x.cursor}`).join(' · '));
+  for (const barra of barras) {
+    const esperado = Number(/: ([\d.]+) citas/.exec(barra.etiqueta)[1].replace(/\./g, ''));
+    await go(barra.href.slice(barra.href.indexOf('/pages/') + 1));
+    await waitReady();
+    await sleep(300);
+    const destino = await evaluate(`JSON.stringify({
+      total: Number(document.querySelector('.data-table__status')?.textContent.replace(/\\D/g, '')),
+      aviso: document.querySelector('[role="status"].detail-alert')?.textContent ?? '',
+      lista: document.querySelector('[role="tab"][aria-selected="true"]')?.textContent ?? '' })`);
+    const d = JSON.parse(destino);
+    check(`Detalle «${barra.grafica}»: la lista muestra las mismas ${esperado} citas de la barra`, d.total === esperado && d.aviso.includes('Filtrado por') && d.lista.includes('Lista'), `${barra.etiqueta.split('.')[0]} → ${d.total} · ${d.aviso.split('.')[0]}`);
+  }
+  // Clic REAL de mouse (no un evento sintético) sobre la primera barra con datos de "Citas por mes".
+  await abrirReportes();
+  // Desplazamiento INSTANTÁNEO: base.css pone scroll-behavior: smooth y en el navegador sin interfaz esa
+  // animación a veces no avanza; la barra quedaba fuera de pantalla y el clic caía en el fondo.
+  const puntoBarra = () =>
+    evaluate(`(async () => {
+      const a = [...document.querySelectorAll('.chart--vertical a.chart__link')].find((x) => !/: 0 citas/.test(x.getAttribute('aria-label')));
+      a.scrollIntoView({ block: 'center', behavior: 'instant' });
+      await new Promise((r) => setTimeout(r, 400));
+      const r = a.getBoundingClientRect();
+      return { x: r.left + r.width / 2, y: r.top + r.height / 2 };
+    })()`);
+  const esDetalleMes = (ruta) => /^\/pages\/admin\/citas\.html\?desde=\d{4}-\d{2}-01&hasta=\d{4}-\d{2}-\d{2}&activas=1$/.test(ruta);
+  const esperarCitas = async () => {
+    for (let i = 0; i < 40 && !(await here()).startsWith('/pages/admin/citas.html?'); i++) await sleep(100);
+    return here();
+  };
+  // (El toque táctil se verificó a mano a 390 px: Input.dispatchTouchEvent se cuelga en este Edge sin interfaz.
+  //  La barra es un <a> nativo: el navegador lo activa con clic, toque o Enter sin código propio.)
+  const punto = await puntoBarra();
+  for (const type of ['mouseMoved', 'mousePressed', 'mouseReleased']) await b.send('Input.dispatchMouseEvent', { type, x: punto.x, y: punto.y, button: 'left', clickCount: 1 });
+  const ruta = await esperarCitas();
+  check('Clic con el mouse en una barra → citas filtradas por ese mes', esDetalleMes(ruta), ruta);
+  await waitReady();
+  await evaluate(`[...document.querySelectorAll('a')].find((a) => a.textContent.includes('Quitar filtros')).click()`);
+  for (let i = 0; i < 40 && (await here()) !== '/pages/admin/citas.html'; i++) await sleep(100);
+  await waitReady();
+  check('«Quitar filtros» vuelve a todas las citas, sin aviso', (await here()) === '/pages/admin/citas.html' && !(await evaluate(`!!document.querySelector('[role="status"].detail-alert')`)), await here());
+  await go('pages/admin/citas.html?id_servicio=abc&estado=HACKEADA&desde=ayer');
+  await waitReady();
+  check('Filtros inválidos en la URL se ignoran (sin aviso, sin errores)', !(await evaluate(`!!document.querySelector('[role="status"].detail-alert')`)) && (await evaluate(`!!document.querySelector('h1')`)));
 } catch (error) {
   check('EXCEPCIÓN', false, error.stack);
 }

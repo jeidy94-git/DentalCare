@@ -26,6 +26,48 @@ export const CITA_FILTER = {
   ],
 };
 
+/* ---------- Filtros por URL: detalle (drill-down) desde las gráficas de Reportes ---------- */
+
+const CITAS_POR_ROL = { ADMINISTRADOR: 'pages/admin/citas.html', RECEPCIONISTA: 'pages/asistente/agenda.html', ESPECIALISTA: 'pages/doctor/agenda.html' };
+const FECHA_ISO = /^\d{4}-\d{2}-\d{2}$/;
+
+/** Lista de citas del rol con filtros: citasUrl('ADMINISTRADOR', { id_servicio: 2, desde: '2026-05-01' }). */
+export function citasUrl(rol, filtro = {}) {
+  const query = new URLSearchParams(Object.entries(filtro).filter(([, v]) => v !== undefined && v !== null && v !== '').map(([k, v]) => [k, String(v)])).toString();
+  return appUrl(`${CITAS_POR_ROL[rol] ?? CITAS_POR_ROL.ADMINISTRADOR}${query ? `?${query}` : ''}`);
+}
+
+/**
+ * Lee y VALIDA los filtros de la URL: ?id_servicio=2&id_especialista=1&estado=COMPLETADA&desde=…&hasta=…&activas=1.
+ * La URL la puede escribir cualquiera: un id que no es número, una fecha sin forma AAAA-MM-DD o un estado
+ * que no existe se descartan en silencio (no rompen la página ni llegan a los filtros).
+ * @returns {object|null} los filtros válidos, o null si no hay ninguno.
+ */
+export function filtroDeUrl(search = globalThis.location.search) {
+  const params = new URLSearchParams(search);
+  const id = (k) => (/^[1-9]\d{0,8}$/.test(params.get(k) ?? '') ? Number(params.get(k)) : undefined);
+  const fecha = (k) => (FECHA_ISO.test(params.get(k) ?? '') ? params.get(k) : undefined);
+  const estado = CITA_FILTER.options.some((o) => o.value === params.get('estado')) ? params.get('estado') : undefined;
+  const filtro = { id_servicio: id('id_servicio'), id_especialista: id('id_especialista'), estado, desde: fecha('desde'), hasta: fecha('hasta'), activas: params.get('activas') === '1' || undefined };
+  const validos = Object.fromEntries(Object.entries(filtro).filter(([, v]) => v !== undefined));
+  return Object.keys(validos).length ? validos : null;
+}
+
+/** Aplica los filtros de la URL a una lista de citas, salvo el estado: ese lo maneja el chip de la tabla. */
+export function aplicarFiltro(citas, f) {
+  if (!f) return citas;
+  return citas.filter((c) => {
+    const dia = c.fecha_hora.slice(0, 10);
+    return (
+      (!f.id_servicio || c.id_servicio === f.id_servicio) &&
+      (!f.id_especialista || c.id_especialista === f.id_especialista) &&
+      (!f.desde || dia >= f.desde) &&
+      (!f.hasta || dia <= f.hasta) &&
+      (!f.activas || c.estado_cita !== 'CANCELADA')
+    );
+  });
+}
+
 /**
  * Ficha clínica de otro paciente, por rol. Cada rol la abre desde SU carpeta porque el guard autoriza por carpeta;
  * el paciente no está aquí: solo ve la suya en pages/paciente/mi-historia.html.
