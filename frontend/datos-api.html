@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Datos de la API · DentalCare</title>
+    <meta name="description" content="Pacientes y servicios leídos de la API REST (MySQL dentalcare_bd)." />
+    <meta name="robots" content="noindex" />
+    <link rel="icon" href="./favicon.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="./css/main.css" />
+    <style>
+      .api-demo { max-width: 1100px; margin: 0 auto; padding: var(--space-6) var(--space-4); display: grid; gap: var(--space-6); }
+      .api-demo__login { display: flex; flex-wrap: wrap; gap: var(--space-3); align-items: flex-end; }
+      .api-demo__login label { display: grid; gap: var(--space-1); font-size: var(--text-sm); }
+      .api-demo__msg { color: var(--color-text-muted); }
+      .api-demo__msg.is-error { color: var(--color-danger-600); }
+    </style>
+    <script type="module" src="./js/pages/datos-api.js"></script>
+  </head>
+  <body>
+    <main class="api-demo">
+      <header>
+        <h1>Datos de la API</h1>
+        <p class="api-demo__msg">GET /api/pacientes y GET /api/servicios desde MySQL <code>dentalcare_bd</code>.</p>
+      </header>
+
+      <form class="api-demo__login" id="login" hidden>
+        <label>Correo <input class="input" name="email" type="email" value="admin@dentalcare.com" required autocomplete="username" /></label>
+        <label>Contraseña <input class="input" name="password" type="password" required autocomplete="current-password" /></label>
+        <button class="btn btn--primary" type="submit">Ingresar y cargar</button>
+      </form>
+
+      <p class="api-demo__msg" id="estado" role="status">Cargando…</p>
+
+      <section class="data-table">
+        <h2>Pacientes <span class="data-table__status" id="total-pacientes"></span></h2>
+        <div class="data-table__scroll">
+          <table class="data-table__table">
+            <thead><tr><th>ID</th><th>Documento</th><th>Nombre</th><th>Nacimiento</th><th>Teléfono</th><th>Correo</th><th>EPS</th></tr></thead>
+            <tbody id="tabla-pacientes"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="data-table">
+        <h2>Servicios <span class="data-table__status" id="total-servicios"></span></h2>
+        <div class="data-table__scroll">
+          <table class="data-table__table">
+            <thead><tr><th>Código</th><th>Nombre</th><th>Descripción</th><th class="is-right">Precio base</th><th>Estado</th></tr></thead>
+            <tbody id="tabla-servicios"></tbody>
+          </table>
+        </div>
+      </section>
+    </main>
+    <noscript><p class="noscript">DentalCare necesita JavaScript activado para funcionar.</p></noscript>
+  </body>
+</html>

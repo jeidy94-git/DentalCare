@@ -1,0 +1,179 @@
+{
+  "info": {
+    "name": "DentalCare API",
+    "description": "Pruebas de GET /api/pacientes y GET /api/servicios contra la base local dentalcare_bd.\n\nAntes de importar: cd backend && npm start (puerto 3000).\n\nLas dos rutas exigen JWT. El script de pre-petición de la colección inicia sesión con las variables `email` y `password` (cuenta de demostración del administrador) y guarda el token en `token`; si ya hay uno, lo reutiliza. Si el token vence, bórralo de las variables y vuelve a ejecutar.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{token}}",
+        "type": "string"
+      }
+    ]
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:3000/api"
+    },
+    {
+      "key": "email",
+      "value": "admin@dentalcare.com"
+    },
+    {
+      "key": "password",
+      "value": "Admin2026*"
+    },
+    {
+      "key": "token",
+      "value": ""
+    }
+  ],
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "// Login automático: obtiene el JWT una sola vez y lo guarda en la variable de colección `token`.",
+          "if (!pm.collectionVariables.get('token')) {",
+          "  pm.sendRequest({",
+          "    url: pm.collectionVariables.get('baseUrl') + '/auth/login',",
+          "    method: 'POST',",
+          "    header: { 'Content-Type': 'application/json' },",
+          "    body: {",
+          "      mode: 'raw',",
+          "      raw: JSON.stringify({ email: pm.collectionVariables.get('email'), password: pm.collectionVariables.get('password') })",
+          "    }",
+          "  }, (err, res) => {",
+          "    if (err) return console.error('No hay conexión con la API (¿npm start en backend/?):', err);",
+          "    if (res.code !== 200) return console.error('Login falló:', res.code, res.text());",
+          "    pm.collectionVariables.set('token', res.json().token);",
+          "  });",
+          "}"
+        ]
+      }
+    }
+  ],
+  "item": [
+    {
+      "name": "GET Pacientes",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/pacientes",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "pacientes"
+          ]
+        },
+        "description": "Lista los pacientes de la tabla `paciente` (datos dummy de database/dentalcare_bd_v2.sql). Admite ?q=texto."
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status 200', () => pm.response.to.have.status(200));",
+              "",
+              "pm.test('Content-Type JSON', () => pm.response.to.have.header('Content-Type', /application\\/json/));",
+              "",
+              "const data = pm.response.json();",
+              "",
+              "pm.test('La respuesta es un array no vacío', () => {",
+              "  pm.expect(data).to.be.an('array');",
+              "  pm.expect(data.length).to.be.above(0);",
+              "});",
+              "",
+              "pm.test('Cada paciente tiene los campos de la tabla paciente', () => {",
+              "  data.forEach((p) => {",
+              "    pm.expect(p).to.include.all.keys('id_paciente', 'tipo_documento', 'numero_documento', 'nombres', 'apellidos', 'fecha_nacimiento', 'genero', 'telefono', 'email', 'eps_aseguradora');",
+              "    pm.expect(p.id_paciente).to.be.a('number');",
+              "    pm.expect(p.nombres).to.be.a('string').and.not.empty;",
+              "    pm.expect(p.fecha_nacimiento).to.match(/^\\d{4}-\\d{2}-\\d{2}$/);",
+              "  });",
+              "});",
+              "",
+              "pm.test('Incluye el paciente dummy Andrés Galvis (CC 1036000101)', () => {",
+              "  const andres = data.find((p) => p.numero_documento === '1036000101');",
+              "  pm.expect(andres, 'paciente 1036000101').to.exist;",
+              "  pm.expect(andres.nombres).to.eql('Andrés');",
+              "  pm.expect(andres.apellidos).to.eql('Galvis');",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "GET Servicios",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/servicios",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "servicios"
+          ]
+        },
+        "description": "Lista el catálogo de la tabla `servicio`. Admite ?soloActivos=true."
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status 200', () => pm.response.to.have.status(200));",
+              "",
+              "pm.test('Content-Type JSON', () => pm.response.to.have.header('Content-Type', /application\\/json/));",
+              "",
+              "const data = pm.response.json();",
+              "",
+              "pm.test('La respuesta es un array no vacío', () => {",
+              "  pm.expect(data).to.be.an('array');",
+              "  pm.expect(data.length).to.be.above(0);",
+              "});",
+              "",
+              "pm.test('Cada servicio tiene los campos de la tabla servicio', () => {",
+              "  data.forEach((s) => {",
+              "    pm.expect(s).to.include.all.keys('id_servicio', 'codigo_servicio', 'nombre_servicio', 'descripcion', 'precio_base', 'estado');",
+              "    pm.expect(s.id_servicio).to.be.a('number');",
+              "    pm.expect(s.precio_base).to.be.a('number').and.above(0);",
+              "    pm.expect(s.estado).to.be.oneOf(['ACTIVO', 'INACTIVO']);",
+              "  });",
+              "});",
+              "",
+              "pm.test('Incluye el servicio dummy SERV-001 Valoración General', () => {",
+              "  const valoracion = data.find((s) => s.codigo_servicio === 'SERV-001');",
+              "  pm.expect(valoracion, 'servicio SERV-001').to.exist;",
+              "  pm.expect(valoracion.nombre_servicio).to.eql('Valoración General');",
+              "  pm.expect(valoracion.precio_base).to.eql(50000);",
+              "});"
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}
