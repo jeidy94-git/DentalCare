@@ -626,6 +626,31 @@ INSERT INTO `servicio` (`id_servicio`, `codigo_servicio`, `nombre_servicio`, `de
 (5,'SERV-005','Diseño de Sonrisa','Carillas estéticas',1500000.00,'ACTIVO');
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8 */;
+-- -----------------------------------------------------
+-- Table structure for table `consulta_servicio`
+-- -----------------------------------------------------
+DROP TABLE IF EXISTS `consulta_servicio`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8 */;
+CREATE TABLE `consulta_servicio` (
+  `id_consulta` int(11) NOT NULL,
+  `id_servicio` int(11) NOT NULL,
+  `cantidad` int(11) NOT NULL DEFAULT 1,
+  `observaciones` text DEFAULT NULL,
+  PRIMARY KEY (`id_consulta`,`id_servicio`),
+  KEY `fk_cs_servicio` (`id_servicio`),
+  CONSTRAINT `fk_cs_consulta` FOREIGN KEY (`id_consulta`) REFERENCES `consulta` (`id_consulta`) ON DELETE CASCADE,
+  CONSTRAINT `fk_cs_servicio` FOREIGN KEY (`id_servicio`) REFERENCES `servicio` (`id_servicio`) ON DELETE RESTRICT
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `consulta_servicio`
+--
+
+INSERT INTO `consulta_servicio` (`id_consulta`, `id_servicio`, `cantidad`, `observaciones`) VALUES
+(1, 1, 1, 'Valoración general inicial'),
+(1, 2, 1, 'Profilaxis y detartraje');
 CREATE TABLE `usuario` (
   `id_usuario` int(11) NOT NULL AUTO_INCREMENT,
   `id_rol` int(11) NOT NULL,
