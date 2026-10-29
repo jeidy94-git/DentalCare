@@ -1,0 +1,461 @@
+/* ==========================================================================
+   06 · RESPONSIVE  (móvil · tablet · desktop)
+
+   Estrategia mobile-first. Los archivos 02–05 describen la vista MÓVIL
+   (es la base); aquí se agregan solo los cambios para pantallas más grandes.
+
+     MÓVIL     < 768px     base, sin media query
+     TABLET    ≥ 768px     @media (min-width: 48em)
+     DESKTOP   ≥ 1024px    @media (min-width: 64em)
+
+   Rangos auxiliares:
+     solo móvil    (max-width: 47.99em)
+     móvil pequeño (max-width: 22.5em)    ≤ 360px
+
+   Los cortes se escriben en em (1em = 16px) y deben coincidir con el de
+   js/navigation.js (isDesktop = 64em).
+   ========================================================================== */
+
+
+/* ##########################################################################
+   MÓVIL  ·  < 768px
+   ########################################################################## */
+
+@media (max-width: 47.99em) {
+
+  /* Hero: los botones ocupan todo el ancho si no caben en fila */
+  .organism-hero__actions {
+    width: 100%;
+  }
+
+  .organism-hero__actions > .atom-button {
+    flex: 1 1 14rem;
+  }
+}
+
+/* Móvil + tablet: áreas táctiles amplias en el menú desplegable */
+@media (max-width: 63.99em) {
+  .atom-link--nav {
+    padding: var(--space-3) var(--space-4);
+    font-size: var(--text-base);
+  }
+}
+
+/* Móvil pequeño (≤ 360px) */
+@media (max-width: 22.5em) {
+  .organism-navbar__bar {
+    gap: var(--space-2);
+  }
+
+  .molecule-brand {
+    font-size: var(--text-base);
+  }
+
+  .organism-categories__grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .organism-categories__item--ortodoncia,
+  .organism-categories__item--pediatria,
+  .organism-categories__item--diagnostico {
+    grid-column: auto;
+  }
+
+  .organism-megamenu {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+
+/* ##########################################################################
+   TABLET  ·  ≥ 768px
+   ########################################################################## */
+
+@media (min-width: 48em) {
+
+  /* ---- Moléculas ---- */
+
+  .molecule-nav-actions__item--from-tablet {
+    display: block;
+  }
+
+  .molecule-section-heading--split {
+    grid-template-columns: 1fr auto;
+    gap: var(--space-6);
+  }
+
+  .molecule-trust-list {
+    grid-auto-flow: column;
+    gap: var(--space-5);
+  }
+
+  .molecule-stats {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .molecule-contact-form {
+    grid-template-columns: 1fr 1fr auto;
+  }
+
+  .molecule-contact-form__note {
+    grid-column: 1 / -1;
+  }
+
+  .molecule-contact-card__list {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  /* Diálogo: campos en dos columnas */
+  .organism-modal__body {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  /* ---- Organismos ---- */
+
+  .organism-hero__panel {
+    padding: var(--space-10);
+  }
+
+  /* Tratamientos: 2 columnas */
+  .organism-featured__grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--space-5);
+  }
+
+  /* Especialidades: mosaico de 4 columnas */
+  .organism-categories__grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    grid-template-areas:
+      "ortodoncia ortodoncia estetica implantes"
+      "ortodoncia ortodoncia endodoncia periodoncia"
+      "pediatria pediatria diagnostico diagnostico";
+    gap: var(--space-5);
+  }
+
+  .organism-categories__item--ortodoncia,
+  .organism-categories__item--pediatria,
+  .organism-categories__item--diagnostico {
+    grid-column: auto;
+  }
+
+  .organism-categories__item--ortodoncia  { grid-area: ortodoncia; }
+  .organism-categories__item--estetica    { grid-area: estetica; }
+  .organism-categories__item--implantes   { grid-area: implantes; }
+  .organism-categories__item--endodoncia  { grid-area: endodoncia; }
+  .organism-categories__item--periodoncia { grid-area: periodoncia; }
+  .organism-categories__item--pediatria   { grid-area: pediatria; }
+  .organism-categories__item--diagnostico { grid-area: diagnostico; }
+
+  .organism-testimonials__item {
+    width: min(44vw, 22rem);
+  }
+
+  .organism-footer__contact {
+    padding: var(--space-10);
+  }
+
+  .organism-megamenu {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .organism-footer__bottom {
+    grid-template-columns: auto 1fr auto;
+    align-items: center;
+    column-gap: var(--space-6);
+  }
+
+  .organism-footer__top-link {
+    justify-self: end;
+  }
+
+  .organism-footer__legal {
+    grid-column: 1 / -1;
+  }
+}
+
+/* Solo tablet: el panel del menú es un popover bajo el botón */
+@media (min-width: 48em) and (max-width: 63.99em) {
+  .organism-navbar__menu {
+    inset-inline: auto 0;
+    width: min(20rem, 100%);
+  }
+}
+
+
+/* ##########################################################################
+   DESKTOP  ·  ≥ 1024px
+   ########################################################################## */
+
+@media (min-width: 64em) {
+
+  /* ---- Moléculas ---- */
+
+  .molecule-nav-list {
+    display: flex;
+    gap: var(--space-1);
+  }
+
+  /* ---- Organismos ---- */
+
+  /* Barra: los enlaces van en línea y el botón de menú desaparece */
+  .organism-navbar__toggle {
+    display: none;
+  }
+
+  .organism-navbar__menu,
+  .js .organism-navbar__menu:not(.is-open) {
+    position: static;
+    display: block;
+    margin-inline: auto;
+    padding: 0;
+    border: 0;
+    background: none;
+    box-shadow: none;
+  }
+
+  .organism-navbar__bar > .molecule-nav-actions {
+    margin-inline-start: 0;
+  }
+
+  /* Hero: texto y panel de marca lado a lado */
+  .organism-hero__inner {
+    grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.9fr);
+    gap: var(--space-16);
+    min-height: min(46rem, 100svh);
+    padding-block: calc(var(--navbar-h) + var(--space-12)) var(--space-16);
+  }
+
+  /* Tratamientos: 4 columnas */
+  .organism-featured__grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .organism-testimonials__header {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr);
+    align-items: end;
+  }
+
+  .organism-testimonials__item {
+    width: 22rem;
+  }
+
+  /* Footer: formulario en 2 columnas y megamenú de 5 columnas junto a la tarjeta de contacto */
+  .organism-footer__contact {
+    grid-template-columns: 1fr 1.4fr;
+    align-items: center;
+    gap: var(--space-10);
+    padding: var(--space-12);
+  }
+
+  .organism-footer__mega {
+    grid-template-columns: minmax(0, 1fr) 20rem;
+    gap: var(--space-12);
+  }
+
+  .organism-megamenu {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: var(--space-6);
+  }
+
+  .molecule-contact-card {
+    align-self: start;
+  }
+
+  .molecule-contact-card__list {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+
+/* ##########################################################################
+   APLICACIÓN POR ROLES  ·  login.html, perfil.html y pages/**
+   Componentes de la app DentalCare (sin prefijo atómico heredado: .btn, .card,
+   .data-table, .dialog…). Comparten los tokens de 00-tokens.css con la landing.
+   ########################################################################## */
+
+/* ==========================================================================
+   DentalCare · 06-responsive.css
+   Media queries de adaptación a móviles y tablets, agrupadas por la capa del componente que ajustan.
+   Puntos de quiebre: 480 · 640 · 768 · 900 · 960 · 1024 · 1200 px (mobile first: min-width; algunos
+   ajustes puntuales usan max-width).
+   ========================================================================== */
+
+/* ---------- tokens (00-tokens.css) ---------- */
+
+@media (min-width: 768px) {
+  :root {
+    --layout-gutter: var(--space-6);
+  }
+}
+
+/* ---------- form-field (03-molecules.css) ---------- */
+
+@media (min-width: 640px) {
+  .form-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .form-grid__full { grid-column: 1 / -1; }
+}
+
+/* ---------- feedback (03-molecules.css) ---------- */
+
+@media (max-width: 639px) {
+  .toast-region {
+    top: var(--space-4);
+    bottom: auto;
+    left: var(--space-4);
+    right: var(--space-4);
+    width: auto;
+  }
+}
+
+@media (max-width: 479px) {
+  .dialog__panel {
+    grid-template-columns: 1fr;
+    justify-items: start;
+  }
+
+  .dialog__actions {
+    flex-direction: column-reverse;
+    width: 100%;
+  }
+
+  .dialog__actions .btn {
+    width: 100%;
+  }
+}
+
+/* ---------- topbar (04-organisms.css) ---------- */
+
+@media (min-width: 900px) {
+  .topbar__date { display: inline-flex; }
+}
+
+@media (min-width: 1024px) {
+  .topbar__menu-toggle { display: none; }
+}
+
+@media (min-width: 640px) {
+  .topbar__user { display: flex; }
+}
+
+/* ---------- sidebar (04-organisms.css) ---------- */
+
+@media (min-width: 1024px) {
+  .sidebar {
+    position: sticky;
+    top: 0;
+    height: 100vh;
+    transform: none;
+    visibility: visible;
+    transition: none;
+    box-shadow: none;
+  }
+
+  .sidebar-overlay,
+  .sidebar__close {
+    display: none;
+  }
+}
+
+/* ---------- modal-form (04-organisms.css) ---------- */
+
+@media (max-width: 479px) {
+  .modal-form__footer {
+    flex-direction: column-reverse;
+  }
+
+  .modal-form__footer .btn {
+    width: 100%;
+  }
+}
+
+/* ---------- calendar (04-organisms.css) ---------- */
+
+@media (min-width: 900px) {
+  .calendar__day--multi { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+
+@media (max-width: 639px) {
+  .calendar__month-cell { min-height: 52px; padding: var(--space-1); }
+  .calendar__month-count { font-size: 0; padding: 0; width: 8px; height: 8px; background: var(--color-primary-600); }
+}
+
+@media (min-width: 768px) {
+  .calendar__list-item { grid-template-columns: 3.5rem minmax(0, 1fr) 12rem auto; }
+  .calendar__list-doctor { display: block; }
+}
+
+/* ---------- charts (04-organisms.css) ---------- */
+
+@media (min-width: 1024px) {
+  .dashboard-charts { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+/* ---------- booking-wizard (04-organisms.css) ---------- */
+
+@media (max-width: 639px) {
+  .wizard__step:not(.is-current) .wizard__step-label { display: none; }
+  .wizard__step { flex: 0 0 auto; }
+  .wizard__step.is-current { flex: 1; }
+}
+
+/* ---------- app-shell (05-templates.css) ---------- */
+
+@media (min-width: 1024px) {
+  .app-shell .topbar__brand { display: none; }
+}
+
+@media (min-width: 1200px) {
+  .page-columns { grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); }
+}
+
+/* ---------- auth-layout (05-templates.css) ---------- */
+
+@media (min-width: 960px) {
+  .auth { grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); }
+}
+
+@media (min-width: 960px) {
+  .auth__brand { display: flex; }
+}
+
+@media (min-width: 640px) {
+  .auth__card { padding: var(--space-10) var(--space-8); }
+}
+
+@media (min-width: 960px) {
+  .auth__home { display: none; }
+}
+
+/* ---------- detail-layout (05-templates.css) ---------- */
+
+@media (max-width: 639px) {
+  .detail__header { padding: var(--space-5) var(--space-4); }
+  .detail__main { padding: var(--space-1) var(--space-4) var(--space-4); }
+}
+
+/* ---------- styleguide (05-templates.css) ---------- */
+
+@media (min-width: 768px) {
+  .sg-grid-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .sg-grid-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+
+@media (min-width: 960px) {
+  .sg-grid-form { grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); }
+}
+
+@media (min-width: 640px) {
+  .sg-form--2col { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .sg-form__full { grid-column: 1 / -1; }
+}
+
+@media (min-width: 768px) {
+  .sg-tooth-lab { grid-template-columns: auto minmax(0, 1fr); align-items: start; }
+}
+
+/* ---------- bd (05-templates.css) ---------- */
+
+@media (max-width: 760px) {
+  .bd { grid-template-columns: minmax(0, 1fr); }
+  .bd-nav { position: static; max-height: none; border-right: 0; border-bottom: var(--border-width) solid var(--color-border-strong); }
+}

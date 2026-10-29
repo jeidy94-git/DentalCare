@@ -1,0 +1,981 @@
+<!doctype html>
+<html lang="es-CO">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <meta name="theme-color" content="#0f766e">
+  <title>DentalCare — Centro odontológico</title>
+  <meta name="description" content="DentalCare: ortodoncia, estética dental, implantes y odontología general con especialistas certificados. Agenda tu valoración inicial sin costo.">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%230F766E'/%3E%3Cpath d='M11.5 8c-2.7 0-4.5 2.1-4.5 5 0 2.4 1 4 1.6 6.2.6 2.3.9 4.8 2.4 4.8 1.6 0 1.6-3.8 2.6-5.4.4-.7.8-.9 1.4-.9s1 .2 1.4.9c1 1.6 1 5.4 2.6 5.4 1.5 0 1.8-2.5 2.4-4.8.6-2.2 1.6-3.8 1.6-6.2 0-2.9-1.8-5-4.5-5-1.6 0-2.4.8-3.5.8S13.1 8 11.5 8z' fill='none' stroke='%23fff' stroke-width='1.8' stroke-linejoin='round'/%3E%3C/svg%3E">
+
+  <!-- Permite que el CSS distinga "con JS" / "sin JS" antes del primer pintado -->
+  <script>document.documentElement.classList.add('js');</script>
+
+  <!-- Un archivo CSS por nivel de Atomic Design -->
+  <link rel="stylesheet" href="css/00-tokens.css">
+  <link rel="stylesheet" href="css/01-base.css">
+  <link rel="stylesheet" href="css/02-atoms.css">
+  <link rel="stylesheet" href="css/03-molecules.css">
+  <link rel="stylesheet" href="css/04-organisms.css">
+  <link rel="stylesheet" href="css/05-templates.css">
+  <link rel="stylesheet" href="css/06-responsive.css">
+
+  <script src="js/navigation.js" defer></script>
+</head>
+
+<!--
+  PROPUESTA VISUAL · todos los datos (tratamientos, precios, especialistas,
+  sedes, pacientes y cifras) son ficticios. Las personas mencionadas no existen.
+
+  NOMBRAMIENTO DE SELECTORES (Atomic Design + BEM)
+    atom-*       → unidad mínima (botón, ícono, insignia, campo, precio…)
+    molecule-*   → grupo de átomos con una función (tarjeta de tratamiento, tabla…)
+    organism-*   → sección completa formada por moléculas (hero, footer, diálogo…)
+    template-*   → maquetación y espaciado de la página
+    page-*       → la página con su contenido real
+    __elemento   → parte interna de un bloque
+    --variante   → modificador de un bloque
+-->
+<body class="page-landing">
+
+  <a class="atom-skip-link" href="#contenido">Saltar al contenido</a>
+
+  <!-- ==========================================================
+       SPRITE SVG · íconos de línea reutilizables (<use>)
+       ========================================================== -->
+  <svg class="atom-sprite" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
+    <!-- Interfaz -->
+    <symbol id="icon-menu" viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16"/></symbol>
+    <symbol id="icon-close" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></symbol>
+    <symbol id="icon-arrow-right" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></symbol>
+    <symbol id="icon-arrow-left" viewBox="0 0 24 24"><path d="M19 12H5M11 6l-6 6 6 6"/></symbol>
+    <symbol id="icon-arrow-up" viewBox="0 0 24 24"><path d="M12 19V5M6 11l6-6 6 6"/></symbol>
+    <symbol id="icon-check" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></symbol>
+    <symbol id="icon-check-circle" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="m8.5 12 2.5 2.5 4.5-5"/></symbol>
+    <symbol id="icon-star" viewBox="0 0 24 24"><path d="m12 2.8 2.7 5.8 6.3.7-4.7 4.3 1.3 6.2L12 16.7l-5.6 3.1 1.3-6.2L3 9.3l6.3-.7z"/></symbol>
+    <symbol id="icon-phone" viewBox="0 0 24 24"><path d="M5 3.5h3.5l2 5-2.5 1.6a11 11 0 0 0 5.9 5.9l1.6-2.5 5 2V19a2 2 0 0 1-2 2A17.5 17.5 0 0 1 3 5.5a2 2 0 0 1 2-2Z"/></symbol>
+    <symbol id="icon-calendar" viewBox="0 0 24 24"><rect x="3.5" y="5" width="17" height="15.5" rx="2"/><path d="M3.5 10h17M8 3v4M16 3v4"/></symbol>
+    <symbol id="icon-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></symbol>
+    <symbol id="icon-pin" viewBox="0 0 24 24"><path d="M12 21s-7-6.2-7-11.5a7 7 0 0 1 14 0C19 14.8 12 21 12 21Z"/><circle cx="12" cy="9.5" r="2.5"/></symbol>
+    <symbol id="icon-mail" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3.5 7 8.5 6 8.5-6"/></symbol>
+    <symbol id="icon-chat" viewBox="0 0 24 24"><path d="M4 20.5 5.3 16.6A8.5 8.5 0 1 1 8.4 19.3Z"/></symbol>
+    <symbol id="icon-shield" viewBox="0 0 24 24"><path d="M12 3 4.5 6v5.5c0 4.6 3.2 8.4 7.5 9.5 4.3-1.1 7.5-4.9 7.5-9.5V6Z"/><path d="m9 12 2 2 4-4"/></symbol>
+    <symbol id="icon-users" viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.6-3.4 3.3-5.5 6.5-5.5s5.9 2.1 6.5 5.5"/><path d="M16 4.7a3.5 3.5 0 0 1 0 6.6M18 14.8c1.9.7 3.2 2.5 3.5 5.2"/></symbol>
+    <symbol id="icon-award" viewBox="0 0 24 24"><circle cx="12" cy="9" r="6"/><path d="M8.5 13.9 7 21l5-2.5 5 2.5-1.5-7.1"/></symbol>
+    <symbol id="icon-card" viewBox="0 0 24 24"><rect x="2.5" y="5" width="19" height="14" rx="2"/><path d="M2.5 10h19M6.5 15h3"/></symbol>
+
+    <!-- Odontología (mismo trazo que los íconos de interfaz) -->
+    <symbol id="icon-tooth" viewBox="0 0 24 24"><path d="M7.5 3C4.9 3 3.5 5.2 3.5 8c0 2.6 1.1 4.3 1.7 6.6.6 2.4.9 6.4 2.6 6.4 1.6 0 1.7-3.9 2.7-5.6.4-.7.9-.9 1.5-.9s1.1.2 1.5.9c1 1.7 1.1 5.6 2.7 5.6 1.7 0 2-4 2.6-6.4.6-2.3 1.7-4 1.7-6.6 0-2.8-1.4-5-4-5-1.9 0-2.7 1-4.5 1S9.4 3 7.5 3Z"/></symbol>
+    <symbol id="icon-braces" viewBox="0 0 24 24"><path d="M7.5 3C4.9 3 3.5 5.2 3.5 8c0 2.6 1.1 4.3 1.7 6.6.6 2.4.9 6.4 2.6 6.4 1.6 0 1.7-3.9 2.7-5.6.4-.7.9-.9 1.5-.9s1.1.2 1.5.9c1 1.7 1.1 5.6 2.7 5.6 1.7 0 2-4 2.6-6.4.6-2.3 1.7-4 1.7-6.6 0-2.8-1.4-5-4-5-1.9 0-2.7 1-4.5 1S9.4 3 7.5 3Z"/><path d="M1.5 10h21"/><rect x="9.5" y="8" width="5" height="4" rx="1"/></symbol>
+    <symbol id="icon-aligner" viewBox="0 0 24 24"><path d="M4 4c0 10 3 16 8 16s8-6 8-16"/><path d="M8.5 4c0 7 1.3 11 3.5 11s3.5-4 3.5-11"/><path d="M4 4h4.5M15.5 4H20"/></symbol>
+    <symbol id="icon-smile" viewBox="0 0 24 24"><path d="M2.5 10.5C5.5 7.5 9 7.5 12 9c3-1.5 6.5-1.5 9.5 1.5-2.5 5.5-6 8-9.5 8s-7-2.5-9.5-8Z"/><path d="M6 12c3.5 1.6 8.5 1.6 12 0"/></symbol>
+    <symbol id="icon-implant" viewBox="0 0 24 24"><path d="M8 2.5c-2 0-3 1.4-3 3.4S6 9.5 6.5 10.5h11c.5-1 1.5-2.6 1.5-4.6s-1-3.4-3-3.4c-1.6 0-2.4.8-4 .8s-2.4-.8-4-.8Z"/><path d="M9 10.5V13h6v-2.5"/><path d="M10 13l.7 8.5h2.6L14 13M10.3 16h3.4M10.6 19h2.8"/></symbol>
+    <symbol id="icon-whitening" viewBox="0 0 24 24"><g transform="translate(0 3) scale(.85)"><path vector-effect="non-scaling-stroke" d="M7.5 3C4.9 3 3.5 5.2 3.5 8c0 2.6 1.1 4.3 1.7 6.6.6 2.4.9 6.4 2.6 6.4 1.6 0 1.7-3.9 2.7-5.6.4-.7.9-.9 1.5-.9s1.1.2 1.5.9c1 1.7 1.1 5.6 2.7 5.6 1.7 0 2-4 2.6-6.4.6-2.3 1.7-4 1.7-6.6 0-2.8-1.4-5-4-5-1.9 0-2.7 1-4.5 1S9.4 3 7.5 3Z"/></g><path d="M20 1.5v4M18 3.5h4"/></symbol>
+    <symbol id="icon-root" viewBox="0 0 24 24"><path d="M7.5 3C4.9 3 3.5 5.2 3.5 8c0 2.6 1.1 4.3 1.7 6.6.6 2.4.9 6.4 2.6 6.4 1.6 0 1.7-3.9 2.7-5.6.4-.7.9-.9 1.5-.9s1.1.2 1.5.9c1 1.7 1.1 5.6 2.7 5.6 1.7 0 2-4 2.6-6.4.6-2.3 1.7-4 1.7-6.6 0-2.8-1.4-5-4-5-1.9 0-2.7 1-4.5 1S9.4 3 7.5 3Z"/><path d="M10 8.5 9 16.5M14 8.5l1 8"/></symbol>
+    <symbol id="icon-gum" viewBox="0 0 24 24"><path d="M7.5 3C4.9 3 3.5 5.2 3.5 8c0 2.6 1.1 4.3 1.7 6.6.6 2.4.9 6.4 2.6 6.4 1.6 0 1.7-3.9 2.7-5.6.4-.7.9-.9 1.5-.9s1.1.2 1.5.9c1 1.7 1.1 5.6 2.7 5.6 1.7 0 2-4 2.6-6.4.6-2.3 1.7-4 1.7-6.6 0-2.8-1.4-5-4-5-1.9 0-2.7 1-4.5 1S9.4 3 7.5 3Z"/><path d="M1.5 12.5c3.5-2 7-2 10.5 0s7 2 10.5 0"/></symbol>
+    <symbol id="icon-brush" viewBox="0 0 24 24"><path d="m3 21 9.5-9.5"/><path d="m11 8 5 5 5.5-5.5-5-5Z"/><path d="M14 10.5l2-2M16.5 13l2-2M13.5 5.5l2-2"/></symbol>
+    <symbol id="icon-child" viewBox="0 0 24 24"><path d="M7.5 3C4.9 3 3.5 5.2 3.5 8c0 2.6 1.1 4.3 1.7 6.6.6 2.4.9 6.4 2.6 6.4 1.6 0 1.7-3.9 2.7-5.6.4-.7.9-.9 1.5-.9s1.1.2 1.5.9c1 1.7 1.1 5.6 2.7 5.6 1.7 0 2-4 2.6-6.4.6-2.3 1.7-4 1.7-6.6 0-2.8-1.4-5-4-5-1.9 0-2.7 1-4.5 1S9.4 3 7.5 3Z"/><path d="M9.5 8.2v.1M14.5 8.2v.1M10 11c1.2 1 2.8 1 4 0"/></symbol>
+    <symbol id="icon-scan" viewBox="0 0 24 24"><path d="M3 7.5V5a2 2 0 0 1 2-2h2.5M16.5 3H19a2 2 0 0 1 2 2v2.5M21 16.5V19a2 2 0 0 1-2 2h-2.5M7.5 21H5a2 2 0 0 1-2-2v-2.5"/><g transform="translate(6 6) scale(.5)"><path vector-effect="non-scaling-stroke" d="M7.5 3C4.9 3 3.5 5.2 3.5 8c0 2.6 1.1 4.3 1.7 6.6.6 2.4.9 6.4 2.6 6.4 1.6 0 1.7-3.9 2.7-5.6.4-.7.9-.9 1.5-.9s1.1.2 1.5.9c1 1.7 1.1 5.6 2.7 5.6 1.7 0 2-4 2.6-6.4.6-2.3 1.7-4 1.7-6.6 0-2.8-1.4-5-4-5-1.9 0-2.7 1-4.5 1S9.4 3 7.5 3Z"/></g></symbol>
+  </svg>
+
+  <div class="template-landing">
+
+    <!-- ==========================================================
+         CONTENEDOR 1 · HERO (incluye la barra de navegación)
+         ========================================================== -->
+    <header class="organism-hero" id="inicio">
+
+      <nav class="organism-navbar" aria-label="Principal">
+        <div class="organism-navbar__bar template-container">
+          <a class="molecule-brand" href="#inicio" aria-label="DentalCare, ir al inicio">
+            <span class="molecule-brand__mark" aria-hidden="true">
+              <svg class="atom-icon"><use href="#icon-tooth"/></svg>
+            </span>
+            <span class="molecule-brand__name">DentalCare</span>
+          </a>
+
+          <div class="organism-navbar__menu" id="menu-principal" data-nav-menu>
+            <ul class="molecule-nav-list">
+              <li><a class="atom-link atom-link--nav" href="#inicio">Inicio</a></li>
+              <li><a class="atom-link atom-link--nav" href="#destacados">Tratamientos</a></li>
+              <li><a class="atom-link atom-link--nav" href="#categorias">Especialidades</a></li>
+              <li><a class="atom-link atom-link--nav" href="#testimonios">Testimonios</a></li>
+              <li><a class="atom-link atom-link--nav" href="#contacto">Contacto</a></li>
+            </ul>
+          </div>
+
+          <ul class="molecule-nav-actions">
+            <li>
+              <a class="atom-button atom-button--ghost atom-button--icon" href="tel:+576015550123" aria-label="Llamar a DentalCare">
+                <svg class="atom-icon" aria-hidden="true"><use href="#icon-phone"/></svg>
+              </a>
+            </li>
+            <li>
+              <a class="atom-button atom-button--outline" href="./login.html">Iniciar sesión</a>
+            </li>
+            <li class="molecule-nav-actions__item--from-tablet">
+              <a class="atom-button atom-button--primary" href="#contacto" data-modal-open="dlg-agendar">
+                <svg class="atom-icon atom-icon--sm" aria-hidden="true"><use href="#icon-calendar"/></svg>
+                Agendar cita
+              </a>
+            </li>
+          </ul>
+
+          <button class="atom-button atom-button--outline atom-button--icon organism-navbar__toggle" type="button"
+                  aria-expanded="false" aria-controls="menu-principal" aria-label="Abrir menú" data-nav-toggle>
+            <svg class="atom-icon organism-navbar__icon-open" aria-hidden="true"><use href="#icon-menu"/></svg>
+            <svg class="atom-icon organism-navbar__icon-close" aria-hidden="true"><use href="#icon-close"/></svg>
+          </button>
+        </div>
+      </nav>
+
+      <div class="organism-hero__inner template-container">
+        <div class="organism-hero__content">
+          <p class="atom-badge atom-badge--primary"><span class="atom-badge__dot"></span>Valoración inicial sin costo</p>
+          <h1 class="atom-heading atom-heading--display">
+            Tu sonrisa sana, en manos de <span class="atom-heading__accent">especialistas</span>.
+          </h1>
+          <p class="atom-lede">
+            Odontología integral para toda la familia: ortodoncia, estética, implantes y
+            prevención, con radiografía digital y planes de pago a tu medida.
+          </p>
+          <div class="organism-hero__actions">
+            <a class="atom-button atom-button--primary atom-button--lg" href="#contacto" data-modal-open="dlg-agendar">
+              Agendar valoración
+              <svg class="atom-icon" aria-hidden="true"><use href="#icon-arrow-right"/></svg>
+            </a>
+            <a class="atom-button atom-button--outline atom-button--lg" href="#destacados">Ver tratamientos</a>
+          </div>
+          <ul class="molecule-trust-list">
+            <li><svg class="atom-icon atom-icon--sm" aria-hidden="true"><use href="#icon-check-circle"/></svg> Especialistas certificados</li>
+            <li><svg class="atom-icon atom-icon--sm" aria-hidden="true"><use href="#icon-check-circle"/></svg> Radiografía digital</li>
+            <li><svg class="atom-icon atom-icon--sm" aria-hidden="true"><use href="#icon-check-circle"/></svg> Financiación sin interés</li>
+          </ul>
+        </div>
+
+        <aside class="organism-hero__panel" aria-labelledby="hero-panel-titulo">
+          <h2 class="organism-hero__panel-title" id="hero-panel-titulo">Atención odontológica integral</h2>
+          <ul class="organism-hero__highlights">
+            <li>
+              <span class="organism-hero__highlight-icon" aria-hidden="true"><svg class="atom-icon atom-icon--sm"><use href="#icon-users"/></svg></span>
+              +18.500 pacientes atendidos en 5 sedes
+            </li>
+            <li>
+              <span class="organism-hero__highlight-icon" aria-hidden="true"><svg class="atom-icon atom-icon--sm"><use href="#icon-shield"/></svg></span>
+              Protocolos de bioseguridad certificados
+            </li>
+            <li>
+              <span class="organism-hero__highlight-icon" aria-hidden="true"><svg class="atom-icon atom-icon--sm"><use href="#icon-clock"/></svg></span>
+              Urgencias odontológicas 24/7
+            </li>
+          </ul>
+
+          <article class="molecule-appointment-card" aria-labelledby="proxima-cita-titulo">
+            <div class="molecule-appointment-card__header">
+              <span class="atom-icon-tile" data-tone="primary" aria-hidden="true">
+                <svg class="atom-icon"><use href="#icon-calendar"/></svg>
+              </span>
+              <div>
+                <h3 class="molecule-appointment-card__title" id="proxima-cita-titulo">Próxima cita disponible</h3>
+                <p class="molecule-appointment-card__subtitle">Valoración general · 30 min</p>
+              </div>
+            </div>
+            <dl class="molecule-appointment-card__details">
+              <div><dt>Fecha</dt><dd><time datetime="2026-10-29T15:30">Jueves 29 oct · 3:30 p. m.</time></dd></div>
+              <div><dt>Sede</dt><dd>Bogotá · Chapinero</dd></div>
+              <div><dt>Especialista</dt><dd>Dra. Laura Méndez</dd></div>
+            </dl>
+            <a class="atom-button atom-button--primary atom-button--block" href="#contacto" data-modal-open="dlg-agendar">Reservar este horario</a>
+          </article>
+        </aside>
+      </div>
+
+      <!-- Resumen de servicios -->
+      <div class="molecule-service-strip" role="region" aria-label="Resumen de servicios">
+        <ul class="molecule-service-strip__list template-container">
+          <li><svg class="atom-icon atom-icon--sm" aria-hidden="true"><use href="#icon-braces"/></svg> Ortodoncia y alineadores</li>
+          <li><svg class="atom-icon atom-icon--sm" aria-hidden="true"><use href="#icon-smile"/></svg> Diseño de sonrisa</li>
+          <li><svg class="atom-icon atom-icon--sm" aria-hidden="true"><use href="#icon-implant"/></svg> Implantes dentales</li>
+          <li><svg class="atom-icon atom-icon--sm" aria-hidden="true"><use href="#icon-whitening"/></svg> Blanqueamiento</li>
+          <li><svg class="atom-icon atom-icon--sm" aria-hidden="true"><use href="#icon-root"/></svg> Endodoncia</li>
+          <li><svg class="atom-icon atom-icon--sm" aria-hidden="true"><use href="#icon-child"/></svg> Odontopediatría</li>
+          <li><svg class="atom-icon atom-icon--sm" aria-hidden="true"><use href="#icon-clock"/></svg> Urgencias 24/7</li>
+        </ul>
+      </div>
+    </header>
+
+    <main id="contenido">
+
+      <!-- ==========================================================
+           CONTENEDOR 2 · TRATAMIENTOS DESTACADOS
+           ========================================================== -->
+      <section class="organism-featured template-section" id="destacados" aria-labelledby="destacados-titulo">
+        <div class="template-container">
+
+          <div class="molecule-section-heading molecule-section-heading--split">
+            <div class="molecule-section-heading__text">
+              <p class="atom-eyebrow">Tratamientos destacados</p>
+              <h2 class="atom-heading atom-heading--xl" id="destacados-titulo">Los tratamientos más solicitados</h2>
+              <p class="atom-lede">Precios referenciales en pesos colombianos. El valor final se define en tu valoración, según tu diagnóstico.</p>
+            </div>
+            <a class="atom-link atom-link--arrow" href="#categorias">
+              Ver todas las especialidades
+              <svg class="atom-icon atom-icon--sm" aria-hidden="true"><use href="#icon-arrow-right"/></svg>
+            </a>
+          </div>
+
+          <ul class="organism-featured__grid">
+
+            <li>
+              <article class="molecule-treatment-card">
+                <div class="molecule-treatment-card__top">
+                  <span class="atom-icon-tile" data-tone="primary" aria-hidden="true"><svg class="atom-icon atom-icon--lg"><use href="#icon-braces"/></svg></span>
+                  <p class="atom-badge atom-badge--primary">Más solicitado</p>
+                </div>
+                <div class="molecule-treatment-card__body">
+                  <p class="molecule-treatment-card__category">Ortodoncia</p>
+                  <h3 class="molecule-treatment-card__title"><a class="molecule-treatment-card__link" href="#">Ortodoncia con brackets</a></h3>
+                  <p class="atom-rating">
+                    <svg class="atom-icon atom-icon--sm atom-rating__star" aria-hidden="true"><use href="#icon-star"/></svg>
+                    <span><span class="atom-visually-hidden">Calificación </span>4,9 <span class="atom-rating__count">(312 reseñas)</span></span>
+                  </p>
+                  <dl class="molecule-treatment-card__meta">
+                    <div><dt>Duración</dt><dd>18–24 meses</dd></div>
+                    <div><dt>Controles</dt><dd>Mensuales</dd></div>
+                  </dl>
+                </div>
+                <div class="molecule-treatment-card__footer">
+                  <p class="atom-price"><span class="atom-price__prefix">Desde</span> <data value="2800000">$2.800.000</data></p>
+                  <a class="atom-button atom-button--outline atom-button--sm molecule-treatment-card__book" href="#contacto" data-modal-open="dlg-agendar" aria-label="Agendar Ortodoncia con brackets">Agendar</a>
+                </div>
+              </article>
+            </li>
+
+            <li>
+              <article class="molecule-treatment-card">
+                <div class="molecule-treatment-card__top">
+                  <span class="atom-icon-tile" data-tone="info" aria-hidden="true"><svg class="atom-icon atom-icon--lg"><use href="#icon-aligner"/></svg></span>
+                  <p class="atom-badge atom-badge--info">Nuevo</p>
+                </div>
+                <div class="molecule-treatment-card__body">
+                  <p class="molecule-treatment-card__category">Ortodoncia</p>
+                  <h3 class="molecule-treatment-card__title"><a class="molecule-treatment-card__link" href="#">Alineadores invisibles</a></h3>
+                  <p class="atom-rating">
+                    <svg class="atom-icon atom-icon--sm atom-rating__star" aria-hidden="true"><use href="#icon-star"/></svg>
+                    <span><span class="atom-visually-hidden">Calificación </span>4,8 <span class="atom-rating__count">(146 reseñas)</span></span>
+                  </p>
+                  <dl class="molecule-treatment-card__meta">
+                    <div><dt>Duración</dt><dd>6–12 meses</dd></div>
+                    <div><dt>Controles</dt><dd>Cada 6 semanas</dd></div>
+                  </dl>
+                </div>
+                <div class="molecule-treatment-card__footer">
+                  <p class="atom-price"><span class="atom-price__prefix">Desde</span> <data value="6500000">$6.500.000</data></p>
+                  <a class="atom-button atom-button--outline atom-button--sm molecule-treatment-card__book" href="#contacto" data-modal-open="dlg-agendar" aria-label="Agendar Alineadores invisibles">Agendar</a>
+                </div>
+              </article>
+            </li>
+
+            <li>
+              <article class="molecule-treatment-card">
+                <div class="molecule-treatment-card__top">
+                  <span class="atom-icon-tile" data-tone="primary" aria-hidden="true"><svg class="atom-icon atom-icon--lg"><use href="#icon-smile"/></svg></span>
+                  <p class="atom-badge">Estética</p>
+                </div>
+                <div class="molecule-treatment-card__body">
+                  <p class="molecule-treatment-card__category">Estética dental</p>
+                  <h3 class="molecule-treatment-card__title"><a class="molecule-treatment-card__link" href="#">Diseño de sonrisa</a></h3>
+                  <p class="atom-rating">
+                    <svg class="atom-icon atom-icon--sm atom-rating__star" aria-hidden="true"><use href="#icon-star"/></svg>
+                    <span><span class="atom-visually-hidden">Calificación </span>4,9 <span class="atom-rating__count">(204 reseñas)</span></span>
+                  </p>
+                  <dl class="molecule-treatment-card__meta">
+                    <div><dt>Sesiones</dt><dd>2–3</dd></div>
+                    <div><dt>Material</dt><dd>Resina o cerámica</dd></div>
+                  </dl>
+                </div>
+                <div class="molecule-treatment-card__footer">
+                  <p class="atom-price"><span class="atom-price__prefix">Desde, por diente</span> <data value="1200000">$1.200.000</data></p>
+                  <a class="atom-button atom-button--outline atom-button--sm molecule-treatment-card__book" href="#contacto" data-modal-open="dlg-agendar" aria-label="Agendar Diseño de sonrisa">Agendar</a>
+                </div>
+              </article>
+            </li>
+
+            <li>
+              <article class="molecule-treatment-card">
+                <div class="molecule-treatment-card__top">
+                  <span class="atom-icon-tile" data-tone="info" aria-hidden="true"><svg class="atom-icon atom-icon--lg"><use href="#icon-implant"/></svg></span>
+                  <p class="atom-badge atom-badge--success">Garantía 10 años</p>
+                </div>
+                <div class="molecule-treatment-card__body">
+                  <p class="molecule-treatment-card__category">Implantología</p>
+                  <h3 class="molecule-treatment-card__title"><a class="molecule-treatment-card__link" href="#">Implante dental</a></h3>
+                  <p class="atom-rating">
+                    <svg class="atom-icon atom-icon--sm atom-rating__star" aria-hidden="true"><use href="#icon-star"/></svg>
+                    <span><span class="atom-visually-hidden">Calificación </span>4,8 <span class="atom-rating__count">(178 reseñas)</span></span>
+                  </p>
+                  <dl class="molecule-treatment-card__meta">
+                    <div><dt>Duración</dt><dd>3–6 meses</dd></div>
+                    <div><dt>Sesiones</dt><dd>3</dd></div>
+                  </dl>
+                </div>
+                <div class="molecule-treatment-card__footer">
+                  <p class="atom-price"><span class="atom-price__prefix">Desde</span> <data value="3200000">$3.200.000</data></p>
+                  <a class="atom-button atom-button--outline atom-button--sm molecule-treatment-card__book" href="#contacto" data-modal-open="dlg-agendar" aria-label="Agendar Implante dental">Agendar</a>
+                </div>
+              </article>
+            </li>
+
+            <li>
+              <article class="molecule-treatment-card">
+                <div class="molecule-treatment-card__top">
+                  <span class="atom-icon-tile" data-tone="warning" aria-hidden="true"><svg class="atom-icon atom-icon--lg"><use href="#icon-whitening"/></svg></span>
+                  <p class="atom-badge atom-badge--warning">Promoción</p>
+                </div>
+                <div class="molecule-treatment-card__body">
+                  <p class="molecule-treatment-card__category">Estética dental</p>
+                  <h3 class="molecule-treatment-card__title"><a class="molecule-treatment-card__link" href="#">Blanqueamiento LED</a></h3>
+                  <p class="atom-rating">
+                    <svg class="atom-icon atom-icon--sm atom-rating__star" aria-hidden="true"><use href="#icon-star"/></svg>
+                    <span><span class="atom-visually-hidden">Calificación </span>4,7 <span class="atom-rating__count">(389 reseñas)</span></span>
+                  </p>
+                  <dl class="molecule-treatment-card__meta">
+                    <div><dt>Sesiones</dt><dd>1</dd></div>
+                    <div><dt>Duración</dt><dd>90 min</dd></div>
+                  </dl>
+                </div>
+                <div class="molecule-treatment-card__footer">
+                  <p class="atom-price">
+                    <s class="atom-price__old"><span class="atom-visually-hidden">Antes </span><data value="850000">$850.000</data></s>
+                    <data value="650000">$650.000</data>
+                  </p>
+                  <a class="atom-button atom-button--outline atom-button--sm molecule-treatment-card__book" href="#contacto" data-modal-open="dlg-agendar" aria-label="Agendar Blanqueamiento LED">Agendar</a>
+                </div>
+              </article>
+            </li>
+
+            <li>
+              <article class="molecule-treatment-card">
+                <div class="molecule-treatment-card__top">
+                  <span class="atom-icon-tile" data-tone="success" aria-hidden="true"><svg class="atom-icon atom-icon--lg"><use href="#icon-root"/></svg></span>
+                </div>
+                <div class="molecule-treatment-card__body">
+                  <p class="molecule-treatment-card__category">Endodoncia</p>
+                  <h3 class="molecule-treatment-card__title"><a class="molecule-treatment-card__link" href="#">Tratamiento de conducto</a></h3>
+                  <p class="atom-rating">
+                    <svg class="atom-icon atom-icon--sm atom-rating__star" aria-hidden="true"><use href="#icon-star"/></svg>
+                    <span><span class="atom-visually-hidden">Calificación </span>4,8 <span class="atom-rating__count">(121 reseñas)</span></span>
+                  </p>
+                  <dl class="molecule-treatment-card__meta">
+                    <div><dt>Sesiones</dt><dd>1–2</dd></div>
+                    <div><dt>Anestesia</dt><dd>Local</dd></div>
+                  </dl>
+                </div>
+                <div class="molecule-treatment-card__footer">
+                  <p class="atom-price"><span class="atom-price__prefix">Desde</span> <data value="480000">$480.000</data></p>
+                  <a class="atom-button atom-button--outline atom-button--sm molecule-treatment-card__book" href="#contacto" data-modal-open="dlg-agendar" aria-label="Agendar Tratamiento de conducto">Agendar</a>
+                </div>
+              </article>
+            </li>
+
+            <li>
+              <article class="molecule-treatment-card">
+                <div class="molecule-treatment-card__top">
+                  <span class="atom-icon-tile" data-tone="primary" aria-hidden="true"><svg class="atom-icon atom-icon--lg"><use href="#icon-brush"/></svg></span>
+                  <p class="atom-badge atom-badge--warning">−20%</p>
+                </div>
+                <div class="molecule-treatment-card__body">
+                  <p class="molecule-treatment-card__category">Higiene oral</p>
+                  <h3 class="molecule-treatment-card__title"><a class="molecule-treatment-card__link" href="#">Limpieza y profilaxis</a></h3>
+                  <p class="atom-rating">
+                    <svg class="atom-icon atom-icon--sm atom-rating__star" aria-hidden="true"><use href="#icon-star"/></svg>
+                    <span><span class="atom-visually-hidden">Calificación </span>4,9 <span class="atom-rating__count">(540 reseñas)</span></span>
+                  </p>
+                  <dl class="molecule-treatment-card__meta">
+                    <div><dt>Duración</dt><dd>45 min</dd></div>
+                    <div><dt>Frecuencia</dt><dd>Cada 6 meses</dd></div>
+                  </dl>
+                </div>
+                <div class="molecule-treatment-card__footer">
+                  <p class="atom-price">
+                    <s class="atom-price__old"><span class="atom-visually-hidden">Antes </span><data value="150000">$150.000</data></s>
+                    <data value="120000">$120.000</data>
+                  </p>
+                  <a class="atom-button atom-button--outline atom-button--sm molecule-treatment-card__book" href="#contacto" data-modal-open="dlg-agendar" aria-label="Agendar Limpieza y profilaxis">Agendar</a>
+                </div>
+              </article>
+            </li>
+
+            <li>
+              <article class="molecule-treatment-card">
+                <div class="molecule-treatment-card__top">
+                  <span class="atom-icon-tile" data-tone="info" aria-hidden="true"><svg class="atom-icon atom-icon--lg"><use href="#icon-child"/></svg></span>
+                  <p class="atom-badge atom-badge--info">Niños de 1 a 14 años</p>
+                </div>
+                <div class="molecule-treatment-card__body">
+                  <p class="molecule-treatment-card__category">Odontopediatría</p>
+                  <h3 class="molecule-treatment-card__title"><a class="molecule-treatment-card__link" href="#">Valoración infantil</a></h3>
+                  <p class="atom-rating">
+                    <svg class="atom-icon atom-icon--sm atom-rating__star" aria-hidden="true"><use href="#icon-star"/></svg>
+                    <span><span class="atom-visually-hidden">Calificación </span>4,9 <span class="atom-rating__count">(267 reseñas)</span></span>
+                  </p>
+                  <dl class="molecule-treatment-card__meta">
+                    <div><dt>Duración</dt><dd>30 min</dd></div>
+                    <div><dt>Incluye</dt><dd>Flúor</dd></div>
+                  </dl>
+                </div>
+                <div class="molecule-treatment-card__footer">
+                  <p class="atom-price"><span class="atom-price__prefix">Valor</span> <data value="90000">$90.000</data></p>
+                  <a class="atom-button atom-button--outline atom-button--sm molecule-treatment-card__book" href="#contacto" data-modal-open="dlg-agendar" aria-label="Agendar Valoración infantil">Agendar</a>
+                </div>
+              </article>
+            </li>
+
+          </ul>
+        </div>
+      </section>
+
+      <!-- ==========================================================
+           CONTENEDOR 3 · ESPECIALIDADES
+           ========================================================== -->
+      <section class="organism-categories template-section" id="categorias" aria-labelledby="categorias-titulo">
+        <div class="template-container">
+
+          <div class="molecule-section-heading">
+            <p class="atom-eyebrow">Especialidades</p>
+            <h2 class="atom-heading atom-heading--xl" id="categorias-titulo">Un especialista para cada necesidad</h2>
+            <p class="atom-lede">Odontólogos con posgrado en cada área clínica, trabajando juntos en un solo plan de tratamiento.</p>
+          </div>
+
+          <ul class="organism-categories__grid">
+
+            <li class="organism-categories__item organism-categories__item--ortodoncia">
+              <a class="molecule-specialty-card molecule-specialty-card--featured" href="#">
+                <span class="atom-icon-tile atom-icon-tile--lg" aria-hidden="true"><svg class="atom-icon atom-icon--lg"><use href="#icon-braces"/></svg></span>
+                <div class="molecule-specialty-card__text">
+                  <h3 class="molecule-specialty-card__title">Ortodoncia</h3>
+                  <p class="molecule-specialty-card__count">4 especialistas · la especialidad más consultada</p>
+                  <ul class="molecule-specialty-card__list">
+                    <li><svg class="atom-icon atom-icon--sm" aria-hidden="true"><use href="#icon-check"/></svg> Brackets metálicos y estéticos</li>
+                    <li><svg class="atom-icon atom-icon--sm" aria-hidden="true"><use href="#icon-check"/></svg> Alineadores invisibles</li>
+                    <li><svg class="atom-icon atom-icon--sm" aria-hidden="true"><use href="#icon-check"/></svg> Ortopedia maxilar infantil</li>
+                  </ul>
+                </div>
+                <span class="molecule-specialty-card__more">Conocer la especialidad <svg class="atom-icon atom-icon--sm" aria-hidden="true"><use href="#icon-arrow-right"/></svg></span>
+              </a>
+            </li>
+
+            <li class="organism-categories__item organism-categories__item--estetica">
+              <a class="molecule-specialty-card" href="#">
+                <span class="atom-icon-tile" data-tone="primary" aria-hidden="true"><svg class="atom-icon"><use href="#icon-smile"/></svg></span>
+                <div class="molecule-specialty-card__text">
+                  <h3 class="molecule-specialty-card__title">Estética dental</h3>
+                  <p class="molecule-specialty-card__count">3 especialistas</p>
+                </div>
+              </a>
+            </li>
+
+            <li class="organism-categories__item organism-categories__item--implantes">
+              <a class="molecule-specialty-card" href="#">
+                <span class="atom-icon-tile" data-tone="info" aria-hidden="true"><svg class="atom-icon"><use href="#icon-implant"/></svg></span>
+                <div class="molecule-specialty-card__text">
+                  <h3 class="molecule-specialty-card__title">Implantología</h3>
+                  <p class="molecule-specialty-card__count">2 especialistas</p>
+                </div>
+              </a>
+            </li>
+
+            <li class="organism-categories__item organism-categories__item--endodoncia">
+              <a class="molecule-specialty-card" href="#">
+                <span class="atom-icon-tile" data-tone="success" aria-hidden="true"><svg class="atom-icon"><use href="#icon-root"/></svg></span>
+                <div class="molecule-specialty-card__text">
+                  <h3 class="molecule-specialty-card__title">Endodoncia</h3>
+                  <p class="molecule-specialty-card__count">2 especialistas</p>
+                </div>
+              </a>
+            </li>
+
+            <li class="organism-categories__item organism-categories__item--periodoncia">
+              <a class="molecule-specialty-card" href="#">
+                <span class="atom-icon-tile" data-tone="warning" aria-hidden="true"><svg class="atom-icon"><use href="#icon-gum"/></svg></span>
+                <div class="molecule-specialty-card__text">
+                  <h3 class="molecule-specialty-card__title">Periodoncia</h3>
+                  <p class="molecule-specialty-card__count">2 especialistas</p>
+                </div>
+              </a>
+            </li>
+
+            <li class="organism-categories__item organism-categories__item--pediatria">
+              <a class="molecule-specialty-card" href="#">
+                <span class="atom-icon-tile" data-tone="info" aria-hidden="true"><svg class="atom-icon"><use href="#icon-child"/></svg></span>
+                <div class="molecule-specialty-card__text">
+                  <h3 class="molecule-specialty-card__title">Odontopediatría</h3>
+                  <p class="molecule-specialty-card__count">3 especialistas · niños de 1 a 14 años</p>
+                </div>
+                <span class="molecule-specialty-card__more">Ver especialistas <svg class="atom-icon atom-icon--sm" aria-hidden="true"><use href="#icon-arrow-right"/></svg></span>
+              </a>
+            </li>
+
+            <li class="organism-categories__item organism-categories__item--diagnostico">
+              <a class="molecule-specialty-card" href="#">
+                <span class="atom-icon-tile" data-tone="neutral" aria-hidden="true"><svg class="atom-icon"><use href="#icon-scan"/></svg></span>
+                <div class="molecule-specialty-card__text">
+                  <h3 class="molecule-specialty-card__title">Diagnóstico y radiología</h3>
+                  <p class="molecule-specialty-card__count">Radiografía digital, panorámica y valoración inicial</p>
+                </div>
+                <span class="molecule-specialty-card__more">Ver servicios <svg class="atom-icon atom-icon--sm" aria-hidden="true"><use href="#icon-arrow-right"/></svg></span>
+              </a>
+            </li>
+
+          </ul>
+
+          <!-- Tabla de especialistas y disponibilidad -->
+          <div class="molecule-data-table">
+            <div class="molecule-data-table__caption">
+              <h3 class="molecule-data-table__title" id="tabla-especialistas">Especialistas y disponibilidad</h3>
+              <p class="molecule-data-table__status">5 especialistas · actualizado hoy</p>
+            </div>
+            <div class="molecule-data-table__scroll" role="region" aria-labelledby="tabla-especialistas" tabindex="0">
+              <table class="molecule-data-table__table">
+                <thead>
+                  <tr>
+                    <th scope="col">Especialista</th>
+                    <th scope="col">Especialidad</th>
+                    <th scope="col">Sede</th>
+                    <th scope="col">Próxima cita</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <th scope="row">
+                      <span class="molecule-data-table__person">
+                        <span class="atom-avatar atom-avatar--sm" data-tone="primary" aria-hidden="true">LM</span>
+                        <span><span class="molecule-data-table__name">Dra. Laura Méndez</span><span class="molecule-data-table__sub">Ortodoncista · 12 años</span></span>
+                      </span>
+                    </th>
+                    <td>Ortodoncia</td>
+                    <td>Bogotá · Chapinero</td>
+                    <td><span class="atom-badge atom-badge--success"><span class="atom-badge__dot"></span>Hoy, 3:30 p. m.</span></td>
+                  </tr>
+                  <tr>
+                    <th scope="row">
+                      <span class="molecule-data-table__person">
+                        <span class="atom-avatar atom-avatar--sm" data-tone="info" aria-hidden="true">AR</span>
+                        <span><span class="molecule-data-table__name">Dr. Andrés Rojas</span><span class="molecule-data-table__sub">Implantólogo · 15 años</span></span>
+                      </span>
+                    </th>
+                    <td>Implantología</td>
+                    <td>Medellín · El Poblado</td>
+                    <td><span class="atom-badge atom-badge--success"><span class="atom-badge__dot"></span>Mañana, 9:00 a. m.</span></td>
+                  </tr>
+                  <tr>
+                    <th scope="row">
+                      <span class="molecule-data-table__person">
+                        <span class="atom-avatar atom-avatar--sm" data-tone="warning" aria-hidden="true">CP</span>
+                        <span><span class="molecule-data-table__name">Dra. Camila Pardo</span><span class="molecule-data-table__sub">Rehabilitadora oral · 9 años</span></span>
+                      </span>
+                    </th>
+                    <td>Estética dental</td>
+                    <td>Bogotá · Usaquén</td>
+                    <td><span class="atom-badge atom-badge--warning"><span class="atom-badge__dot"></span>Lun 2 nov, 11:00 a. m.</span></td>
+                  </tr>
+                  <tr>
+                    <th scope="row">
+                      <span class="molecule-data-table__person">
+                        <span class="atom-avatar atom-avatar--sm" data-tone="success" aria-hidden="true">FG</span>
+                        <span><span class="molecule-data-table__name">Dr. Felipe Gómez</span><span class="molecule-data-table__sub">Endodoncista · 10 años</span></span>
+                      </span>
+                    </th>
+                    <td>Endodoncia</td>
+                    <td>Cali · Granada</td>
+                    <td><span class="atom-badge atom-badge--success"><span class="atom-badge__dot"></span>Mañana, 2:00 p. m.</span></td>
+                  </tr>
+                  <tr>
+                    <th scope="row">
+                      <span class="molecule-data-table__person">
+                        <span class="atom-avatar atom-avatar--sm" data-tone="neutral" aria-hidden="true">NR</span>
+                        <span><span class="molecule-data-table__name">Dra. Natalia Ruiz</span><span class="molecule-data-table__sub">Odontopediatra · 8 años</span></span>
+                      </span>
+                    </th>
+                    <td>Odontopediatría</td>
+                    <td>Barranquilla · Alto Prado</td>
+                    <td><span class="atom-badge atom-badge--danger"><span class="atom-badge__dot"></span>Agenda llena esta semana</span></td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+        </div>
+      </section>
+
+      <!-- ==========================================================
+           CONTENEDOR 4 · TESTIMONIOS DE PACIENTES
+           ========================================================== -->
+      <section class="organism-testimonials template-section" id="testimonios" aria-labelledby="testimonios-titulo">
+        <div class="template-container">
+
+          <div class="organism-testimonials__header">
+            <div class="molecule-section-heading">
+              <p class="atom-eyebrow">Testimonios</p>
+              <h2 class="atom-heading atom-heading--xl" id="testimonios-titulo">Lo que dicen nuestros pacientes</h2>
+              <p class="atom-lede">Reseñas verificadas de pacientes que terminaron su tratamiento con nosotros.</p>
+            </div>
+
+            <dl class="molecule-stats">
+              <div class="molecule-stats__item">
+                <span class="atom-icon-tile" data-tone="warning" aria-hidden="true"><svg class="atom-icon"><use href="#icon-star"/></svg></span>
+                <div class="molecule-stats__text"><dt>Satisfacción promedio</dt><dd>4,9/5</dd></div>
+              </div>
+              <div class="molecule-stats__item">
+                <span class="atom-icon-tile" data-tone="primary" aria-hidden="true"><svg class="atom-icon"><use href="#icon-users"/></svg></span>
+                <div class="molecule-stats__text"><dt>Pacientes atendidos</dt><dd>18.500</dd></div>
+              </div>
+              <div class="molecule-stats__item">
+                <span class="atom-icon-tile" data-tone="info" aria-hidden="true"><svg class="atom-icon"><use href="#icon-award"/></svg></span>
+                <div class="molecule-stats__text"><dt>Años de experiencia</dt><dd>15</dd></div>
+              </div>
+            </dl>
+          </div>
+
+          <div class="organism-testimonials__viewport" id="testimonios-carrusel"
+               role="region" aria-label="Testimonios de pacientes" tabindex="0" data-carousel-viewport>
+            <ul class="organism-testimonials__track">
+
+              <li class="organism-testimonials__item">
+                <figure class="molecule-testimonial-card">
+                  <p class="molecule-testimonial-card__stars atom-rating" aria-label="Calificación 5 de 5">
+                    <svg class="atom-icon atom-icon--sm atom-rating__star" aria-hidden="true"><use href="#icon-star"/></svg><svg class="atom-icon atom-icon--sm atom-rating__star" aria-hidden="true"><use href="#icon-star"/></svg><svg class="atom-icon atom-icon--sm atom-rating__star" aria-hidden="true"><use href="#icon-star"/></svg><svg class="atom-icon atom-icon--sm atom-rating__star" aria-hidden="true"><use href="#icon-star"/></svg><svg class="atom-icon atom-icon--sm atom-rating__star" aria-hidden="true"><use href="#icon-star"/></svg>
+                  </p>
+                  <blockquote class="molecule-testimonial-card__quote">
+                    <p>“Llevaba años escondiendo la sonrisa en las fotos. Después de la ortodoncia sonrío sin pensarlo, y los controles siempre fueron puntuales.”</p>
+                  </blockquote>
+                  <figcaption class="molecule-testimonial-card__author">
+                    <span class="atom-avatar" data-tone="primary" aria-hidden="true">AS</span>
+                    <span class="molecule-testimonial-card__identity">
+                      <strong class="molecule-testimonial-card__name">Andrea Salazar</strong>
+                      <span class="molecule-testimonial-card__city">Bogotá · Sede Chapinero</span>
+                    </span>
+                    <span class="atom-badge atom-badge--primary">Ortodoncia con brackets</span>
+                  </figcaption>
+                </figure>
+              </li>
+
+              <li class="organism-testimonials__item">
+                <figure class="molecule-testimonial-card">
+                  <p class="molecule-testimonial-card__stars atom-rating" aria-label="Calificación 5 de 5">
+                    <svg class="atom-icon atom-icon--sm atom-rating__star" aria-hidden="true"><use href="#icon-star"/></svg><svg class="atom-icon atom-icon--sm atom-rating__star" aria-hidden="true"><use href="#icon-star"/></svg><svg class="atom-icon atom-icon--sm atom-rating__star" aria-hidden="true"><use href="#icon-star"/></svg><svg class="atom-icon atom-icon--sm atom-rating__star" aria-hidden="true"><use href="#icon-star"/></svg><svg class="atom-icon atom-icon--sm atom-rating__star" aria-hidden="true"><use href="#icon-star"/></svg>
+                  </p>
+                  <blockquote class="molecule-testimonial-card__quote">
+                    <p>“Me explicaron cada paso del implante con la radiografía en pantalla. Cero dolor y hoy como de todo sin preocuparme.”</p>
+                  </blockquote>
+                  <figcaption class="molecule-testimonial-card__author">
+                    <span class="atom-avatar" data-tone="info" aria-hidden="true">JO</span>
+                    <span class="molecule-testimonial-card__identity">
+                      <strong class="molecule-testimonial-card__name">Julián Ortega</strong>
+                      <span class="molecule-testimonial-card__city">Medellín · Sede El Poblado</span>
+                    </span>
+                    <span class="atom-badge atom-badge--info">Implante dental</span>
+                  </figcaption>
+                </figure>
+              </li>
+
+              <li class="organism-testimonials__item">
+                <figure class="molecule-testimonial-card">
+                  <p class="molecule-testimonial-card__stars atom-rating" aria-label="Calificación 5 de 5">
+                    <svg class="atom-icon atom-icon--sm atom-rating__star" aria-hidden="true"><use href="#icon-star"/></svg><svg class="atom-icon atom-icon--sm atom-rating__star" aria-hidden="true"><use href="#icon-star"/></svg><svg class="atom-icon atom-icon--sm atom-rating__star" aria-hidden="true"><use href="#icon-star"/></svg><svg class="atom-icon atom-icon--sm atom-rating__star" aria-hidden="true"><use href="#icon-star"/></svg><svg class="atom-icon atom-icon--sm atom-rating__star" aria-hidden="true"><use href="#icon-star"/></svg>
+                  </p>
+                  <blockquote class="molecule-testimonial-card__quote">
+                    <p>“Con el diseño de sonrisa vi el resultado en una simulación antes de empezar. Quedó tal cual me lo mostraron.”</p>
+                  </blockquote>
+                  <figcaption class="molecule-testimonial-card__author">
+                    <span class="atom-avatar" data-tone="warning" aria-hidden="true">PR</span>
+                    <span class="molecule-testimonial-card__identity">
+                      <strong class="molecule-testimonial-card__name">Paola Restrepo</strong>
+                      <span class="molecule-testimonial-card__city">Cali · Sede Granada</span>
+                    </span>
+                    <span class="atom-badge atom-badge--primary">Diseño de sonrisa</span>
+                  </figcaption>
+                </figure>
+              </li>
+
+              <li class="organism-testimonials__item">
+                <figure class="molecule-testimonial-card">
+                  <p class="molecule-testimonial-card__stars atom-rating" aria-label="Calificación 5 de 5">
+                    <svg class="atom-icon atom-icon--sm atom-rating__star" aria-hidden="true"><use href="#icon-star"/></svg><svg class="atom-icon atom-icon--sm atom-rating__star" aria-hidden="true"><use href="#icon-star"/></svg><svg class="atom-icon atom-icon--sm atom-rating__star" aria-hidden="true"><use href="#icon-star"/></svg><svg class="atom-icon atom-icon--sm atom-rating__star" aria-hidden="true"><use href="#icon-star"/></svg><svg class="atom-icon atom-icon--sm atom-rating__star" aria-hidden="true"><use href="#icon-star"/></svg>
+                  </p>
+                  <blockquote class="molecule-testimonial-card__quote">
+                    <p>“Mi hija le tenía miedo al odontólogo. La recibieron con mucha paciencia y ahora pregunta cuándo es su próxima cita.”</p>
+                  </blockquote>
+                  <figcaption class="molecule-testimonial-card__author">
+                    <span class="atom-avatar" data-tone="success" aria-hidden="true">CM</span>
+                    <span class="molecule-testimonial-card__identity">
+                      <strong class="molecule-testimonial-card__name">Carlos Mejía</strong>
+                      <span class="molecule-testimonial-card__city">Barranquilla · Sede Alto Prado</span>
+                    </span>
+                    <span class="atom-badge atom-badge--info">Odontopediatría</span>
+                  </figcaption>
+                </figure>
+              </li>
+
+              <li class="organism-testimonials__item">
+                <figure class="molecule-testimonial-card">
+                  <p class="molecule-testimonial-card__stars atom-rating" aria-label="Calificación 4 de 5">
+                    <svg class="atom-icon atom-icon--sm atom-rating__star" aria-hidden="true"><use href="#icon-star"/></svg><svg class="atom-icon atom-icon--sm atom-rating__star" aria-hidden="true"><use href="#icon-star"/></svg><svg class="atom-icon atom-icon--sm atom-rating__star" aria-hidden="true"><use href="#icon-star"/></svg><svg class="atom-icon atom-icon--sm atom-rating__star" aria-hidden="true"><use href="#icon-star"/></svg>
+                  </p>
+                  <blockquote class="molecule-testimonial-card__quote">
+                    <p>“Una sola sesión de blanqueamiento y varios tonos más claros. Sin sensibilidad y con indicaciones muy claras para después.”</p>
+                  </blockquote>
+                  <figcaption class="molecule-testimonial-card__author">
+                    <span class="atom-avatar" data-tone="neutral" aria-hidden="true">LF</span>
+                    <span class="molecule-testimonial-card__identity">
+                      <strong class="molecule-testimonial-card__name">Lucía Fernández</strong>
+                      <span class="molecule-testimonial-card__city">Bogotá · Sede Usaquén</span>
+                    </span>
+                    <span class="atom-badge atom-badge--warning">Blanqueamiento LED</span>
+                  </figcaption>
+                </figure>
+              </li>
+
+            </ul>
+          </div>
+
+          <div class="molecule-carousel-controls">
+            <button class="atom-button atom-button--outline atom-button--icon" type="button" aria-label="Testimonio anterior"
+                    aria-controls="testimonios-carrusel" data-carousel-prev>
+              <svg class="atom-icon" aria-hidden="true"><use href="#icon-arrow-left"/></svg>
+            </button>
+            <button class="atom-button atom-button--outline atom-button--icon" type="button" aria-label="Testimonio siguiente"
+                    aria-controls="testimonios-carrusel" data-carousel-next>
+              <svg class="atom-icon" aria-hidden="true"><use href="#icon-arrow-right"/></svg>
+            </button>
+          </div>
+
+        </div>
+      </section>
+
+    </main>
+
+    <!-- ==========================================================
+         CONTENEDOR 5 · FOOTER CON MEGAMENÚ
+         ========================================================== -->
+    <footer class="organism-footer" id="contacto">
+      <div class="template-container">
+
+        <div class="organism-footer__contact">
+          <div class="organism-footer__contact-text">
+            <h2 class="atom-heading atom-heading--lg">Agenda tu valoración sin costo</h2>
+            <p>Déjanos tus datos y te llamamos para elegir sede, especialista y horario. También recibirás consejos de salud oral cada mes.</p>
+          </div>
+          <form class="molecule-contact-form" action="#" method="get">
+            <div class="molecule-field">
+              <label class="atom-label" for="contacto-nombre">Nombre completo</label>
+              <input class="atom-input" id="contacto-nombre" name="nombre" type="text" autocomplete="name" placeholder="Tu nombre" required>
+            </div>
+            <div class="molecule-field">
+              <label class="atom-label" for="contacto-correo">Correo electrónico</label>
+              <input class="atom-input" id="contacto-correo" name="correo" type="email" autocomplete="email" placeholder="tucorreo@ejemplo.com" required>
+            </div>
+            <button class="atom-button atom-button--inverse" type="submit">Solicitar llamada</button>
+            <p class="molecule-contact-form__note">Te contactamos en menos de 24 horas hábiles. Tratamos tus datos según la Ley 1581 de 2012.</p>
+          </form>
+        </div>
+
+        <div class="organism-footer__mega">
+
+          <nav class="organism-megamenu" aria-label="Megamenú: mapa del sitio">
+
+            <div class="molecule-megamenu-column">
+              <h3 class="molecule-megamenu-column__title">Servicios</h3>
+              <ul class="molecule-megamenu-column__list">
+                <li><a class="molecule-megamenu-column__link" href="#">Ortodoncia</a></li>
+                <li><a class="molecule-megamenu-column__link" href="#">Alineadores invisibles</a></li>
+                <li><a class="molecule-megamenu-column__link" href="#">Diseño de sonrisa</a></li>
+                <li><a class="molecule-megamenu-column__link" href="#">Implantes dentales</a></li>
+                <li><a class="molecule-megamenu-column__link" href="#">Blanqueamiento</a></li>
+                <li><a class="molecule-megamenu-column__link" href="#">Urgencias <span class="atom-badge atom-badge--danger atom-badge--sm">24/7</span></a></li>
+              </ul>
+            </div>
+
+            <div class="molecule-megamenu-column">
+              <h3 class="molecule-megamenu-column__title">Especialistas</h3>
+              <ul class="molecule-megamenu-column__list">
+                <li><a class="molecule-megamenu-column__link" href="#">Dra. Laura Méndez</a></li>
+                <li><a class="molecule-megamenu-column__link" href="#">Dr. Andrés Rojas</a></li>
+                <li><a class="molecule-megamenu-column__link" href="#">Dra. Camila Pardo</a></li>
+                <li><a class="molecule-megamenu-column__link" href="#">Dr. Felipe Gómez</a></li>
+                <li><a class="molecule-megamenu-column__link" href="#">Dra. Natalia Ruiz</a></li>
+                <li><a class="molecule-megamenu-column__link" href="#">Todo el equipo</a></li>
+              </ul>
+            </div>
+
+            <div class="molecule-megamenu-column">
+              <h3 class="molecule-megamenu-column__title">Sedes</h3>
+              <ul class="molecule-megamenu-column__list">
+                <li><a class="molecule-megamenu-column__link" href="#">Bogotá · Chapinero</a></li>
+                <li><a class="molecule-megamenu-column__link" href="#">Bogotá · Usaquén</a></li>
+                <li><a class="molecule-megamenu-column__link" href="#">Medellín · El Poblado</a></li>
+                <li><a class="molecule-megamenu-column__link" href="#">Cali · Granada</a></li>
+                <li><a class="molecule-megamenu-column__link" href="#">Barranquilla · Alto Prado <span class="atom-badge atom-badge--success atom-badge--sm">Nueva</span></a></li>
+              </ul>
+            </div>
+
+            <div class="molecule-megamenu-column">
+              <h3 class="molecule-megamenu-column__title">Ayuda</h3>
+              <ul class="molecule-megamenu-column__list">
+                <li><a class="molecule-megamenu-column__link" href="#">Preguntas frecuentes</a></li>
+                <li><a class="molecule-megamenu-column__link" href="#">Agendar o reprogramar</a></li>
+                <li><a class="molecule-megamenu-column__link" href="#">Formas de pago</a></li>
+                <li><a class="molecule-megamenu-column__link" href="#">Convenios y prepagadas</a></li>
+                <li><a class="molecule-megamenu-column__link" href="#">Cuidados posteriores</a></li>
+              </ul>
+            </div>
+
+            <div class="molecule-megamenu-column">
+              <h3 class="molecule-megamenu-column__title">Legal</h3>
+              <ul class="molecule-megamenu-column__list">
+                <li><a class="molecule-megamenu-column__link" href="#">Términos y condiciones</a></li>
+                <li><a class="molecule-megamenu-column__link" href="#">Tratamiento de datos</a></li>
+                <li><a class="molecule-megamenu-column__link" href="#">Consentimiento informado</a></li>
+                <li><a class="molecule-megamenu-column__link" href="#">Derechos del paciente</a></li>
+                <li><a class="molecule-megamenu-column__link" href="#">PQRS</a></li>
+              </ul>
+            </div>
+
+          </nav>
+
+          <aside class="molecule-contact-card" aria-labelledby="contacto-datos">
+            <div class="molecule-contact-card__header">
+              <p class="atom-eyebrow">Contáctanos</p>
+              <h3 class="molecule-contact-card__title" id="contacto-datos">Estamos para ayudarte</h3>
+            </div>
+            <address>
+              <dl class="molecule-contact-card__list">
+                <div class="molecule-contact-card__item">
+                  <span class="atom-icon-tile" data-tone="primary" aria-hidden="true"><svg class="atom-icon atom-icon--sm"><use href="#icon-phone"/></svg></span>
+                  <div><dt>Teléfono</dt><dd><a class="atom-link atom-link--plain" href="tel:+576015550123">(601) 555 0123</a></dd></div>
+                </div>
+                <div class="molecule-contact-card__item">
+                  <span class="atom-icon-tile" data-tone="success" aria-hidden="true"><svg class="atom-icon atom-icon--sm"><use href="#icon-chat"/></svg></span>
+                  <div><dt>WhatsApp</dt><dd><a class="atom-link atom-link--plain" href="#">+57 300 555 0199</a></dd></div>
+                </div>
+                <div class="molecule-contact-card__item">
+                  <span class="atom-icon-tile" data-tone="info" aria-hidden="true"><svg class="atom-icon atom-icon--sm"><use href="#icon-mail"/></svg></span>
+                  <div><dt>Correo</dt><dd><a class="atom-link atom-link--plain" href="mailto:citas@dentalcare.example">citas@dentalcare.example</a></dd></div>
+                </div>
+                <div class="molecule-contact-card__item">
+                  <span class="atom-icon-tile" data-tone="neutral" aria-hidden="true"><svg class="atom-icon atom-icon--sm"><use href="#icon-clock"/></svg></span>
+                  <div><dt>Horario</dt><dd>Lun a vie 7:00–19:00 · Sáb 8:00–14:00</dd></div>
+                </div>
+              </dl>
+            </address>
+          </aside>
+
+        </div>
+
+        <div class="organism-footer__bottom">
+          <a class="molecule-brand" href="#inicio" aria-label="DentalCare, volver al inicio">
+            <span class="molecule-brand__mark" aria-hidden="true">
+              <svg class="atom-icon"><use href="#icon-tooth"/></svg>
+            </span>
+            <span class="molecule-brand__name">DentalCare</span>
+          </a>
+
+          <ul class="molecule-social-links" aria-label="Redes sociales">
+            <li><a class="atom-chip atom-chip--link" href="#">Instagram</a></li>
+            <li><a class="atom-chip atom-chip--link" href="#">Facebook</a></li>
+            <li><a class="atom-chip atom-chip--link" href="#">LinkedIn</a></li>
+            <li><a class="atom-chip atom-chip--link" href="#">YouTube</a></li>
+          </ul>
+
+          <a class="atom-button atom-button--ghost atom-button--sm organism-footer__top-link" href="#inicio">
+            Volver arriba
+            <svg class="atom-icon atom-icon--sm" aria-hidden="true"><use href="#icon-arrow-up"/></svg>
+          </a>
+
+          <p class="organism-footer__legal">
+            © 2026 DentalCare Centro Odontológico S.A.S. · Propuesta visual con datos ficticios.
+            <a class="atom-link atom-link--plain" href="#">Términos</a>
+            <a class="atom-link atom-link--plain" href="#">Privacidad</a>
+            <a class="atom-link atom-link--plain" href="#">Cookies</a>
+          </p>
+        </div>
+
+      </div>
+    </footer>
+
+  </div>
+
+  <!-- ==========================================================
+       DIÁLOGO · Agendar valoración (lo abren los botones con data-modal-open)
+       Sin JavaScript, esos botones son enlaces al formulario del footer.
+       ========================================================== -->
+  <dialog class="organism-modal" id="dlg-agendar" aria-labelledby="dlg-agendar-titulo" aria-describedby="dlg-agendar-descripcion">
+    <div class="organism-modal__header">
+      <div>
+        <h2 class="organism-modal__title" id="dlg-agendar-titulo">Agendar valoración</h2>
+        <p class="organism-modal__description" id="dlg-agendar-descripcion">La valoración inicial no tiene costo. Confirmaremos tu cita por teléfono.</p>
+      </div>
+      <button class="atom-button atom-button--ghost atom-button--icon atom-button--sm" type="button" aria-label="Cerrar" data-modal-close>
+        <svg class="atom-icon" aria-hidden="true"><use href="#icon-close"/></svg>
+      </button>
+    </div>
+    <form class="organism-modal__form" method="dialog">
+      <div class="organism-modal__body">
+        <div class="molecule-field molecule-field--full">
+          <label class="atom-label" for="cita-nombre">Nombre completo</label>
+          <input class="atom-input" id="cita-nombre" name="nombre" type="text" autocomplete="name" required autofocus>
+        </div>
+        <div class="molecule-field">
+          <label class="atom-label" for="cita-telefono">Teléfono</label>
+          <input class="atom-input" id="cita-telefono" name="telefono" type="tel" autocomplete="tel" placeholder="300 000 0000" required>
+        </div>
+        <div class="molecule-field">
+          <label class="atom-label" for="cita-fecha">Fecha preferida</label>
+          <input class="atom-input" id="cita-fecha" name="fecha" type="date" required>
+        </div>
+        <div class="molecule-field">
+          <label class="atom-label" for="cita-especialidad">Especialidad</label>
+          <select class="atom-select" id="cita-especialidad" name="especialidad" required>
+            <option value="">Selecciona…</option>
+            <option>Valoración general</option>
+            <option>Ortodoncia</option>
+            <option>Estética dental</option>
+            <option>Implantología</option>
+            <option>Endodoncia</option>
+            <option>Periodoncia</option>
+            <option>Odontopediatría</option>
+          </select>
+        </div>
+        <div class="molecule-field">
+          <label class="atom-label" for="cita-sede">Sede</label>
+          <select class="atom-select" id="cita-sede" name="sede" required>
+            <option value="">Selecciona…</option>
+            <option>Bogotá · Chapinero</option>
+            <option>Bogotá · Usaquén</option>
+            <option>Medellín · El Poblado</option>
+            <option>Cali · Granada</option>
+            <option>Barranquilla · Alto Prado</option>
+          </select>
+        </div>
+        <!-- Mensaje de error de POST /api/citas (lo llena js/navigation.js) -->
+        <p class="organism-modal__error molecule-field--full" role="alert" data-modal-error hidden></p>
+      </div>
+      <div class="organism-modal__footer">
+        <button class="atom-button atom-button--outline" type="submit" value="cancelar" formnovalidate>Cancelar</button>
+        <button class="atom-button atom-button--primary" type="submit" value="confirmar">Solicitar cita</button>
+      </div>
+    </form>
+  </dialog>
+
+  <!-- Aviso que se muestra al enviar la solicitud desde el diálogo -->
+  <div class="molecule-toast" id="toast-cita" role="status">
+    <svg class="atom-icon" aria-hidden="true"><use href="#icon-check-circle"/></svg>
+    <div>
+      <p class="molecule-toast__title">Solicitud enviada</p>
+      <p class="molecule-toast__text">Te llamaremos para confirmar el horario de tu valoración.</p>
+    </div>
+  </div>
+</body>
+</html>

@@ -1,0 +1,407 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Iniciar sesión · DentalCare</title>
+    <meta name="description" content="Ingreso al sistema DentalCare." />
+    <meta name="robots" content="noindex" />
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%230F766E'/%3E%3Cpath d='M11.5 8c-2.7 0-4.5 2.1-4.5 5 0 2.4 1 4 1.6 6.2.6 2.3.9 4.8 2.4 4.8 1.6 0 1.6-3.8 2.6-5.4.4-.7.8-.9 1.4-.9s1 .2 1.4.9c1 1.6 1 5.4 2.6 5.4 1.5 0 1.8-2.5 2.4-4.8.6-2.2 1.6-3.8 1.6-6.2 0-2.9-1.8-5-4.5-5-1.6 0-2.4.8-3.5.8S13.1 8 11.5 8z' fill='none' stroke='%23fff' stroke-width='1.8' stroke-linejoin='round'/%3E%3C/svg%3E" type="image/svg+xml" />
+    <link rel="stylesheet" href="./css/00-tokens.css" />
+    <link rel="stylesheet" href="./css/01-base.css" />
+    <link rel="stylesheet" href="./css/02-atoms.css" />
+    <link rel="stylesheet" href="./css/03-molecules.css" />
+    <link rel="stylesheet" href="./css/04-organisms.css" />
+    <link rel="stylesheet" href="./css/05-templates.css" />
+    <link rel="stylesheet" href="./css/06-responsive.css" />
+    <script defer src="./js/navigation.js"></script>
+  </head>
+  <body>
+    <!-- Contenido escrito en HTML. Cada pestaña de rol es un formulario cuyo action abre el inicio de ese rol;
+         js/navigation.js solo alterna las pestañas y las vistas (ingreso, recuperar, enviado). -->
+    <svg xmlns="http://www.w3.org/2000/svg" id="dc-icon-sprite" class="icon-sprite" aria-hidden="true" focusable="false">
+      <symbol id="icon-home" viewBox="0 0 24 24">
+        <path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+        <polyline points="9 22 9 12 15 12 15 22"></polyline>
+      </symbol>
+      <symbol id="icon-menu" viewBox="0 0 24 24">
+        <line x1="4" y1="6" x2="20" y2="6"></line>
+        <line x1="4" y1="12" x2="20" y2="12"></line>
+        <line x1="4" y1="18" x2="20" y2="18"></line>
+      </symbol>
+      <symbol id="icon-chevron-down" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"></path></symbol>
+      <symbol id="icon-chevron-left" viewBox="0 0 24 24"><path d="m15 18-6-6 6-6"></path></symbol>
+      <symbol id="icon-chevron-right" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"></path></symbol>
+      <symbol id="icon-log-out" viewBox="0 0 24 24">
+        <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+        <polyline points="16 17 21 12 16 7"></polyline>
+        <line x1="21" y1="12" x2="9" y2="12"></line>
+      </symbol>
+      <symbol id="icon-arrow-left" viewBox="0 0 24 24">
+        <path d="m12 19-7-7 7-7"></path>
+        <path d="M19 12H5"></path>
+      </symbol>
+      <symbol id="icon-more-vertical" viewBox="0 0 24 24">
+        <circle cx="12" cy="5" r="1"></circle>
+        <circle cx="12" cy="12" r="1"></circle>
+        <circle cx="12" cy="19" r="1"></circle>
+      </symbol>
+      <symbol id="icon-dashboard" viewBox="0 0 24 24">
+        <line x1="12" y1="20" x2="12" y2="10"></line>
+        <line x1="18" y1="20" x2="18" y2="4"></line>
+        <line x1="6" y1="20" x2="6" y2="16"></line>
+      </symbol>
+      <symbol id="icon-calendar" viewBox="0 0 24 24">
+        <rect x="3" y="4" width="18" height="18" rx="2"></rect>
+        <line x1="16" y1="2" x2="16" y2="6"></line>
+        <line x1="8" y1="2" x2="8" y2="6"></line>
+        <line x1="3" y1="10" x2="21" y2="10"></line>
+      </symbol>
+      <symbol id="icon-user" viewBox="0 0 24 24">
+        <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"></path>
+        <circle cx="12" cy="7" r="4"></circle>
+      </symbol>
+      <symbol id="icon-users" viewBox="0 0 24 24">
+        <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path>
+        <circle cx="9" cy="7" r="4"></circle>
+        <path d="M22 21v-2a4 4 0 0 0-3-3.87"></path>
+        <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+      </symbol>
+      <symbol id="icon-tooth" viewBox="0 0 24 24">
+        <path
+          d="M7 3C4.8 3 3 4.8 3 7.2c0 2 .8 3.3 1.5 4.6.6 1.2.9 2.6 1.1 4.2L6 20c.2 1.2 1 2 1.9 2 .9 0 1.4-.8 1.6-1.8l.7-3.6c.2-.9.9-1.6 1.8-1.6s1.6.7 1.8 1.6l.7 3.6c.2 1 .7 1.8 1.6 1.8.9 0 1.7-.8 1.9-2l.4-4c.2-1.6.5-3 1.1-4.2.7-1.3 1.5-2.6 1.5-4.6C21 4.8 19.2 3 17 3c-1.8 0-3 1-5 1S8.8 3 7 3Z"
+        ></path>
+      </symbol>
+      <symbol id="icon-file-text" viewBox="0 0 24 24">
+        <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"></path>
+        <polyline points="14 2 14 8 20 8"></polyline>
+        <line x1="16" y1="13" x2="8" y2="13"></line>
+        <line x1="16" y1="17" x2="8" y2="17"></line>
+      </symbol>
+      <symbol id="icon-clipboard" viewBox="0 0 24 24">
+        <rect x="8" y="2" width="8" height="4" rx="1"></rect>
+        <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path>
+      </symbol>
+      <symbol id="icon-credit-card" viewBox="0 0 24 24">
+        <rect x="2" y="5" width="20" height="14" rx="2"></rect>
+        <line x1="2" y1="10" x2="22" y2="10"></line>
+      </symbol>
+      <symbol id="icon-dollar" viewBox="0 0 24 24">
+        <line x1="12" y1="2" x2="12" y2="22"></line>
+        <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
+      </symbol>
+      <symbol id="icon-activity" viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline></symbol>
+      <symbol id="icon-settings" viewBox="0 0 24 24">
+        <line x1="4" y1="21" x2="4" y2="14"></line>
+        <line x1="4" y1="10" x2="4" y2="3"></line>
+        <line x1="12" y1="21" x2="12" y2="12"></line>
+        <line x1="12" y1="8" x2="12" y2="3"></line>
+        <line x1="20" y1="21" x2="20" y2="16"></line>
+        <line x1="20" y1="12" x2="20" y2="3"></line>
+        <line x1="1" y1="14" x2="7" y2="14"></line>
+        <line x1="9" y1="8" x2="15" y2="8"></line>
+        <line x1="17" y1="16" x2="23" y2="16"></line>
+      </symbol>
+      <symbol id="icon-shield" viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></symbol>
+      <symbol id="icon-bell" viewBox="0 0 24 24">
+        <path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"></path>
+        <path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"></path>
+      </symbol>
+      <symbol id="icon-clock" viewBox="0 0 24 24">
+        <circle cx="12" cy="12" r="10"></circle>
+        <polyline points="12 6 12 12 16 14"></polyline>
+      </symbol>
+      <symbol id="icon-trending-up" viewBox="0 0 24 24">
+        <polyline points="22 7 13.5 15.5 8.5 10.5 2 17"></polyline>
+        <polyline points="16 7 22 7 22 13"></polyline>
+      </symbol>
+      <symbol id="icon-trending-down" viewBox="0 0 24 24">
+        <polyline points="22 17 13.5 8.5 8.5 13.5 2 7"></polyline>
+        <polyline points="16 17 22 17 22 11"></polyline>
+      </symbol>
+      <symbol id="icon-search" viewBox="0 0 24 24">
+        <circle cx="11" cy="11" r="8"></circle>
+        <path d="m21 21-4.3-4.3"></path>
+      </symbol>
+      <symbol id="icon-filter" viewBox="0 0 24 24"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon></symbol>
+      <symbol id="icon-plus" viewBox="0 0 24 24">
+        <path d="M5 12h14"></path>
+        <path d="M12 5v14"></path>
+      </symbol>
+      <symbol id="icon-edit" viewBox="0 0 24 24"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"></path></symbol>
+      <symbol id="icon-trash" viewBox="0 0 24 24">
+        <path d="M3 6h18"></path>
+        <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path>
+        <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path>
+      </symbol>
+      <symbol id="icon-eye" viewBox="0 0 24 24">
+        <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"></path>
+        <circle cx="12" cy="12" r="3"></circle>
+      </symbol>
+      <symbol id="icon-eye-off" viewBox="0 0 24 24">
+        <path d="M9.88 9.88a3 3 0 1 0 4.24 4.24"></path>
+        <path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68"></path>
+        <path d="M6.61 6.61A13.53 13.53 0 0 0 2 12s3 7 10 7a9.74 9.74 0 0 0 5.39-1.61"></path>
+        <line x1="2" y1="2" x2="22" y2="22"></line>
+      </symbol>
+      <symbol id="icon-x" viewBox="0 0 24 24">
+        <path d="M18 6 6 18"></path>
+        <path d="m6 6 12 12"></path>
+      </symbol>
+      <symbol id="icon-check" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"></path></symbol>
+      <symbol id="icon-mail" viewBox="0 0 24 24">
+        <rect x="2" y="4" width="20" height="16" rx="2"></rect>
+        <path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"></path>
+      </symbol>
+      <symbol id="icon-lock" viewBox="0 0 24 24">
+        <rect x="3" y="11" width="18" height="11" rx="2"></rect>
+        <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+      </symbol>
+      <symbol id="icon-phone" viewBox="0 0 24 24">
+        <path
+          d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"
+        ></path>
+      </symbol>
+      <symbol id="icon-map-pin" viewBox="0 0 24 24">
+        <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"></path>
+        <circle cx="12" cy="10" r="3"></circle>
+      </symbol>
+      <symbol id="icon-id-card" viewBox="0 0 24 24">
+        <rect x="3" y="4" width="18" height="16" rx="2"></rect>
+        <circle cx="9" cy="10" r="2"></circle>
+        <path d="M15 8h2"></path>
+        <path d="M15 12h2"></path>
+        <path d="M7 16h10"></path>
+      </symbol>
+      <symbol id="icon-check-circle" viewBox="0 0 24 24">
+        <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+        <polyline points="22 4 12 14.01 9 11.01"></polyline>
+      </symbol>
+      <symbol id="icon-alert-circle" viewBox="0 0 24 24">
+        <circle cx="12" cy="12" r="10"></circle>
+        <line x1="12" y1="8" x2="12" y2="12"></line>
+        <line x1="12" y1="16" x2="12.01" y2="16"></line>
+      </symbol>
+      <symbol id="icon-alert-triangle" viewBox="0 0 24 24">
+        <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"></path>
+        <line x1="12" y1="9" x2="12" y2="13"></line>
+        <line x1="12" y1="17" x2="12.01" y2="17"></line>
+      </symbol>
+      <symbol id="icon-info" viewBox="0 0 24 24">
+        <circle cx="12" cy="12" r="10"></circle>
+        <path d="M12 16v-4"></path>
+        <path d="M12 8h.01"></path>
+      </symbol>
+    </svg>
+    <div class="auth">
+      <div class="auth__brand">
+        <span class="auth-logo auth-logo--inverse"
+          ><span class="auth-logo__mark" aria-hidden="true"
+            ><svg
+              viewBox="0 0 24 24"
+              width="20"
+              height="20"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              class="icon"
+              focusable="false"
+              aria-hidden="true"
+            >
+              <use href="#icon-tooth"></use></svg></span
+          >DentalCare</span
+        >
+        <div class="auth__brand-copy">
+          <p class="auth__tagline">Tu sonrisa, en buenas manos.</p>
+          <p class="auth__brand-text">Centro odontológico en Rionegro, Antioquia.</p>
+          <ul class="auth__highlights" role="list">
+            <li>
+              <span class="auth__highlight-icon" aria-hidden="true"
+                ><svg
+                  viewBox="0 0 24 24"
+                  width="18"
+                  height="18"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  class="icon"
+                  focusable="false"
+                  aria-hidden="true"
+                >
+                  <use href="#icon-calendar"></use></svg></span
+              >Agenda y consulta tus citas en línea
+            </li>
+            <li>
+              <span class="auth__highlight-icon" aria-hidden="true"
+                ><svg
+                  viewBox="0 0 24 24"
+                  width="18"
+                  height="18"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  class="icon"
+                  focusable="false"
+                  aria-hidden="true"
+                >
+                  <use href="#icon-file-text"></use></svg></span
+              >Historia clínica y odontograma digitales
+            </li>
+            <li>
+              <span class="auth__highlight-icon" aria-hidden="true"
+                ><svg
+                  viewBox="0 0 24 24"
+                  width="18"
+                  height="18"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  class="icon"
+                  focusable="false"
+                  aria-hidden="true"
+                >
+                  <use href="#icon-credit-card"></use></svg></span
+              >Pagos y abonos siempre al día
+            </li>
+          </ul>
+        </div>
+        <p class="auth__legal">© 2026 DentalCare · Proyecto SENA</p>
+      </div>
+      <main id="contenido-principal" class="auth__main">
+        <section class="auth__card vista is-active" id="vista-login" data-tab-panel="vista-login" aria-labelledby="auth-title-login">
+          <a class="auth__home" href="index.html" aria-label="DentalCare, volver a la página principal"><span class="auth-logo auth-logo--compact"><span class="auth-logo__mark" aria-hidden="true"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon" focusable="false" aria-hidden="true"><use href="#icon-tooth"></use></svg></span>DentalCare</span></a>
+          <div class="auth__header">
+            <h1 class="auth__title" id="auth-title-login">Iniciar sesión</h1>
+            <p class="auth__subtitle">Elige tu perfil para entrar a tu espacio de trabajo.</p>
+          </div>
+          <div class="auth__body">
+            <div class="tabs tabs--segmented auth-roles">
+              <div class="tabs__list" role="tablist" aria-label="Perfil de acceso">
+                <button type="button" role="tab" class="tabs__tab is-active" id="tab-rol-admin" aria-controls="rol-admin" aria-selected="true" data-tab="rol-admin">Administrador</button><button type="button" role="tab" class="tabs__tab" id="tab-rol-asistente" aria-controls="rol-asistente" aria-selected="false" data-tab="rol-asistente">Asistente</button><button type="button" role="tab" class="tabs__tab" id="tab-rol-doctor" aria-controls="rol-doctor" aria-selected="false" data-tab="rol-doctor">Odontólogo</button><button type="button" role="tab" class="tabs__tab" id="tab-rol-paciente" aria-controls="rol-paciente" aria-selected="false" data-tab="rol-paciente">Paciente</button>
+              </div>
+              <div class="tabs__panel is-active" id="rol-admin" role="tabpanel" aria-labelledby="tab-rol-admin" data-tab-panel="rol-admin">
+                <!-- Sin backend: el formulario navega al inicio del rol (los campos no tienen name, no viajan en la URL). -->
+                <form class="auth-form" action="pages/admin/dashboard.html" method="get">
+                  <p class="auth-form__hint">Citas, pacientes, especialistas, tratamientos, pagos y reportes.</p>
+                  <div class="field">
+                    <label class="label" for="email-admin">Correo electrónico<span class="label__required" aria-hidden="true">*</span><span class="u-visually-hidden">(obligatorio)</span></label>
+                    <span class="input-wrap"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon input-wrap__icon" focusable="false" aria-hidden="true"><use href="#icon-mail"></use></svg><input id="email-admin" type="email" class="input" value="admin@dentalcare.com" required autocomplete="username" /></span>
+                  </div>
+                  <div class="field">
+                    <label class="label" for="pwd-admin">Contraseña<span class="label__required" aria-hidden="true">*</span><span class="u-visually-hidden">(obligatorio)</span></label>
+                    <span class="input-wrap"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon input-wrap__icon" focusable="false" aria-hidden="true"><use href="#icon-lock"></use></svg><input id="pwd-admin" type="password" class="input" value="Admin2026*" required autocomplete="current-password" /></span>
+                  </div>
+                  <div class="auth-form__row">
+                    <span></span><a href="#recuperar" class="link link--sm" data-tab="vista-recuperar">¿Olvidaste tu contraseña?</a>
+                  </div>
+                  <button type="submit" class="btn btn--primary btn--block"><span class="btn__label">Ingresar como administrador</span></button>
+                </form>
+              </div>
+              <div class="tabs__panel" id="rol-asistente" role="tabpanel" aria-labelledby="tab-rol-asistente" data-tab-panel="rol-asistente">
+                <!-- Sin backend: el formulario navega al inicio del rol (los campos no tienen name, no viajan en la URL). -->
+                <form class="auth-form" action="pages/asistente/inicio.html" method="get">
+                  <p class="auth-form__hint">Recepción: agenda del día, pacientes, caja y novedades.</p>
+                  <div class="field">
+                    <label class="label" for="email-asistente">Correo electrónico<span class="label__required" aria-hidden="true">*</span><span class="u-visually-hidden">(obligatorio)</span></label>
+                    <span class="input-wrap"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon input-wrap__icon" focusable="false" aria-hidden="true"><use href="#icon-mail"></use></svg><input id="email-asistente" type="email" class="input" value="recepcion@dentalcare.com" required autocomplete="username" /></span>
+                  </div>
+                  <div class="field">
+                    <label class="label" for="pwd-asistente">Contraseña<span class="label__required" aria-hidden="true">*</span><span class="u-visually-hidden">(obligatorio)</span></label>
+                    <span class="input-wrap"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon input-wrap__icon" focusable="false" aria-hidden="true"><use href="#icon-lock"></use></svg><input id="pwd-asistente" type="password" class="input" value="Recep2026*" required autocomplete="current-password" /></span>
+                  </div>
+                  <div class="auth-form__row">
+                    <span></span><a href="#recuperar" class="link link--sm" data-tab="vista-recuperar">¿Olvidaste tu contraseña?</a>
+                  </div>
+                  <button type="submit" class="btn btn--primary btn--block"><span class="btn__label">Ingresar como asistente</span></button>
+                </form>
+              </div>
+              <div class="tabs__panel" id="rol-doctor" role="tabpanel" aria-labelledby="tab-rol-doctor" data-tab-panel="rol-doctor">
+                <!-- Sin backend: el formulario navega al inicio del rol (los campos no tienen name, no viajan en la URL). -->
+                <form class="auth-form" action="pages/doctor/dashboard.html" method="get">
+                  <p class="auth-form__hint">Agenda clínica, pacientes, historia clínica y odontograma.</p>
+                  <div class="field">
+                    <label class="label" for="email-doctor">Correo electrónico<span class="label__required" aria-hidden="true">*</span><span class="u-visually-hidden">(obligatorio)</span></label>
+                    <span class="input-wrap"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon input-wrap__icon" focusable="false" aria-hidden="true"><use href="#icon-mail"></use></svg><input id="email-doctor" type="email" class="input" value="dr.roberto@dentalcare.com" required autocomplete="username" /></span>
+                  </div>
+                  <div class="field">
+                    <label class="label" for="pwd-doctor">Contraseña<span class="label__required" aria-hidden="true">*</span><span class="u-visually-hidden">(obligatorio)</span></label>
+                    <span class="input-wrap"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon input-wrap__icon" focusable="false" aria-hidden="true"><use href="#icon-lock"></use></svg><input id="pwd-doctor" type="password" class="input" value="DocRoberto2026*" required autocomplete="current-password" /></span>
+                  </div>
+                  <div class="auth-form__row">
+                    <span></span><a href="#recuperar" class="link link--sm" data-tab="vista-recuperar">¿Olvidaste tu contraseña?</a>
+                  </div>
+                  <button type="submit" class="btn btn--primary btn--block"><span class="btn__label">Ingresar como odontólogo</span></button>
+                </form>
+              </div>
+              <div class="tabs__panel" id="rol-paciente" role="tabpanel" aria-labelledby="tab-rol-paciente" data-tab-panel="rol-paciente">
+                <!-- Sin backend: el formulario navega al inicio del rol (los campos no tienen name, no viajan en la URL). -->
+                <form class="auth-form" action="pages/paciente/inicio.html" method="get">
+                  <p class="auth-form__hint">Tus citas, tu historia clínica y tus pagos.</p>
+                  <div class="field">
+                    <label class="label" for="email-paciente">Correo electrónico<span class="label__required" aria-hidden="true">*</span><span class="u-visually-hidden">(obligatorio)</span></label>
+                    <span class="input-wrap"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon input-wrap__icon" focusable="false" aria-hidden="true"><use href="#icon-mail"></use></svg><input id="email-paciente" type="email" class="input" value="andres.galvis@gmail.com" required autocomplete="username" /></span>
+                  </div>
+                  <div class="field">
+                    <label class="label" for="pwd-paciente">Contraseña<span class="label__required" aria-hidden="true">*</span><span class="u-visually-hidden">(obligatorio)</span></label>
+                    <span class="input-wrap"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon input-wrap__icon" focusable="false" aria-hidden="true"><use href="#icon-lock"></use></svg><input id="pwd-paciente" type="password" class="input" value="AndresG2026*" required autocomplete="current-password" /></span>
+                  </div>
+                  <div class="auth-form__row">
+                    <span></span><a href="#recuperar" class="link link--sm" data-tab="vista-recuperar">¿Olvidaste tu contraseña?</a>
+                  </div>
+                  <button type="submit" class="btn btn--primary btn--block"><span class="btn__label">Ingresar como paciente</span></button>
+                </form>
+              </div>
+            </div>
+          </div>
+          <div class="auth__footer">
+            <p class="auth__demo-note">Propuesta visual: las cuentas de demostración ya vienen escritas en cada pestaña.</p>
+          </div>
+        </section>
+
+        <section class="auth__card vista" id="vista-recuperar" data-tab-panel="vista-recuperar" aria-labelledby="auth-title-recuperar">
+          <a class="auth__home" href="index.html" aria-label="DentalCare, volver a la página principal"><span class="auth-logo auth-logo--compact"><span class="auth-logo__mark" aria-hidden="true"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon" focusable="false" aria-hidden="true"><use href="#icon-tooth"></use></svg></span>DentalCare</span></a>
+          <div class="auth__header">
+            <h1 class="auth__title" id="auth-title-recuperar">Recuperar contraseña</h1>
+            <p class="auth__subtitle">Te enviaremos un enlace para crear una contraseña nueva.</p>
+          </div>
+          <div class="auth__body">
+            <div class="auth-form">
+              <div class="field">
+                <label class="label" for="field-recuperar">Correo electrónico</label>
+                <span class="input-wrap"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon input-wrap__icon" focusable="false" aria-hidden="true"><use href="#icon-mail"></use></svg><input id="field-recuperar" type="email" class="input" autocomplete="email" /></span>
+              </div>
+              <button type="button" class="btn btn--primary btn--block" data-tab="vista-enviado"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon" focusable="false" aria-hidden="true"><use href="#icon-mail"></use></svg><span class="btn__label">Enviar enlace</span></button>
+            </div>
+          </div>
+          <div class="auth__footer">
+            <a href="login.html" class="link link--sm" data-tab="vista-login"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon" focusable="false" aria-hidden="true"><use href="#icon-arrow-left"></use></svg>Volver a iniciar sesión</a>
+          </div>
+        </section>
+
+        <section class="auth__card vista" id="vista-enviado" data-tab-panel="vista-enviado" aria-labelledby="auth-title-enviado">
+          <a class="auth__home" href="index.html" aria-label="DentalCare, volver a la página principal"><span class="auth-logo auth-logo--compact"><span class="auth-logo__mark" aria-hidden="true"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon" focusable="false" aria-hidden="true"><use href="#icon-tooth"></use></svg></span>DentalCare</span></a>
+          <div class="auth__header">
+            <h1 class="auth__title" id="auth-title-enviado">Revisa tu correo</h1>
+          </div>
+          <div class="auth__body">
+            <div class="auth-notice">
+              <span class="auth-notice__icon" aria-hidden="true"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon" focusable="false" aria-hidden="true"><use href="#icon-mail"></use></svg></span>
+              <p>Si el correo está registrado, recibirás un enlace para restablecer tu contraseña. El enlace vence en 30 minutos.</p>
+            </div>
+          </div>
+          <div class="auth__footer">
+            <a href="login.html" class="link link--sm" data-tab="vista-login"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon" focusable="false" aria-hidden="true"><use href="#icon-arrow-left"></use></svg>Volver a iniciar sesión</a>
+          </div>
+        </section>
+      </main>
+    </div>
+  </body>
+</html>

@@ -1,0 +1,1839 @@
+/* ==========================================================================
+   05 · PLANTILLAS Y PÁGINA  (template-*, page-*)
+   Maquetación: anchos, espaciado vertical y estructura general.
+   No definen contenido, solo dónde y cuánto espacio ocupa cada organismo.
+   ========================================================================== */
+
+/* ---- Plantilla ---- */
+
+.template-landing {
+  overflow-x: clip;
+}
+
+.template-container {
+  width: min(100% - 2 * var(--gutter), var(--container));
+  margin-inline: auto;
+}
+
+.template-section {
+  padding-block: clamp(3.5rem, 8vw, 6rem);
+}
+
+/* ---- Página ---- */
+
+.page-landing {
+  min-height: 100vh;
+  background: var(--color-bg);
+}
+
+
+/* ##########################################################################
+   APLICACIÓN POR ROLES  ·  login.html, perfil.html y pages/**
+   Componentes de la app DentalCare (sin prefijo atómico heredado: .btn, .card,
+   .data-table, .dialog…). Comparten los tokens de 00-tokens.css con la landing.
+   ########################################################################## */
+
+/* ==========================================================================
+   DentalCare · 05-templates.css
+   Templates: contenedores y layouts estructurales (app-shell, autenticación, ficha de detalle), clases de estado que alternan los listeners y los layouts propios de perfil, guía de estilos y módulo de base de datos.
+   ========================================================================== */
+
+/* ---------- app-shell ---------- */
+
+/* Template: DashboardLayout (.app-shell) + encabezado de página + superficies comunes de las páginas */
+
+.app-shell {
+  position: relative;
+  display: grid;
+  /* `auto`: en escritorio la columna mide lo que el sidebar; en móvil el sidebar es `fixed` y mide 0. */
+  grid-template-columns: auto minmax(0, 1fr);
+  min-height: 100vh;
+  min-height: 100dvh;
+  background: var(--color-bg-app);
+}
+
+.app-shell__column {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+/* En escritorio el logo ya está en el sidebar: la topbar no lo repite. */
+
+.app-shell__main {
+  flex: 1;
+  /* Al saltar con el skip-link, el inicio del <main> no queda escondido bajo la topbar fija. */
+  scroll-margin-top: var(--layout-topbar-h);
+}
+
+/* El <main> recibe foco solo por programa (tabindex="-1"): no necesita anillo visible. */
+.app-shell__main:focus {
+  outline: none;
+}
+
+.app-shell__content {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+  width: 100%;
+  max-width: var(--layout-content-max);
+  margin: 0 auto;
+  padding: var(--space-6) var(--layout-gutter) var(--space-12);
+}
+
+.app-shell__body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+  min-width: 0;
+}
+
+/* ---------- Skip link (WCAG 2.4.1) ---------- */
+/* Fuera de la vista hasta que recibe foco; NO usa display:none, que lo sacaría del orden de tabulación. */
+.skip-link {
+  position: absolute;
+  top: var(--space-2);
+  left: var(--space-2);
+  z-index: var(--z-toast);
+  padding: var(--space-2) var(--space-4);
+  border-radius: var(--radius-md);
+  background: var(--color-brand);
+  color: var(--color-text-inverse);
+  font-size: var(--text-sm);
+  font-weight: var(--font-semibold);
+  text-decoration: none;
+  transform: translateY(calc(-100% - var(--space-4)));
+  transition: transform var(--duration-fast) var(--ease-standard);
+}
+
+.skip-link:focus {
+  transform: none;
+  outline: none;
+  box-shadow: var(--shadow-focus);
+}
+
+/* ---------- Encabezado de página ---------- */
+.page-header {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.page-header__row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--space-3) var(--space-4);
+}
+
+.page-header__text {
+  min-width: 0;
+}
+
+.page-header__title {
+  font-size: var(--text-2xl);
+  overflow-wrap: anywhere;
+}
+
+.page-header__subtitle {
+  margin-top: var(--space-1);
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+}
+
+.page-header__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+/* ---------- Estado de carga del contenido ---------- */
+.page-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-3);
+  padding: var(--space-16) 0;
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+
+/* ---------- Superficies reutilizables por las páginas ---------- */
+.card {
+  min-width: 0;
+  padding: var(--space-5);
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-xs);
+}
+
+.card__header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2) var(--space-4);
+  margin-bottom: var(--space-4);
+}
+
+.card__title {
+  font-size: var(--text-base);
+  font-weight: var(--font-semibold);
+}
+
+.card__subtitle {
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+}
+
+.page-kpis {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr));
+  gap: var(--space-4);
+}
+
+.page-columns {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-6);
+  align-items: start;
+}
+
+/* Lista de datos en dos columnas (etiqueta / valor) */
+.data-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 220px), 1fr));
+  gap: var(--space-4) var(--space-6);
+  margin: 0;
+}
+
+.data-list__label {
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+}
+
+.data-list__value {
+  margin: 0;
+  font-size: var(--text-sm);
+  font-weight: var(--font-medium);
+  overflow-wrap: anywhere;
+}
+
+/* Lista de elementos con avatar, texto, dato al lado y estado (p. ej. "Próximas citas") */
+.item-list {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.item-list__item {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-3);
+  padding: var(--space-3) 0;
+  border-top: var(--border-width) solid var(--color-border);
+}
+
+.item-list__item:first-child {
+  border-top: 0;
+}
+
+.item-list__main {
+  display: flex;
+  flex: 1 1 12rem;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.item-list__title {
+  font-size: var(--text-sm);
+  font-weight: var(--font-medium);
+  overflow-wrap: anywhere;
+}
+
+.item-list__meta,
+.item-list__aside {
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+}
+
+.item-list__empty {
+  margin: 0;
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+
+/* ---------- Error al cargar el contenido (loadInto) ---------- */
+.page-error {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-4);
+  padding: var(--space-12) var(--space-4);
+  border: var(--border-width) solid var(--color-danger-100);
+  border-radius: var(--radius-lg);
+  background: var(--color-danger-50);
+  color: var(--color-danger-700);
+  text-align: center;
+}
+
+.page-error p {
+  margin: 0;
+  font-size: var(--text-sm);
+}
+
+/* ---------- Piezas de las páginas (fase A6) ---------- */
+.stack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+/* Celda de tabla con avatar + nombre */
+.cell-person {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.cell-meta {
+  display: block;
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+}
+
+.cell-wrap {
+  min-width: 16rem;
+  white-space: normal;
+}
+
+/* Línea de tiempo (consultas de la historia clínica) */
+.timeline {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.timeline__item {
+  position: relative;
+  padding: 0 0 var(--space-4) var(--space-5);
+  border-left: 2px solid var(--color-border);
+}
+
+.timeline__item::before {
+  content: "";
+  position: absolute;
+  top: 0.3rem;
+  left: -0.4rem;
+  width: 0.7rem;
+  height: 0.7rem;
+  border-radius: var(--radius-full);
+  background: var(--color-brand);
+}
+
+.timeline__date {
+  margin: 0;
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+}
+
+.timeline__title {
+  margin: var(--space-1) 0 var(--space-3);
+  font-size: var(--text-sm);
+  font-weight: var(--font-semibold);
+}
+
+.noscript {
+  padding: var(--space-6);
+  text-align: center;
+}
+
+/* Tarjeta de equivalencia en dólares (pagos · TRM) */
+.trm {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.trm__rate {
+  margin: 0;
+  font-size: var(--text-lg);
+  color: var(--color-text-secondary);
+}
+
+.trm__rate strong {
+  font-size: var(--text-2xl);
+  font-weight: var(--font-bold);
+  color: var(--color-brand);
+  font-variant-numeric: tabular-nums;
+}
+
+.trm__meta {
+  margin: 0;
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+}
+
+.trm__converter {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr));
+  align-items: end;
+  gap: var(--space-3) var(--space-4);
+  padding-top: var(--space-3);
+  border-top: var(--border-width) solid var(--color-border);
+}
+
+.trm__equals {
+  margin: 0 0 var(--space-2);
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+}
+
+.trm__result {
+  font-size: var(--text-lg);
+  font-weight: var(--font-semibold);
+  color: var(--color-text);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---------- auth-layout ---------- */
+
+/* Template: AuthLayout (.auth) — login, recuperar y restablecer contraseña */
+
+.auth {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  min-height: 100vh;
+  min-height: 100dvh;
+  background: var(--color-bg-app);
+}
+
+/* ---------- Logo ---------- */
+.auth-logo {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--text-lg);
+  font-weight: var(--font-bold);
+  color: var(--color-brand);
+}
+
+.auth-logo__mark {
+  display: grid;
+  place-items: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  border-radius: var(--radius-md);
+  background: var(--color-brand);
+  color: var(--color-text-inverse);
+}
+
+.auth-logo--inverse {
+  color: var(--color-text-inverse);
+}
+
+.auth-logo--inverse .auth-logo__mark {
+  background: rgb(255 255 255 / 0.16);
+}
+
+/* ---------- Panel de marca (solo escritorio) ---------- */
+.auth__brand {
+  position: relative;
+  display: none;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: var(--space-10);
+  overflow: hidden;
+  padding: var(--space-10);
+  background: linear-gradient(160deg, var(--color-primary-700), var(--color-primary-900));
+  color: var(--color-text-inverse);
+}
+
+/* Círculo decorativo: solo CSS, sin imágenes. */
+.auth__brand::after {
+  content: "";
+  position: absolute;
+  right: -120px;
+  bottom: -120px;
+  width: 360px;
+  height: 360px;
+  border-radius: var(--radius-full);
+  background: rgb(255 255 255 / 0.06);
+  pointer-events: none;
+}
+
+.auth__brand-copy {
+  max-width: 28rem;
+}
+
+.auth__tagline {
+  font-size: var(--text-3xl);
+  font-weight: var(--font-bold);
+  line-height: var(--leading-tight);
+}
+
+.auth__brand-text {
+  margin-top: var(--space-3);
+  color: var(--color-primary-100);
+}
+
+.auth__highlights {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  margin: var(--space-8) 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.auth__highlights li {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  font-size: var(--text-sm);
+}
+
+.auth__highlight-icon {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 2rem;
+  height: 2rem;
+  border-radius: var(--radius-full);
+  background: rgb(255 255 255 / 0.14);
+}
+
+.auth__legal {
+  font-size: var(--text-xs);
+  color: var(--color-primary-100);
+}
+
+/* ---------- Tarjeta del formulario ---------- */
+.auth__main {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-8) var(--layout-gutter);
+}
+
+.auth__card {
+  width: 100%;
+  max-width: 420px;
+  padding: var(--space-8) var(--space-6);
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius-xl);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-md);
+}
+
+/* En escritorio el logo ya está en el panel de marca. */
+.auth__home {
+  display: inline-flex;
+  margin-bottom: var(--space-6);
+  border-radius: var(--radius-md);
+  text-decoration: none;
+}
+
+.auth__header {
+  margin-bottom: var(--space-6);
+}
+
+.auth__title {
+  font-size: var(--text-2xl);
+}
+
+/* Recibe foco por programa al cambiar de vista: sin anillo, el lector ya anuncia el título. */
+.auth__title:focus {
+  outline: none;
+}
+
+.auth__subtitle {
+  margin-top: var(--space-2);
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+}
+
+.auth__footer {
+  margin-top: var(--space-6);
+  padding-top: var(--space-5);
+  border-top: var(--border-width) solid var(--color-border);
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+  text-align: center;
+}
+
+/* ---------- Formularios de autenticación ---------- */
+.auth-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.auth-form__row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+/* Mensaje de confirmación ("revisa tu correo") */
+.auth-notice {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-3);
+  text-align: center;
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+}
+
+.auth-notice__icon {
+  display: grid;
+  place-items: center;
+  width: 3.5rem;
+  height: 3.5rem;
+  border-radius: var(--radius-full);
+  background: var(--color-success-50);
+  color: var(--color-success-700);
+}
+
+/* ---------- Páginas reales (fase A6) ---------- */
+.auth-form__alert:empty {
+  display: none;
+}
+
+/* Cuentas de demostración: clic = llena el formulario */
+.auth-demo {
+  text-align: left;
+}
+
+.auth-demo summary {
+  cursor: pointer;
+  font-weight: var(--font-medium);
+  color: var(--color-text-secondary);
+}
+
+.auth-demo__list {
+  display: grid;
+  gap: var(--space-2);
+  margin: var(--space-3) 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.auth-demo__item {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: var(--space-1) var(--space-3);
+  width: 100%;
+  padding: var(--space-2) var(--space-3);
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font: inherit;
+  font-size: var(--text-xs);
+  text-align: left;
+  cursor: pointer;
+}
+
+.auth-demo__item:hover {
+  background: var(--color-surface-hover);
+}
+
+.auth-demo__item:focus-visible {
+  outline: 2px solid var(--color-brand);
+  outline-offset: 2px;
+}
+
+.auth-demo__item span {
+  color: var(--color-text-muted);
+  overflow-wrap: anywhere;
+}
+
+/* 403: ícono de escudo en tono de alerta y la ruta pedida */
+.auth-notice--denied .auth-notice__icon {
+  background: var(--color-danger-50);
+  color: var(--color-danger-700);
+}
+
+.auth-notice__detail {
+  margin: 0;
+  font-size: var(--text-xs);
+  overflow-wrap: anywhere;
+}
+
+/* ---------- detail-layout ---------- */
+
+/* Template: DetailLayout (.detail) — ficha de paciente / detalle clínico */
+
+/* Como el odontograma, se adapta al ancho de SU contenedor (el área junto al sidebar). */
+.detail {
+  container-type: inline-size;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+  min-width: 0;
+}
+
+/* ---------- Encabezado ---------- */
+.detail__header {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+  padding: var(--space-6);
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-xs);
+}
+
+.detail__identity {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: var(--space-4);
+}
+
+.detail__heading {
+  flex: 1 1 260px;
+  min-width: 0;
+}
+
+.detail__title-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-3);
+}
+
+.detail__title {
+  font-size: var(--text-2xl);
+  overflow-wrap: anywhere;
+}
+
+.detail__badges {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.detail__subtitle {
+  margin-top: var(--space-1);
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+}
+
+.detail__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-5);
+  margin: var(--space-3) 0 0;
+}
+
+.detail__meta-item {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+}
+
+.detail__meta-item dt {
+  display: inline-flex;
+  color: var(--color-text-muted);
+}
+
+.detail__meta-item dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.detail__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+/* ---------- Resumen ---------- */
+.detail__summary {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 130px), 1fr));
+  gap: var(--space-4);
+  margin: 0;
+  padding-top: var(--space-5);
+  border-top: var(--border-width) solid var(--color-border);
+}
+
+.detail__stat-label {
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+}
+
+.detail__stat-value {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  margin: var(--space-1) 0 0;
+  font-weight: var(--font-semibold);
+  font-variant-numeric: tabular-nums;
+}
+
+.detail__stat-hint {
+  font-size: var(--text-xs);
+  font-weight: var(--font-regular);
+  color: var(--color-text-secondary);
+}
+
+/* ---------- Alertas clínicas ---------- */
+.detail__alerts {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.detail-alert {
+  --alert-bg: var(--color-warning-50);
+  --alert-border: var(--color-warning-100);
+  --alert-accent: var(--color-warning-700);
+
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border: var(--border-width) solid var(--alert-border);
+  border-left: 4px solid var(--alert-accent);
+  border-radius: var(--radius-md);
+  background: var(--alert-bg);
+  font-size: var(--text-sm);
+}
+
+.detail-alert--info {
+  --alert-bg: var(--color-info-50);
+  --alert-border: var(--color-info-100);
+  --alert-accent: var(--color-info-700);
+}
+
+.detail-alert--danger {
+  --alert-bg: var(--color-danger-50);
+  --alert-border: var(--color-danger-100);
+  --alert-accent: var(--color-danger-700);
+}
+
+.detail-alert__icon {
+  flex-shrink: 0;
+  color: var(--alert-accent);
+}
+
+/* ---------- Cuerpo: pestañas + columna complementaria ---------- */
+.detail__body {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-5);
+}
+
+@container (min-width: 1000px) {
+  .detail__body--with-aside {
+    grid-template-columns: minmax(0, 1fr) 300px;
+    align-items: start;
+  }
+}
+
+.detail__main {
+  min-width: 0;
+  padding: var(--space-2) var(--space-6) var(--space-6);
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-xs);
+}
+
+.detail__main > .tabs > .tabs__panel {
+  padding-top: var(--space-5);
+}
+
+.detail__aside {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  min-width: 0;
+}
+
+/* ---------- estados ---------- */
+
+/*
+ * Estados visuales de las páginas estáticas (frontend/pages/).
+ *
+ * Todo el contenido ya está escrito en el HTML: JavaScript solo escucha eventos y pone o quita
+ * estas clases. Ninguna regla de aquí crea contenido; solo muestra u oculta lo que ya existe.
+ *
+ *   is-open      menú lateral (móvil), su fondo oscuro y los menús desplegables de la barra superior
+ *   is-active    pestaña y panel visibles; vista del calendario; ficha del paciente elegida
+ *   is-visible   aviso (toast) y botón "limpiar búsqueda"
+ *   is-oculta    fila que no coincide con la búsqueda o el filtro (tablas y tarjetas)
+ *   modo-editar  formulario de "nuevo" usado para editar: cambia el título y el botón
+ */
+
+/* ---------- Menú lateral y menús desplegables ---------- */
+.sidebar-overlay:not(.is-open) {
+  display: none;
+}
+
+.popover:not(.is-open) {
+  display: none;
+}
+
+.topbar__count.is-oculta {
+  display: none;
+}
+
+/* ---------- Pestañas (antes [aria-selected="true"] y [hidden]) ---------- */
+.tabs__panel:not(.is-active) {
+  display: none;
+}
+
+.tabs--underline .tabs__tab.is-active {
+  color: var(--color-brand);
+  border-bottom-color: var(--color-brand);
+}
+
+.tabs--segmented .tabs__tab.is-active {
+  background: var(--color-surface);
+  color: var(--color-text);
+  box-shadow: var(--shadow-sm);
+}
+
+.tabs__tab.is-active .tabs__count {
+  background: var(--color-primary-100);
+  color: var(--color-primary-800);
+}
+
+/* Vistas que se alternan sin pestañas con panel (calendario: día/semana/mes/lista; odontograma: dentición). */
+.vista:not(.is-active) {
+  display: none;
+}
+
+/* ---------- Tablas: búsqueda y filtros ---------- */
+.search-bar__clear:not(.is-visible) {
+  display: none;
+}
+
+/* Filtros rápidos: cada chip es un <label> con un radio. */
+.chip {
+  cursor: pointer;
+}
+
+.chip__radio {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.chip:has(.chip__radio:checked) {
+  border-color: var(--color-brand);
+  background: var(--color-brand-soft);
+  color: var(--color-brand);
+}
+
+.chip:has(.chip__radio:checked) .chip__count {
+  color: var(--color-primary-700);
+}
+
+.chip:has(.chip__radio:focus-visible) {
+  box-shadow: var(--shadow-focus);
+}
+
+.is-oculta {
+  display: none !important;
+}
+
+.data-table__sin-resultados {
+  display: none;
+}
+
+.sin-resultados .data-table__sin-resultados {
+  display: table-row;
+}
+
+/* ---------- Formularios de dos modos (nuevo / editar) ---------- */
+.modo-editar .solo-nuevo,
+dialog:not(.modo-editar) .solo-editar {
+  display: none;
+}
+
+/* Municipios del departamento elegido: los demás grupos se ocultan. */
+optgroup.is-oculta {
+  display: none;
+}
+
+/* ---------- Gráficas: "Ver tabla" / "Ver gráfica" ---------- */
+.chart:not(.mostrar-tabla) .chart__table,
+.chart.mostrar-tabla .chart__plot,
+.chart:not(.mostrar-tabla) .solo-tabla,
+.chart.mostrar-tabla .solo-grafica {
+  display: none;
+}
+
+/* ---------- Avisos (toasts escritos en el HTML) ---------- */
+.toast:not(.is-visible) {
+  display: none;
+}
+
+/* ---------- Fichas por paciente (historia.html?id=…) ---------- */
+.ficha:not(.is-active),
+.por-paciente:not(.is-active) {
+  display: none;
+}
+
+/* ---------- perfil ---------- */
+
+/* Página: Mi perfil (perfil.html). Reutiliza .card y .form-grid; aquí solo lo propio de la página. */
+
+.perfil {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-4);
+  max-width: 880px;
+}
+
+.perfil__text {
+  margin-bottom: var(--space-4);
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+}
+
+.perfil-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+.perfil-form__footer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-3);
+}
+
+/* ---------- Estado del formulario (data-state lo cambia el JS: clean | dirty | saved) ---------- */
+.perfil-form__status {
+  margin-right: auto;
+  font-size: var(--text-sm);
+}
+
+.perfil-form__status-dirty,
+.perfil-form__status-saved {
+  display: none;
+}
+
+.perfil-form[data-state="dirty"] .perfil-form__status-dirty {
+  display: inline;
+  color: var(--color-warning-700);
+}
+
+.perfil-form[data-state="saved"] .perfil-form__status-saved {
+  display: inline;
+  color: var(--color-success-700);
+  font-weight: var(--font-medium);
+}
+
+/* ---------- styleguide ---------- */
+
+/* Estilos exclusivos de la página styleguide.html (documentación interna). */
+
+.sg {
+  background: var(--color-bg-app);
+}
+
+/* ---------- Encabezado ---------- */
+.sg-header {
+  position: sticky;
+  top: 0;
+  z-index: var(--z-sticky);
+  background: var(--color-surface);
+  border-bottom: var(--border-width) solid var(--color-border);
+}
+
+.sg-header__inner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  max-width: var(--layout-content-max);
+  margin: 0 auto;
+  padding: var(--space-3) var(--layout-gutter);
+}
+
+.sg-brand {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.sg-brand__logo {
+  display: grid;
+  place-items: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: var(--radius-md);
+  background: var(--color-brand);
+  color: var(--color-text-inverse);
+}
+
+.sg-brand__name {
+  font-weight: var(--font-bold);
+  color: var(--color-brand);
+  line-height: 1.1;
+}
+
+.sg-brand__sub {
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+}
+
+.sg-nav {
+  display: flex;
+  gap: var(--space-1);
+  overflow-x: auto;
+  max-width: 100%;
+  scrollbar-width: none;
+}
+
+.sg-nav a {
+  padding: var(--space-1) var(--space-3);
+  border-radius: var(--radius-full);
+  font-size: var(--text-sm);
+  font-weight: var(--font-medium);
+  color: var(--color-text-secondary);
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.sg-nav a:hover {
+  background: var(--color-brand-soft);
+  color: var(--color-brand);
+}
+
+/* ---------- Contenido ---------- */
+.sg-main {
+  max-width: var(--layout-content-max);
+  margin: 0 auto;
+  padding: var(--space-8) var(--layout-gutter) var(--space-16);
+}
+
+.sg-intro {
+  max-width: 65ch;
+  margin-bottom: var(--space-10);
+}
+
+.sg-intro h1 {
+  margin-bottom: var(--space-2);
+}
+
+.sg-section {
+  margin-bottom: var(--space-12);
+  scroll-margin-top: 96px;
+}
+
+.sg-section__title {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-bottom: var(--space-1);
+}
+
+.sg-section__desc {
+  margin-bottom: var(--space-4);
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+}
+
+.sg-tag {
+  padding: 2px var(--space-2);
+  border-radius: var(--radius-sm);
+  background: var(--color-secondary-100);
+  color: var(--color-secondary-800);
+  font-size: var(--text-xs);
+  font-weight: var(--font-semibold);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.sg-card {
+  padding: var(--space-6);
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-xs);
+}
+
+.sg-card + .sg-card {
+  margin-top: var(--space-4);
+}
+
+/* Dentro de grid/stack el espacio lo da `gap`. */
+.sg-grid-2 > .sg-card + .sg-card,
+.u-stack > .sg-card + .sg-card {
+  margin-top: 0;
+}
+
+.sg-subtitle {
+  margin-bottom: var(--space-3);
+  font-size: var(--text-xs);
+  font-weight: var(--font-semibold);
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.sg-block + .sg-block {
+  margin-top: var(--space-6);
+  padding-top: var(--space-6);
+  border-top: var(--border-width) dashed var(--color-border);
+}
+
+.sg-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.sg-mt {
+  margin-top: var(--space-6);
+}
+
+.sg-grid-2,
+.sg-grid-3 {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-4);
+}
+
+/* ---------- Muestras de color ---------- */
+.sg-palette + .sg-palette {
+  margin-top: var(--space-6);
+}
+
+.sg-swatches {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: var(--space-3);
+}
+
+.sg-swatch {
+  overflow: hidden;
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+}
+
+.sg-swatch__color {
+  height: 56px;
+  border-bottom: var(--border-width) solid var(--color-border);
+}
+
+.sg-swatch__meta {
+  padding: var(--space-2);
+  font-size: var(--text-xs);
+  line-height: 1.4;
+}
+
+.sg-swatch__name {
+  display: block;
+  font-weight: var(--font-semibold);
+  word-break: break-all;
+}
+
+.sg-swatch__value {
+  font-family: var(--font-mono);
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+}
+
+/* ---------- Tipografía / espaciado / sombras ---------- */
+.sg-type-row {
+  display: grid;
+  grid-template-columns: 7rem 1fr;
+  align-items: baseline;
+  gap: var(--space-4);
+  padding: var(--space-2) 0;
+}
+
+.sg-type-row + .sg-type-row {
+  border-top: var(--border-width) solid var(--color-neutral-100);
+}
+
+.sg-type-row__token {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+}
+
+.sg-space-row {
+  display: grid;
+  grid-template-columns: 6rem 1fr;
+  align-items: center;
+  gap: var(--space-3);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+}
+
+.sg-space-row + .sg-space-row {
+  margin-top: var(--space-2);
+}
+
+.sg-space-bar {
+  height: 12px;
+  border-radius: var(--radius-sm);
+  background: var(--color-primary-200);
+}
+
+.sg-shape {
+  display: grid;
+  place-items: center;
+  width: 88px;
+  height: 64px;
+  border: var(--border-width) solid var(--color-border);
+  background: var(--color-surface);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+}
+
+/* ---------- Íconos ---------- */
+.sg-icons {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(104px, 1fr));
+  gap: var(--space-2);
+}
+
+.sg-icon {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-2);
+  border-radius: var(--radius-md);
+  color: var(--color-text-secondary);
+  font-size: var(--text-xs);
+  text-align: center;
+  word-break: break-word;
+}
+
+.sg-icon:hover {
+  background: var(--color-brand-soft);
+  color: var(--color-brand);
+}
+
+/* ---------- Partes (Fundamentos / Átomos / Moléculas) ---------- */
+.sg-part {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin: var(--space-16) 0 var(--space-8);
+  padding-bottom: var(--space-3);
+  border-bottom: 2px solid var(--color-brand);
+  font-size: var(--text-3xl);
+  scroll-margin-top: 96px;
+}
+
+.sg-part:first-of-type {
+  margin-top: 0;
+}
+
+.sg-part span {
+  font-family: var(--font-mono);
+  font-size: var(--text-base);
+  color: var(--color-brand);
+}
+
+/* ---------- Demos de moléculas ---------- */
+.sg-note {
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+}
+
+.sg-result {
+  margin-top: var(--space-3);
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-md);
+  background: var(--color-surface-muted);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  color: var(--color-text-secondary);
+  overflow-wrap: anywhere;
+}
+
+.sg-grid-form {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-4);
+}
+
+.sg-form {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.sg-form__actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--space-3);
+}
+
+.sg-card__title {
+  margin-bottom: var(--space-1);
+  font-size: var(--text-lg);
+}
+
+.sg-card__subtitle {
+  margin-bottom: var(--space-5);
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+}
+
+.sg-kpis {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+  gap: var(--space-4);
+}
+
+.sg-list {
+  margin: var(--space-3) 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.sg-list__item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-2) 0;
+  font-size: var(--text-sm);
+}
+
+.sg-list__item + .sg-list__item {
+  border-top: var(--border-width) solid var(--color-neutral-100);
+}
+
+.sg-list__meta {
+  margin-left: auto;
+  color: var(--color-text-muted);
+  font-size: var(--text-xs);
+  white-space: nowrap;
+}
+
+.sg-empty {
+  padding: var(--space-6) 0;
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+  text-align: center;
+}
+
+/* Pieza dental */
+.sg-teeth {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--space-6);
+}
+
+.sg-teeth__item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+  text-align: center;
+}
+
+.sg-tooth-lab {
+  display: grid;
+  gap: var(--space-6);
+}
+
+.sg-tooth-lab__panel {
+  padding: var(--space-4);
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface-muted);
+}
+
+/* Marco del app shell: `transform` crea un nuevo bloque contenedor, así el sidebar
+   `position: fixed` (y su overlay) quedan dentro del marco y no de la ventana. */
+.sg-frame {
+  position: relative;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  height: 560px;
+  overflow: hidden;
+  border: var(--border-width) solid var(--color-border-strong);
+  border-radius: var(--radius-lg);
+  background: var(--color-bg-app);
+  transform: translateZ(0);
+}
+
+.sg-frame .sidebar {
+  height: 100%;
+}
+
+.sg-frame__main {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  overflow-y: auto;
+}
+
+.sg-frame__content {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  padding: var(--layout-gutter);
+}
+
+.sg-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--space-4);
+  margin-bottom: var(--space-4);
+}
+
+.sg-toolbar .field {
+  min-width: 220px;
+}
+
+.sg-slots {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(112px, 1fr));
+  gap: var(--space-2);
+}
+
+/* ---------- Pie ---------- */
+.sg-footer {
+  padding: var(--space-6) var(--layout-gutter);
+  border-top: var(--border-width) solid var(--color-border);
+  background: var(--color-surface);
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+  text-align: center;
+}
+
+/* ---------- Marcos de templates ---------- */
+/* El template completo vive dentro del marco: su scroll es el de la columna principal, no el de la página. */
+.sg-frame--template {
+  display: block;
+  height: 640px;
+}
+
+.sg-frame--tall {
+  height: 860px;
+}
+
+.sg-frame--template > .app-shell,
+.sg-frame--template > .auth {
+  height: 100%;
+  min-height: 0;
+}
+
+.sg-frame--template .app-shell__column,
+.sg-frame--template > .auth {
+  overflow-y: auto;
+}
+
+/* ---------- Muestras de tokens ----------
+   JS solo marca cada muestra con data-token / data-radius / data-shadow; el valor visual lo pone el CSS. */
+.sg-swatch__color[data-token="--color-primary-50"] { background: var(--color-primary-50); }
+.sg-swatch__color[data-token="--color-primary-100"] { background: var(--color-primary-100); }
+.sg-swatch__color[data-token="--color-primary-200"] { background: var(--color-primary-200); }
+.sg-swatch__color[data-token="--color-primary-500"] { background: var(--color-primary-500); }
+.sg-swatch__color[data-token="--color-primary-600"] { background: var(--color-primary-600); }
+.sg-swatch__color[data-token="--color-primary-700"] { background: var(--color-primary-700); }
+.sg-swatch__color[data-token="--color-primary-800"] { background: var(--color-primary-800); }
+.sg-swatch__color[data-token="--color-primary-900"] { background: var(--color-primary-900); }
+.sg-swatch__color[data-token="--color-secondary-50"] { background: var(--color-secondary-50); }
+.sg-swatch__color[data-token="--color-secondary-100"] { background: var(--color-secondary-100); }
+.sg-swatch__color[data-token="--color-secondary-200"] { background: var(--color-secondary-200); }
+.sg-swatch__color[data-token="--color-secondary-500"] { background: var(--color-secondary-500); }
+.sg-swatch__color[data-token="--color-secondary-600"] { background: var(--color-secondary-600); }
+.sg-swatch__color[data-token="--color-secondary-700"] { background: var(--color-secondary-700); }
+.sg-swatch__color[data-token="--color-secondary-800"] { background: var(--color-secondary-800); }
+.sg-swatch__color[data-token="--color-neutral-50"] { background: var(--color-neutral-50); }
+.sg-swatch__color[data-token="--color-neutral-100"] { background: var(--color-neutral-100); }
+.sg-swatch__color[data-token="--color-neutral-200"] { background: var(--color-neutral-200); }
+.sg-swatch__color[data-token="--color-neutral-300"] { background: var(--color-neutral-300); }
+.sg-swatch__color[data-token="--color-neutral-400"] { background: var(--color-neutral-400); }
+.sg-swatch__color[data-token="--color-neutral-500"] { background: var(--color-neutral-500); }
+.sg-swatch__color[data-token="--color-neutral-600"] { background: var(--color-neutral-600); }
+.sg-swatch__color[data-token="--color-neutral-700"] { background: var(--color-neutral-700); }
+.sg-swatch__color[data-token="--color-neutral-800"] { background: var(--color-neutral-800); }
+.sg-swatch__color[data-token="--color-neutral-900"] { background: var(--color-neutral-900); }
+.sg-swatch__color[data-token="--color-success-50"] { background: var(--color-success-50); }
+.sg-swatch__color[data-token="--color-success-100"] { background: var(--color-success-100); }
+.sg-swatch__color[data-token="--color-success-600"] { background: var(--color-success-600); }
+.sg-swatch__color[data-token="--color-success-700"] { background: var(--color-success-700); }
+.sg-swatch__color[data-token="--color-warning-50"] { background: var(--color-warning-50); }
+.sg-swatch__color[data-token="--color-warning-100"] { background: var(--color-warning-100); }
+.sg-swatch__color[data-token="--color-warning-600"] { background: var(--color-warning-600); }
+.sg-swatch__color[data-token="--color-warning-700"] { background: var(--color-warning-700); }
+.sg-swatch__color[data-token="--color-danger-50"] { background: var(--color-danger-50); }
+.sg-swatch__color[data-token="--color-danger-100"] { background: var(--color-danger-100); }
+.sg-swatch__color[data-token="--color-danger-600"] { background: var(--color-danger-600); }
+.sg-swatch__color[data-token="--color-danger-700"] { background: var(--color-danger-700); }
+.sg-swatch__color[data-token="--color-brand"] { background: var(--color-brand); }
+.sg-swatch__color[data-token="--color-accent"] { background: var(--color-accent); }
+.sg-swatch__color[data-token="--color-bg"] { background: var(--color-bg); }
+.sg-swatch__color[data-token="--color-bg-app"] { background: var(--color-bg-app); }
+.sg-swatch__color[data-token="--color-surface"] { background: var(--color-surface); }
+.sg-swatch__color[data-token="--color-border"] { background: var(--color-border); }
+.sg-swatch__color[data-token="--color-text"] { background: var(--color-text); }
+.sg-swatch__color[data-token="--color-text-secondary"] { background: var(--color-text-secondary); }
+.sg-swatch__color[data-token="--color-text-muted"] { background: var(--color-text-muted); }
+
+.sg-type-sample[data-token="--text-3xl"] { font-size: var(--text-3xl); }
+.sg-type-sample[data-token="--text-2xl"] { font-size: var(--text-2xl); }
+.sg-type-sample[data-token="--text-xl"] { font-size: var(--text-xl); }
+.sg-type-sample[data-token="--text-lg"] { font-size: var(--text-lg); }
+.sg-type-sample[data-token="--text-base"] { font-size: var(--text-base); }
+.sg-type-sample[data-token="--text-sm"] { font-size: var(--text-sm); }
+.sg-type-sample[data-token="--text-xs"] { font-size: var(--text-xs); }
+.sg-type-sample[data-weight="semibold"] { font-weight: var(--font-semibold); }
+.sg-type-sample[data-weight="medium"] { font-weight: var(--font-medium); }
+.sg-type-sample[data-weight="regular"] { font-weight: var(--font-regular); }
+
+.sg-space-bar[data-token="--space-1"] { width: var(--space-1); }
+.sg-space-bar[data-token="--space-2"] { width: var(--space-2); }
+.sg-space-bar[data-token="--space-3"] { width: var(--space-3); }
+.sg-space-bar[data-token="--space-4"] { width: var(--space-4); }
+.sg-space-bar[data-token="--space-5"] { width: var(--space-5); }
+.sg-space-bar[data-token="--space-6"] { width: var(--space-6); }
+.sg-space-bar[data-token="--space-8"] { width: var(--space-8); }
+.sg-space-bar[data-token="--space-10"] { width: var(--space-10); }
+.sg-space-bar[data-token="--space-12"] { width: var(--space-12); }
+.sg-space-bar[data-token="--space-16"] { width: var(--space-16); }
+
+.sg-shape[data-radius="sm"] { border-radius: var(--radius-sm); }
+.sg-shape[data-radius="md"] { border-radius: var(--radius-md); }
+.sg-shape[data-radius="lg"] { border-radius: var(--radius-lg); }
+.sg-shape[data-radius="xl"] { border-radius: var(--radius-xl); }
+.sg-shape[data-radius="full"] { border-radius: var(--radius-full); }
+
+.sg-shape--shadow {
+  border: none;
+  border-radius: var(--radius-md);
+}
+.sg-shape[data-shadow="xs"] { box-shadow: var(--shadow-xs); }
+.sg-shape[data-shadow="sm"] { box-shadow: var(--shadow-sm); }
+.sg-shape[data-shadow="md"] { box-shadow: var(--shadow-md); }
+.sg-shape[data-shadow="lg"] { box-shadow: var(--shadow-lg); }
+
+/* ---------- Ajustes de maquetación del catálogo ---------- */
+.sg-narrow { max-width: 360px; }
+
+.sg-fieldset {
+  padding: 0;
+  border: none;
+}
+
+.sg-legend { margin-bottom: var(--space-2); }
+
+.sg-note--spaced { margin-top: var(--space-4); }
+
+.sg-row--spaced { margin-top: var(--space-3); }
+
+.sg-stack-loose { gap: var(--space-4); }
+
+.sg-list__time { min-width: 4.5rem; }
+
+.sg-frame__title { font-size: var(--text-2xl); }
+
+/* ---------- bd ---------- */
+
+/* Página: frontend/bd/index.html (tablas de dentalcare_bd en HTML estático). */
+
+.bd {
+  display: grid;
+  grid-template-columns: 220px minmax(0, 1fr);
+  min-height: 100vh;
+  background: var(--color-bg, var(--color-surface));
+}
+
+.bd-nav {
+  position: sticky;
+  top: 0;
+  align-self: start;
+  max-height: 100vh;
+  overflow-y: auto;
+  padding: var(--space-4) var(--space-3);
+  border-right: var(--border-width) solid var(--color-border-strong);
+  background: var(--color-surface);
+}
+
+.bd-nav__titulo {
+  margin-bottom: var(--space-3);
+  font-weight: var(--font-semibold, 600);
+  font-family: var(--font-mono, monospace);
+}
+
+.bd-nav__grupo {
+  margin: var(--space-4) 0 var(--space-1);
+  font-size: var(--text-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--color-text-muted);
+}
+
+.bd-nav__item {
+  display: flex;
+  justify-content: space-between;
+  width: 100%;
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-md, 6px);
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+  text-align: left;
+}
+
+.bd-nav__item span {
+  font-variant-numeric: tabular-nums;
+  color: var(--color-text-muted);
+}
+
+.bd-nav__item:hover { color: var(--color-text); }
+.bd-nav__item:focus-visible { outline: none; box-shadow: var(--shadow-focus); }
+
+.bd-nav__item.is-active {
+  background: var(--color-brand-soft);
+  color: var(--color-brand);
+  font-weight: var(--font-medium);
+}
+
+.bd-contenido {
+  min-width: 0;
+  padding: var(--space-6) var(--space-4);
+}
+
+/* Solo el módulo activo es visible: js/navigation.js mueve la clase is-active. */
+.bd-modulo { display: none; flex-direction: column; gap: var(--space-4); }
+.bd-modulo.is-active { display: flex; }
+
+.bd-modulo__cabecera h2 code { font-size: var(--text-sm); color: var(--color-text-muted); }
+.bd-modulo__cabecera .data-table__status { white-space: normal; overflow-wrap: anywhere; }
+
+.bd-herramientas {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  align-items: flex-end;
+}
+
+.bd-grupo {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1) var(--space-3);
+  align-items: center;
+  padding: var(--space-2) var(--space-3);
+  border: var(--border-width) solid var(--color-border-strong);
+  border-radius: var(--radius-md, 6px);
+  font-size: var(--text-sm);
+}
+
+.bd-grupo legend { padding: 0 var(--space-1); font-size: var(--text-xs); color: var(--color-text-muted); }
+.bd-grupo label { display: inline-flex; gap: var(--space-1); align-items: center; white-space: nowrap; }
+.bd-grupo--botones { border: 0; padding: 0; }
+
+.bd-fk, .bd-pk { font-size: var(--text-xs); font-weight: normal; color: var(--color-text-muted); white-space: nowrap; }
+.bd-pk { color: var(--color-brand); }
+.bd-check { width: 2.25rem; text-align: center; }
+
+.bd .data-table__table td { vertical-align: top; }
+.bd .data-table__table td.es-nulo { color: var(--color-text-muted); font-style: italic; }
+.bd .data-table__table td.es-oculto { color: var(--color-text-muted); letter-spacing: 0.1em; }
+
+/* Densidad compacta (radio "Compacta"). */
+.bd-modulo.is-compact .data-table__table th,
+.bd-modulo.is-compact .data-table__table td { padding-top: 2px; padding-bottom: 2px; font-size: var(--text-xs); }
+
+/* Fila seleccionada (checkbox de la fila). */
+.bd .data-table__table tbody tr.is-selected td { background: var(--color-brand-soft); }
+
+/* "Ver solo seleccionados". */
+.bd-modulo.solo-seleccion tbody tr:not(.is-selected) { display: none; }
+
+/* "Resaltar NULL". */
+.bd-modulo.ver-nulos td.es-nulo { background: var(--color-warning-50, #fff7e6); color: var(--color-warning-600, #b45309); font-style: normal; }
+
+/* Filtros por estado (radios): el módulo recibe la clase filtro-<VALOR>. */
+#mod-usuario.filtro-ACTIVO tbody tr:not([data-filtro="ACTIVO"]) { display: none; }
+#mod-usuario.filtro-INACTIVO tbody tr:not([data-filtro="INACTIVO"]) { display: none; }
+#mod-rol.filtro-ACTIVO tbody tr:not([data-filtro="ACTIVO"]) { display: none; }
+#mod-rol.filtro-INACTIVO tbody tr:not([data-filtro="INACTIVO"]) { display: none; }
+#mod-horario.filtro-Lunes tbody tr:not([data-filtro="Lunes"]) { display: none; }
+#mod-horario.filtro-Martes tbody tr:not([data-filtro="Martes"]) { display: none; }
+#mod-horario.filtro-Miércoles tbody tr:not([data-filtro="Miércoles"]) { display: none; }
+#mod-horario.filtro-Jueves tbody tr:not([data-filtro="Jueves"]) { display: none; }
+#mod-horario.filtro-Viernes tbody tr:not([data-filtro="Viernes"]) { display: none; }
+#mod-horario.filtro-Sábado tbody tr:not([data-filtro="Sábado"]) { display: none; }
+#mod-horario.filtro-Domingo tbody tr:not([data-filtro="Domingo"]) { display: none; }
+#mod-paciente.filtro-CC tbody tr:not([data-filtro="CC"]) { display: none; }
+#mod-paciente.filtro-TI tbody tr:not([data-filtro="TI"]) { display: none; }
+#mod-paciente.filtro-CE tbody tr:not([data-filtro="CE"]) { display: none; }
+#mod-paciente.filtro-PA tbody tr:not([data-filtro="PA"]) { display: none; }
+#mod-cita.filtro-PENDIENTE_CONFIRMACION tbody tr:not([data-filtro="PENDIENTE_CONFIRMACION"]) { display: none; }
+#mod-cita.filtro-PROGRAMADA tbody tr:not([data-filtro="PROGRAMADA"]) { display: none; }
+#mod-cita.filtro-COMPLETADA tbody tr:not([data-filtro="COMPLETADA"]) { display: none; }
+#mod-cita.filtro-CANCELADA tbody tr:not([data-filtro="CANCELADA"]) { display: none; }
+#mod-servicio.filtro-ACTIVO tbody tr:not([data-filtro="ACTIVO"]) { display: none; }
+#mod-servicio.filtro-INACTIVO tbody tr:not([data-filtro="INACTIVO"]) { display: none; }
+#mod-venta.filtro-CONTADO tbody tr:not([data-filtro="CONTADO"]) { display: none; }
+#mod-venta.filtro-CREDITO tbody tr:not([data-filtro="CREDITO"]) { display: none; }
+
+/* ---------- Ficha del paciente sin JavaScript ----------
+   Los enlaces llevan a historia.html#paciente-N: la ficha con ese id se muestra con :target.
+   Sin #paciente-N en la URL se muestra la ficha vacía (data-paciente=""). */
+.ficha:target {
+  display: block;
+}
+
+.app-shell__content:not(:has(> .ficha:target)) > .ficha[data-paciente=""] {
+  display: block;
+}
+
+/* Botones del menú de perfil convertidos en enlaces */
+a.popover__item {
+  text-decoration: none;
+}
+
+/* Pestañas de rol del login */
+.auth-roles .tabs__list {
+  overflow-x: auto;
+}
+
+.auth-roles .tabs__tab {
+  flex: 1 0 auto;
+}
+
+.auth-form__hint,
+.auth__demo-note {
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+}
